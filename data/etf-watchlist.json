@@ -1,0 +1,64 @@
+{
+  "etfs": [
+    {
+      "name": "中证500ETF",
+      "code": "510500",
+      "market": "SH",
+      "secid": "1.510500",
+      "icon": "500",
+      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
+      "iconColor": "#fff",
+      "category": "宽基"
+    },
+    {
+      "name": "创业板ETF",
+      "code": "159915",
+      "market": "SZ",
+      "secid": "0.159915",
+      "icon": "创",
+      "iconBg": "linear-gradient(135deg, #fc8181, #e53e3e)",
+      "iconColor": "#fff",
+      "category": "宽基"
+    },
+    {
+      "name": "科创50ETF",
+      "code": "588000",
+      "market": "SH",
+      "secid": "1.588000",
+      "icon": "科",
+      "iconBg": "linear-gradient(135deg, #fbd38d, #ed8936)",
+      "iconColor": "#fff",
+      "category": "宽基"
+    },
+    {
+      "code": "163415",
+      "name": "兴全商业模式LOF",
+      "market": "SZ",
+      "secid": "0.163415",
+      "icon": "兴全",
+      "iconBg": "linear-gradient(135deg, #fc8181, #c53030)",
+      "iconColor": "#fff",
+      "category": "LOF"
+    },
+    {
+      "code": "510310",
+      "name": "沪深300ETF易方达",
+      "market": "SH",
+      "secid": "1.510310",
+      "icon": "沪深",
+      "iconBg": "linear-gradient(135deg, #4fd1c5, #319795)",
+      "iconColor": "#fff",
+      "category": "宽基"
+    },
+    {
+      "code": "513180",
+      "name": "恒生科技ETF华夏",
+      "market": "SH",
+      "secid": "1.513180",
+      "icon": "恒生",
+      "iconBg": "linear-gradient(135deg, #4fd1c5, #319795)",
+      "iconColor": "#fff",
+      "category": "科技"
+    }
+  ]
+}

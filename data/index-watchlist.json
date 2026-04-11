@@ -1,0 +1,94 @@
+{
+  "indices": [
+    {
+      "name": "沪深300",
+      "code": "000300",
+      "market": "SH",
+      "secid": "1.000300",
+      "icon": "300",
+      "iconBg": "linear-gradient(135deg, #63b3ed, #3182ce)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "中证500",
+      "code": "000905",
+      "market": "SH",
+      "secid": "1.000905",
+      "icon": "500",
+      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "中证红利",
+      "code": "000922",
+      "market": "SH",
+      "secid": "1.000922",
+      "icon": "红利",
+      "iconBg": "linear-gradient(135deg, #fc8181, #e53e3e)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "中证红利低波",
+      "code": "H30269",
+      "market": "CSI",
+      "secid": "2.H30269",
+      "icon": "低波",
+      "iconBg": "linear-gradient(135deg, #f6ad55, #dd6b20)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "中证消费",
+      "code": "000932",
+      "market": "SH",
+      "secid": "1.000932",
+      "icon": "消费",
+      "iconBg": "linear-gradient(135deg, #68d391, #38a169)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "科创50",
+      "code": "000688",
+      "market": "SH",
+      "secid": "1.000688",
+      "icon": "科",
+      "iconBg": "linear-gradient(135deg, #fbd38d, #ed8936)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "恒生科技",
+      "code": "HSTECH",
+      "market": "HI",
+      "secid": "100.HSTECH",
+      "icon": "科技",
+      "iconBg": "linear-gradient(135deg, #4fd1c5, #319795)",
+      "iconColor": "#fff",
+      "category": "broad-hk"
+    },
+    {
+      "name": "标普500",
+      "code": "SPX",
+      "market": "US",
+      "secid": "100.SPX",
+      "icon": "S&P",
+      "iconBg": "linear-gradient(135deg, #667eea, #764ba2)",
+      "iconColor": "#fff",
+      "category": "broad-us"
+    },
+    {
+      "name": "纳斯达克100",
+      "code": "NDX",
+      "market": "US",
+      "secid": "100.NDX",
+      "icon": "NDX",
+      "iconBg": "linear-gradient(135deg, #00d2ff, #3a7bd5)",
+      "iconColor": "#fff",
+      "category": "broad-us"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "passwordHash": "c2631819de593d9388f57e96e9eab0f0bfa5fa4e9a2779627fc75b2747cfbc564dfebe493ce0bde4f89ed13c3eb9d849d3a8296feb815d452f49fead64e13cd7",
+      "salt": "2e7f1207b792270bd4d166059d353ec1",
+      "role": "admin",
+      "nickname": "Dale",
+      "createdAt": "2026-03-24T04:04:17.825Z"
+    }
+  ]
+}

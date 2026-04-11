@@ -1,0 +1,100 @@
+{
+  "funds": [
+    {
+      "code": "163415",
+      "name": "兴全商业模式混合(LOF)A",
+      "shortName": "兴全商业模式",
+      "icon": "兴全",
+      "iconBg": "linear-gradient(135deg, #63b3ed, #3182ce)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "008269",
+      "name": "大成睿享混合A",
+      "shortName": "大成睿享",
+      "icon": "大成",
+      "iconBg": "linear-gradient(135deg, #f6ad55, #dd6b20)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "000248",
+      "name": "汇添富中证主要消费ETF联接A",
+      "shortName": "汇添富中证主要消费ETF联接A",
+      "icon": "汇添",
+      "iconBg": "linear-gradient(135deg, #48bb78, #2f855a)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "005633",
+      "name": "建信中证500指数增强C",
+      "shortName": "建信中证500指数增强C",
+      "icon": "建信",
+      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "013308",
+      "name": "易方达恒生科技ETF联接(QDII)A",
+      "shortName": "易方达恒生科技ETF联接",
+      "icon": "易方",
+      "iconBg": "linear-gradient(135deg, #fc8181, #c53030)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "007466",
+      "name": "华泰柏瑞中证红利低波ETF联接A",
+      "shortName": "华泰柏瑞中证红利低波ETF联接",
+      "icon": "华泰",
+      "iconBg": "linear-gradient(135deg, #f6c343, #d69e2e)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "110020",
+      "name": "易方达沪深300ETF联接A",
+      "shortName": "易方达沪深300ETF联接A",
+      "icon": "易方",
+      "iconBg": "linear-gradient(135deg, #4fd1c5, #319795)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "011608",
+      "name": "易方达上证科创50联接A",
+      "shortName": "易方达上证科创50联接A",
+      "icon": "易方",
+      "iconBg": "linear-gradient(135deg, #f687b3, #b83280)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "009051",
+      "name": "易方达中证红利ETF联接发起式A",
+      "shortName": "易方达中证红利ETF联接发起式",
+      "icon": "易方",
+      "iconBg": "linear-gradient(135deg, #63b3ed, #3182ce)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "017641",
+      "name": "摩根标普500指数(QDII)人民币A",
+      "shortName": "摩根标普500指数",
+      "icon": "摩根",
+      "iconBg": "linear-gradient(135deg, #f6ad55, #dd6b20)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "019172",
+      "name": "摩根纳斯达克100指数(QDII)人民币A",
+      "shortName": "摩根纳斯达克100指数",
+      "icon": "摩根",
+      "iconBg": "linear-gradient(135deg, #48bb78, #2f855a)",
+      "iconColor": "#fff"
+    },
+    {
+      "code": "096001",
+      "name": "大成标普500等权重指数(QDII)A人民币",
+      "shortName": "大成标普500等权重指数",
+      "icon": "大成",
+      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
+      "iconColor": "#fff"
+    }
+  ]
+}
