@@ -1,0 +1,17 @@
+{
+  "records": [
+    {
+      "id": "mn35n3bib949",
+      "indexCode": "000300.SH",
+      "indexName": "沪深300",
+      "time": "2026-03-23",
+      "value": 4418,
+      "pe": null,
+      "waterLevel": null,
+      "valuation": null,
+      "dropPct": null,
+      "note": "",
+      "createdAt": "2026-03-23T12:21:17.838Z"
+    }
+  ]
+}

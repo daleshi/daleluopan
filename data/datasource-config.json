@@ -1,0 +1,14 @@
+{
+  "enabled": {
+    "danjuan-wind": true,
+    "eastmoney": true,
+    "youzhiyouxing": true,
+    "tiantian": true,
+    "etfrun": false,
+    "eniu": true,
+    "csindex": false,
+    "tencent": false,
+    "tushare": false,
+    "akshare": false
+  }
+}

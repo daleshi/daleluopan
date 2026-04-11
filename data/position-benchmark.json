@@ -1,0 +1,156 @@
+{
+  "benchmarks": [
+    {
+      "indexCode": "000300.SH",
+      "indexName": "沪深300",
+      "baseValue": 4418,
+      "levels": [
+        {
+          "dropPct": 5,
+          "ratio": 10,
+          "triggerValue": 4197.1
+        },
+        {
+          "dropPct": 10,
+          "ratio": 20,
+          "triggerValue": 3976.2
+        },
+        {
+          "dropPct": 15,
+          "ratio": 30,
+          "triggerValue": 3755.3
+        },
+        {
+          "dropPct": 20,
+          "ratio": 50,
+          "triggerValue": 3534.4
+        },
+        {
+          "dropPct": 25,
+          "ratio": 80,
+          "triggerValue": 3313.5
+        },
+        {
+          "dropPct": 30,
+          "ratio": 100,
+          "triggerValue": 3092.6
+        }
+      ],
+      "updatedAt": "2026-03-23T12:19:55.338Z"
+    },
+    {
+      "indexCode": "000001.SH",
+      "indexName": "上证指数",
+      "baseValue": 4000,
+      "levels": [
+        {
+          "dropPct": 5,
+          "ratio": 5,
+          "triggerValue": 3800
+        },
+        {
+          "dropPct": 10,
+          "ratio": 10,
+          "triggerValue": 3600
+        },
+        {
+          "dropPct": 15,
+          "ratio": 20,
+          "triggerValue": 3400
+        },
+        {
+          "dropPct": 20,
+          "ratio": 30,
+          "triggerValue": 3200
+        },
+        {
+          "dropPct": 25,
+          "ratio": 50,
+          "triggerValue": 3000
+        },
+        {
+          "dropPct": 30,
+          "ratio": 100,
+          "triggerValue": 2800
+        }
+      ],
+      "updatedAt": "2026-03-23T12:25:50.058Z"
+    },
+    {
+      "indexCode": "000922.SH",
+      "indexName": "中证红利",
+      "baseValue": 5626,
+      "levels": [
+        {
+          "dropPct": 5,
+          "ratio": 10,
+          "triggerValue": 5344.7
+        },
+        {
+          "dropPct": 10,
+          "ratio": 20,
+          "triggerValue": 5063.4
+        },
+        {
+          "dropPct": 15,
+          "ratio": 30,
+          "triggerValue": 4782.1
+        },
+        {
+          "dropPct": 20,
+          "ratio": 50,
+          "triggerValue": 4500.8
+        },
+        {
+          "dropPct": 25,
+          "ratio": 80,
+          "triggerValue": 4219.5
+        },
+        {
+          "dropPct": 30,
+          "ratio": 100,
+          "triggerValue": 3938.2
+        }
+      ],
+      "updatedAt": "2026-03-23T12:30:39.920Z"
+    },
+    {
+      "indexCode": "HSTECH.HI",
+      "indexName": "恒生科技",
+      "baseValue": 5000,
+      "levels": [
+        {
+          "dropPct": 5,
+          "ratio": 10,
+          "triggerValue": 4750
+        },
+        {
+          "dropPct": 10,
+          "ratio": 20,
+          "triggerValue": 4500
+        },
+        {
+          "dropPct": 15,
+          "ratio": 30,
+          "triggerValue": 4250
+        },
+        {
+          "dropPct": 20,
+          "ratio": 60,
+          "triggerValue": 4000
+        },
+        {
+          "dropPct": 25,
+          "ratio": 80,
+          "triggerValue": 3750
+        },
+        {
+          "dropPct": 30,
+          "ratio": 100,
+          "triggerValue": 3500
+        }
+      ],
+      "updatedAt": "2026-03-23T12:31:33.410Z"
+    }
+  ]
+}

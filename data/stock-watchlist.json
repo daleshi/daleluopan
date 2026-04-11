@@ -1,0 +1,64 @@
+{
+  "stocks": [
+    {
+      "name": "隆基绿能",
+      "code": "601012",
+      "market": "SH",
+      "secid": "1.601012",
+      "icon": "隆基",
+      "iconBg": "linear-gradient(135deg, #48bb78, #2f855a)",
+      "iconColor": "#fff",
+      "sector": "光伏"
+    },
+    {
+      "name": "宝信软件",
+      "code": "600845",
+      "market": "SH",
+      "secid": "1.600845",
+      "icon": "宝信",
+      "iconBg": "linear-gradient(135deg, #63b3ed, #3182ce)",
+      "iconColor": "#fff",
+      "sector": "软件"
+    },
+    {
+      "name": "国电南瑞",
+      "code": "600406",
+      "market": "SH",
+      "secid": "1.600406",
+      "icon": "南瑞",
+      "iconBg": "linear-gradient(135deg, #f6ad55, #dd6b20)",
+      "iconColor": "#fff",
+      "sector": "电力设备"
+    },
+    {
+      "name": "先导智能",
+      "code": "300450",
+      "market": "SZ",
+      "secid": "0.300450",
+      "icon": "先导",
+      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
+      "iconColor": "#fff",
+      "sector": "锂电设备"
+    },
+    {
+      "name": "长江电力",
+      "code": "600900",
+      "market": "SH",
+      "secid": "1.600900",
+      "icon": "长江",
+      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
+      "iconColor": "#fff",
+      "sector": "能源"
+    },
+    {
+      "name": "伊利股份",
+      "code": "600887",
+      "market": "SH",
+      "secid": "1.600887",
+      "icon": "伊利",
+      "iconBg": "linear-gradient(135deg, #90cdf4, #2b6cb0)",
+      "iconColor": "#fff",
+      "sector": ""
+    }
+  ]
+}
