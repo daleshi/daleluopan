@@ -53,7 +53,7 @@ function writeStats(stats) {
 }
 
 // 内存中的统计数据（减少磁盘IO）
-let _stats = readStats();
+const _stats = readStats();
 let _statsDirty = false;
 
 // 定期持久化（每 30 秒写一次磁盘）
@@ -392,8 +392,8 @@ async function getCachedData(forceRefresh = false) {
 }
 
 // 指数行情独立缓存（高频刷新场景）
-let _indexQuotesCache = null;
-let _indexQuotesCacheTime = 0;
+const _indexQuotesCache = null;
+const _indexQuotesCacheTime = 0;
 
 async function getCachedIndexQuotes(forceRefresh = false) {
     return smartCacheGet('index-quotes', () => fetchIndexQuotesForWatchlist(), forceRefresh);
@@ -463,7 +463,7 @@ function writeUsers(users) {
 }
 
 function ensureDefaultAdmin() {
-    let users = readUsers();
+    const users = readUsers();
     if (users.length === 0) {
         const { salt, hash } = hashPassword('admin123');
         users.push({
@@ -1969,7 +1969,7 @@ app.listen(PORT, () => {
 
             console.log(`[启动] Phase 2: 后台刷新完成 (${refreshTime}s)，成功 ${succeeded}/${results.length}`);
             if (failed.length > 0) {
-                failed.forEach(r => console.warn(`  [预加载] ❌ 失败:`, r.reason?.message || r.reason));
+                failed.forEach(r => console.warn('  [预加载] ❌ 失败:', r.reason?.message || r.reason));
             }
         } catch (err) {
             console.warn('[启动] Phase 2: 后台刷新出错:', err.message);

@@ -7,8 +7,6 @@
     "etfrun": false,
     "eniu": true,
     "csindex": false,
-    "tencent": false,
-    "tushare": false,
-    "akshare": false
+    "tencent": false
   }
 }

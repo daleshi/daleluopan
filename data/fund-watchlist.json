@@ -95,6 +95,15 @@
       "icon": "大成",
       "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
       "iconColor": "#fff"
+    },
+    {
+      "code": "123456",
+      "name": "123456",
+      "shortName": "123456",
+      "icon": "12",
+      "iconBg": "linear-gradient(135deg, #f6c343, #d69e2e)",
+      "iconColor": "#fff",
+      "category": "active"
     }
   ]
 }

@@ -1,0 +1,88 @@
+{
+    "root": true,
+    "env": {
+        "es2020": true
+    },
+    "parserOptions": {
+        "ecmaVersion": 2020,
+        "sourceType": "script"
+    },
+    "plugins": ["html"],
+    "rules": {
+        "quotes": ["error", "single", { "avoidEscape": true }],
+        "indent": ["error", 4, { "SwitchCase": 1 }],
+        "semi": ["error", "always"],
+        "no-var": "error",
+        "prefer-const": ["warn", { "destructuring": "all" }],
+        "eqeqeq": ["error", "always", { "null": "ignore" }],
+        "no-unused-vars": ["warn", { "args": "none", "caughtErrors": "none" }],
+        "no-console": "off",
+        "no-trailing-spaces": "error",
+        "no-multiple-empty-lines": ["warn", { "max": 2 }],
+        "curly": ["warn", "multi-line"]
+    },
+    "overrides": [
+        {
+            "files": ["server.js", "ecosystem.config.js", "services/**/*.js"],
+            "env": {
+                "node": true,
+                "browser": false
+            }
+        },
+        {
+            "files": ["public/index.html"],
+            "env": {
+                "browser": true,
+                "node": false
+            },
+            "globals": {
+                "indexData": "writable",
+                "dashboardData": "writable",
+                "comparisonSources": "writable",
+                "thermoData": "writable",
+                "thermoDetailCache": "writable",
+                "thermoDetailLoading": "writable",
+                "thermoDetailExpanded": "writable",
+                "featuredTrendRange": "writable",
+                "featuredTrendSelectedDate": "writable",
+                "coreTrendState": "writable",
+                "FEATURED_TREND_RANGES": "readonly",
+                "indexIsTrading": "writable",
+                "indexRefresher": "readonly",
+                "featuredDetailOpen": "writable",
+                "idxModalTrendState": "writable",
+                "dcaPlans": "writable",
+                "dcaIndexPool": "writable",
+                "etfData": "writable",
+                "etfLoaded": "writable",
+                "etfPrevPrices": "writable",
+                "etfRefresher": "readonly",
+                "stockLoaded": "writable",
+                "stockRefresher": "readonly",
+                "dsEnabled": "writable",
+                "dsSavedEnabled": "writable",
+                "dsLoaded": "writable",
+                "statsLoaded": "writable",
+                "positionLoaded": "writable",
+                "posBenchmarks": "writable",
+                "posIndexPool": "writable",
+                "posEditingCode": "writable",
+                "DEFAULT_LEVELS": "readonly",
+                "authUser": "writable",
+                "siteLoginEnabled": "writable",
+                "adminUsersList": "writable",
+                "_fullIndexDataLoaded": "writable",
+                "_fullFundDataLoaded": "writable",
+                "_etfSearchTimer": "writable",
+                "_stockSearchTimer": "writable",
+                "_etfKlineCache": "readonly",
+                "_statsRefreshTimer": "writable",
+                "ALL_DATA_SOURCES": "readonly"
+            },
+            "rules": {
+                "no-unused-vars": "off",
+                "no-undef": "warn"
+            }
+        }
+    ]
+}

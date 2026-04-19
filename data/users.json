@@ -7,6 +7,30 @@
       "role": "admin",
       "nickname": "Dale",
       "createdAt": "2026-03-24T04:04:17.825Z"
+    },
+    {
+      "username": "nu_091212",
+      "passwordHash": "e2afed8bf86eed5c67a1d7c00195c1219a94daa77abe176688c630947a68a2d4250c1a009813656d36c8551aa08f68088a1908e6491bd173fdac2d296c39ef9f",
+      "salt": "f64ceb9991e64b685c5d4d446f841da7",
+      "role": "user",
+      "nickname": "nu_091212",
+      "createdAt": "2026-04-11T04:34:51.215Z"
+    },
+    {
+      "username": "nu_102232",
+      "passwordHash": "ecd2af04863d0ca1ee3c6bda1077abe9370da71d347d9dccc6dc68a1fba77a52438ea88ba40e63a206546be5a9a9a4cee4e9b3d70f7350cd5b7d6b0e73390a3d",
+      "salt": "d237e722fcbcc03b6c466159e333e64e",
+      "role": "user",
+      "nickname": "nu_102232",
+      "createdAt": "2026-04-11T04:35:02.239Z"
+    },
+    {
+      "username": "nu_114597",
+      "passwordHash": "64cb62761e5bab72146d436af1e7824a3a2c7ad75ae7e7f714695bd26a6184f228c33354a169b76f6f8a6f7fa45f4bea0696b1e67830158059ddf351cc3f527a",
+      "salt": "26bce307e68673738bb4112cc0a7dc0a",
+      "role": "user",
+      "nickname": "nu_114597",
+      "createdAt": "2026-04-11T04:35:14.603Z"
     }
   ]
 }

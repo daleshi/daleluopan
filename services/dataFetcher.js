@@ -1870,8 +1870,8 @@ function parseYZYXPage(html) {
     return result;
 }
 
-let _yzyxDetailCache = {};
-let _yzyxDetailCacheTime = {};
+const _yzyxDetailCache = {};
+const _yzyxDetailCacheTime = {};
 
 function parseYZYXIndexDetailPage(html, fallback = {}) {
     const result = {

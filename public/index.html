@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=DM+Mono:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
     // 防止闪屏：在CSS解析前设置主题
-    (function(){var t=localStorage.getItem('dale-compass-theme')||localStorage.getItem('index-compass-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();
+    (function(){const t=localStorage.getItem('dale-compass-theme')||localStorage.getItem('index-compass-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();
     </script>
     <style>
         :root {
@@ -4795,15 +4795,15 @@
                 <div class="featured-point-value">${fmtNum(point.close)}</div>
             </div>
             ${buildSemanticPointCardHTML({
-                label: '较前一日',
-                valueHTML: dayDelta != null ? `${formatSignedNumber(dayDelta)} / ${formatSignedPct(dayDeltaPct)}` : '--',
-                meta: dayMeta,
-            })}
+            label: '较前一日',
+            valueHTML: dayDelta != null ? `${formatSignedNumber(dayDelta)} / ${formatSignedPct(dayDeltaPct)}` : '--',
+            meta: dayMeta,
+        })}
             ${buildSemanticPointCardHTML({
-                label: '区间累计',
-                valueHTML: formatSignedPct(sinceStart),
-                meta: rangeMeta,
-            })}
+            label: '区间累计',
+            valueHTML: formatSignedPct(sinceStart),
+            meta: rangeMeta,
+        })}
             <div class="featured-point-card">
                 <div class="featured-point-label">区间位置</div>
                 <div class="featured-point-value">${rangePct != null ? `${rangePct.toFixed(1)}%` : '--'}</div>
@@ -4901,19 +4901,19 @@
                     ${extremeSvg}
                     ${selectedPoint ? `<line x1="${selectedPoint.x.toFixed(2)}" y1="${guideTop.toFixed(2)}" x2="${selectedPoint.x.toFixed(2)}" y2="${guideBottom.toFixed(2)}" stroke="${stroke}" stroke-width="1.2" stroke-opacity="0.28" stroke-dasharray="3 5"></line>` : ''}
                     ${anchorIndexes.map(idx => {
-                        const point = points[idx];
-                        const active = resolvedDate && point.item.date === resolvedDate;
-                        return active
-                            ? `<g>
+            const point = points[idx];
+            const active = resolvedDate && point.item.date === resolvedDate;
+            return active
+                ? `<g>
                                 <circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="${(activeRadius + 8).toFixed(2)}" fill="${stroke}" opacity="0.12"></circle>
                                 <circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="${(activeRadius + 3.6).toFixed(2)}" fill="#ffffff" opacity="0.92"></circle>
                                 <circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="${(activeRadius + 0.8).toFixed(2)}" fill="#ffffff" stroke="${stroke}" stroke-width="${lineWidth}"></circle>
                                 <circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="${Math.max(activeRadius - 1.8, 2.2).toFixed(2)}" fill="${stroke}" style="cursor:pointer" onclick="${onPointClick(point.item.date)}"></circle>
                             </g>`
-                            : `<g opacity="0.92">
+                : `<g opacity="0.92">
                                 <circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="${idleRadius}" fill="${stroke}" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.2" style="cursor:pointer" onclick="${onPointClick(point.item.date)}"></circle>
                             </g>`;
-                    }).join('')}
+        }).join('')}
                 </svg>`,
         };
     }
@@ -4927,7 +4927,7 @@
     }
 
     function buildCompactTrendPlaceholderHTML() {
-        return `<div class="compact-detail-placeholder"><span><strong>点位详情已收起</strong> · 点击曲线锚点或下方年月标签后展开</span><span>默认更利落</span></div>`;
+        return '<div class="compact-detail-placeholder"><span><strong>点位详情已收起</strong> · 点击曲线锚点或下方年月标签后展开</span><span>默认更利落</span></div>';
     }
 
     function buildCompactTrendDetailHTML(code, point, series) {
@@ -5871,7 +5871,7 @@
             {
                 icon: '&#x2696;', iconBg: 'var(--purple-dim)', title: '均衡配置建议',
                 level: '组合方案', levelCls: 'badge-normal',
-                body: `基于当前各指数估值水平（来源Wind），建议采用<strong>"核心+卫星"</strong>配置策略。重点关注估值处于低位的指数进行超配，对PE百分位超过80%的指数控制仓位。动态调整的核心原则是：低估多买、高估少持、极高估减仓。`,
+                body: '基于当前各指数估值水平（来源Wind），建议采用<strong>"核心+卫星"</strong>配置策略。重点关注估值处于低位的指数进行超配，对PE百分位超过80%的指数控制仓位。动态调整的核心原则是：低估多买、高估少持、极高估减仓。',
                 tags: ['资产配置', '核心卫星', '动态调整']
             },
             {
@@ -6464,7 +6464,7 @@
     // STOCK TAB — 股票实时行情
     // ================================================================
     let stockData = [];
-    let stockPrevPrices = {};  // 上次价格（用于闪烁动画）
+    const stockPrevPrices = {};  // 上次价格（用于闪烁动画）
     // ============================================================
     // INDEX QUOTES — 指数实时行情面板（搜索添加 + 删除）
     // ============================================================
@@ -7329,7 +7329,7 @@
     // ============================================================
     let etfData = [];
     let etfLoaded = false;
-    let etfPrevPrices = {};
+    const etfPrevPrices = {};
 
     async function loadETFData(forceRefresh = false) {
         const refreshBtn = document.getElementById('etfRefreshBtn');
@@ -8755,7 +8755,7 @@
                 <div class="stats-trend-label">${showLabel ? label : ''}</div>
             </div>`;
         }).join('');
-        trendEl.innerHTML = barsHtml + `<div class="stats-trend-legend"><span><span class="dot pv"></span>PV</span><span><span class="dot uv"></span>UV</span></div>`;
+        trendEl.innerHTML = barsHtml + '<div class="stats-trend-legend"><span><span class="dot pv"></span>PV</span><span><span class="dot uv"></span>UV</span></div>';
 
         // 设备分布
         const devEl = document.getElementById('statsDeviceChart');

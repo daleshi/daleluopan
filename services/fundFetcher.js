@@ -4,7 +4,7 @@
  *   1. 东方财富 pingzhongdata — 完整基金数据（主源）
  *   2. 天天基金 fundmobapi — 净值/收益率（备用源）
  *   3. 蛋卷基金 djapi — 持仓详情
- * 
+ *
  * 高可用策略:
  *   - 主源失败 → 自动切换天天基金备用源
  *   - 所有源失败 → 回退上一轮缓存数据（带 stale 标记）
@@ -253,8 +253,8 @@ function estimateRiskLevel(fund) {
 }
 
 // 缓存（分为 fresh 和 stale 两层）
-let _fundCache = {};        // code → merged data
-let _fundCacheTime = {};    // code → timestamp
+const _fundCache = {};        // code → merged data
+const _fundCacheTime = {};    // code → timestamp
 const FUND_CACHE_TTL = 10 * 60 * 1000; // 10分钟 fresh TTL
 
 // 通用安全 fetch
