@@ -245,7 +245,8 @@
         body.guest .cfg-remove-btn,
         body.guest .pos-record-add-btn,
         body.guest [data-tab="config"],
-        body.guest [data-tab="admin-users"] {
+        body.guest [data-tab="admin-users"],
+        body.guest [data-tab="strategy"] {
             display: none !important;
         }
         /* 策略编辑 + 用户管理 功能仅管理员可见 */
@@ -2903,8 +2904,8 @@
 
             /* 上证指数风向标 */
             .featured-index-card { grid-template-columns: 1fr; }
-            .featured-index-quote { align-items: flex-start; text-align: left; }
-            .featured-index-price { font-size: 26px; }
+            .featured-index-quote { flex-shrink: 1; min-width: 0; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; }
+            .featured-index-price { font-size: 20px; }
             .featured-index-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .featured-point-detail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .compact-point-detail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -3034,7 +3035,8 @@
 
             /* 指数卡片简化 */
             .card-price { font-size: 20px; }
-            .featured-index-price { font-size: 22px; }
+            .featured-index-price { font-size: 17px; }
+            .featured-index-change { font-size: 11px; padding: 2px 6px; }
             .featured-index-metrics { grid-template-columns: 1fr 1fr; gap: 6px; }
 
             /* 弹窗全屏 */
@@ -3505,7 +3507,7 @@
             <div class="section">
                 <div class="section-header">
                     <div class="section-line"></div>
-                    <div class="section-title">知行温度计</div>
+                    <div class="section-title">有知有行温度计</div>
                     <div class="section-badge">Youzhiyouxing Thermometer</div>
                 </div>
 
@@ -3516,7 +3518,7 @@
                         <div class="yzyx-market-top">
                             <div>
                                 <div class="yzyx-card-title">全市场温度</div>
-                                <div class="yzyx-card-desc">知行温度计通过历史估值变化，感受当前股市周期。</div>
+                                <div class="yzyx-card-desc">有知有行温度计通过历史估值变化，感受当前股市周期。</div>
                             </div>
                             <a class="yzyx-link-btn" href="https://youzhiyouxing.cn/data/market" target="_blank" rel="noopener">更多</a>
                         </div>
@@ -3960,7 +3962,7 @@
         <div class="cfg-toast" id="cfgToast"></div>
 
         <div class="disclaimer">
-            <strong>风险提示：</strong>以上数据和分析仅供参考，不构成任何投资建议。指数基金投资存在市场风险，过往业绩不代表未来表现。PE百分位分析与温度计分析均基于历史数据，不能完全预测未来走势。投资者应根据自身风险承受能力独立做出投资决策。数据来源：雪球基金(Wind)、动态可用估值网站、东方财富行情接口、知有行温度计。
+            <strong>风险提示：</strong>以上数据和分析仅供参考，不构成任何投资建议。指数基金投资存在市场风险，过往业绩不代表未来表现。PE百分位分析与温度计分析均基于历史数据，不能完全预测未来走势。投资者应根据自身风险承受能力独立做出投资决策。数据来源：雪球基金(Wind)、动态可用估值网站、东方财富行情接口、有知有行温度计。
         </div>
 
         <footer>
@@ -4007,7 +4009,7 @@
             <button class="auth-modal-close" onclick="closeAuthModal()">&times;</button>
             <div class="auth-tabs">
                 <button class="auth-tab-btn active" id="authTabLogin" onclick="switchAuthTab('login')">登录</button>
-                <button class="auth-tab-btn" id="authTabRegister" onclick="switchAuthTab('register')">注册</button>
+                <button class="auth-tab-btn" id="authTabRegister" onclick="switchAuthTab('register')" style="display:none">注册</button>
             </div>
             <!-- 登录表单 -->
             <div id="authFormLogin">
@@ -4154,7 +4156,7 @@
             history: {
                 date: thermoData?.updateTime || null,
                 close: null,
-                source: '知有行温度计',
+                source: '有知有行温度计',
             },
             growth: {
                 period: null,
@@ -6526,7 +6528,49 @@
         }
         if (countLabel) countLabel.textContent = `关注 ${filtered.length} 个指数`;
         if (grid) {
-            grid.innerHTML = filtered.map(idx => buildIndexQuoteCard(idx)).join('');
+            if (grid.children.length === 0) {
+                // 首次渲染：全量 innerHTML
+                grid.innerHTML = filtered.map(idx => buildIndexQuoteCard(idx)).join('');
+            } else {
+                // 增量更新：diff 已有卡片，避免整块 DOM 重建导致闪烁
+                const newCodes = new Set(filtered.map(idx => idx.code));
+                // 移除已不在列表中的旧卡片
+                Array.from(grid.children).forEach(el => {
+                    if (!newCodes.has(el.dataset.code)) grid.removeChild(el);
+                });
+                filtered.forEach((idx, i) => {
+                    const existing = grid.querySelector(`[data-code="${idx.code}"]`);
+                    const newHtml = buildIndexQuoteCard(idx);
+                    if (!existing) {
+                        // 新增卡片：插入到正确位置
+                        const ref = grid.children[i] || null;
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = newHtml;
+                        grid.insertBefore(tmp.firstElementChild, ref);
+                    } else {
+                        // 已有卡片：只替换价格/涨跌幅等动态部分
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = newHtml;
+                        const newCard = tmp.firstElementChild;
+                        // 更新价格和涨跌幅
+                        const oldNums = existing.querySelector('.idx-summary-nums');
+                        const newNums = newCard.querySelector('.idx-summary-nums');
+                        if (oldNums && newNums && oldNums.innerHTML !== newNums.innerHTML) {
+                            oldNums.innerHTML = newNums.innerHTML;
+                        }
+                        // 更新估值详情区域（PE/PB 等数据也可能随行情变化）
+                        const oldDetail = existing.querySelector('.idx-card-detail');
+                        const newDetail = newCard.querySelector('.idx-card-detail');
+                        if (oldDetail && newDetail && oldDetail.innerHTML !== newDetail.innerHTML) {
+                            oldDetail.innerHTML = newDetail.innerHTML;
+                        }
+                        // 更新卡片估值样式类（low/high/normal 等）
+                        if (existing.className !== newCard.className) {
+                            existing.className = newCard.className;
+                        }
+                    }
+                });
+            }
         }
     }
 
@@ -6583,7 +6627,7 @@
 
         // 基本信息行：名称 + 价格 + 涨跌
         const fullCode = idx.code + '.' + idx.market;
-        let html = `<div class="idx-summary-card ${cardClass}" onclick="openIdxDetailModal('${fullCode}')">
+        let html = `<div class="idx-summary-card ${cardClass}" data-code="${idx.code}" onclick="openIdxDetailModal('${fullCode}')">
             <div class="idx-card-basic">
                 <div class="idx-summary-icon" style="background:${iconBg};color:${iconColor};font-size:${icon.length > 2 ? '10px' : '14px'}">${icon}</div>
                 <div class="idx-summary-body">
@@ -6873,22 +6917,57 @@
         const activeFunds = data.funds.filter(f => f.category !== 'index');
 
         // 渲染指数基金
-        if (indexGrid) {
-            if (indexFunds.length > 0) {
-                indexGrid.innerHTML = indexFunds.map(fund => buildFundSummaryCard(fund)).join('');
-            } else {
-                indexGrid.innerHTML = '<div class="af-group-empty">暂无指数基金，搜索添加后自动归类到此</div>';
+        const renderFundGrid = (grid, funds, emptyMsg) => {
+            if (!grid) return;
+            if (funds.length === 0) {
+                grid.innerHTML = `<div class="af-group-empty">${emptyMsg}</div>`;
+                return;
             }
+            if (grid.children.length === 0) {
+                // 首次渲染：全量 innerHTML
+                grid.innerHTML = funds.map(fund => buildFundSummaryCard(fund)).join('');
+            } else {
+                // 增量更新：diff 已有卡片，避免整块 DOM 重建导致闪烁
+                const newCodes = new Set(funds.map(f => f.code));
+                Array.from(grid.children).forEach(el => {
+                    if (!newCodes.has(el.dataset.fundCode)) grid.removeChild(el);
+                });
+                funds.forEach((fund, i) => {
+                    const existing = grid.querySelector(`[data-fund-code="${fund.code}"]`);
+                    const newHtml = buildFundSummaryCard(fund);
+                    if (!existing) {
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = newHtml;
+                        const ref = grid.children[i] || null;
+                        grid.insertBefore(tmp.firstElementChild, ref);
+                    } else {
+                        // 只更新净值/涨跌幅和收益率（动态数据区域）
+                        const tmp2 = document.createElement('div');
+                        tmp2.innerHTML = newHtml;
+                        const newCard = tmp2.firstElementChild;
+                        const oldNav = existing.querySelector('.af-header-nav');
+                        const newNav = newCard.querySelector('.af-header-nav');
+                        if (oldNav && newNav && oldNav.innerHTML !== newNav.innerHTML) {
+                            oldNav.innerHTML = newNav.innerHTML;
+                        }
+                        const oldSummary = existing.querySelector('.af-summary');
+                        const newSummary = newCard.querySelector('.af-summary');
+                        if (oldSummary && newSummary && oldSummary.innerHTML !== newSummary.innerHTML) {
+                            oldSummary.innerHTML = newSummary.innerHTML;
+                        }
+                    }
+                });
+            }
+        };
+
+        if (indexGrid) {
+            renderFundGrid(indexGrid, indexFunds, '暂无指数基金，搜索添加后自动归类到此');
         }
         if (indexCountEl) indexCountEl.textContent = indexFunds.length;
 
         // 渲染主动基金
         if (activeGrid) {
-            if (activeFunds.length > 0) {
-                activeGrid.innerHTML = activeFunds.map(fund => buildFundSummaryCard(fund)).join('');
-            } else {
-                activeGrid.innerHTML = '<div class="af-group-empty">暂无主动基金，搜索添加后自动归类到此</div>';
-            }
+            renderFundGrid(activeGrid, activeFunds, '暂无主动基金，搜索添加后自动归类到此');
         }
         if (activeCountEl) activeCountEl.textContent = activeFunds.length;
     }
@@ -6929,7 +7008,7 @@
         // 年化收益
         const annualized = f.annualizedReturn != null ? `年化 ${f.annualizedReturn >= 0 ? '+' : ''}${f.annualizedReturn.toFixed(1)}%` : '';
 
-        return `<div class="af-card" onclick="openFundDetail('${f.code}')">
+        return `<div class="af-card" data-fund-code="${f.code}" onclick="openFundDetail('${f.code}')">
             <div class="af-header">
                 <div class="af-icon" style="background:${f.iconBg || 'var(--accent-blue)'}">${f.icon || f.shortName?.slice(0, 2) || '基'}</div>
                 <div class="af-header-info">
@@ -7395,34 +7474,18 @@
             return;
         }
 
-        grid.innerHTML = etfs.map(etf => {
+        const buildEtfCardHtml = (etf) => {
             const cp = etf.changePercent || 0;
             const ca = etf.changeAmount || 0;
             const cls = cp > 0 ? 'up' : cp < 0 ? 'down' : 'flat';
             const priceColor = cp > 0 ? 'var(--red-danger)' : cp < 0 ? 'var(--green-value)' : 'var(--text-primary)';
             const prevPrice = etfPrevPrices[etf.code];
             const flash = prevPrice && etf.price !== prevPrice ? (etf.price > prevPrice ? 'flash-up' : 'flash-down') : '';
-
-            const fmtVol = (v) => {
-                if (!v) return '--';
-                if (v >= 10000) return (v / 10000).toFixed(1) + '万手';
-                return v.toFixed(0) + '手';
-            };
-            const fmtAmt = (a) => {
-                if (!a) return '--';
-                if (a >= 100000000) return (a / 100000000).toFixed(2) + '亿';
-                if (a >= 10000) return (a / 10000).toFixed(1) + '万';
-                return a.toFixed(0);
-            };
-            const fmtCap = (c) => {
-                if (!c) return '--';
-                if (c >= 100000000) return (c / 100000000).toFixed(1) + '亿';
-                return (c / 10000).toFixed(1) + '万';
-            };
-
+            const fmtVol = (v) => { if (!v) return '--'; if (v >= 10000) return (v / 10000).toFixed(1) + '万手'; return v.toFixed(0) + '手'; };
+            const fmtAmt = (a) => { if (!a) return '--'; if (a >= 100000000) return (a / 100000000).toFixed(2) + '亿'; if (a >= 10000) return (a / 10000).toFixed(1) + '万'; return a.toFixed(0); };
+            const fmtCap = (c) => { if (!c) return '--'; if (c >= 100000000) return (c / 100000000).toFixed(1) + '亿'; return (c / 10000).toFixed(1) + '万'; };
             const sparkSvg = etf.sparkData && etf.sparkData.length > 2 ? generateETFSparkSvg(etf.sparkData, cp) : '';
-
-            return `<div class="etf-card ${flash}" data-etf-code="${etf.code}" onclick="showETFDetail('${etf.shortCode}')">
+            return { flash, html: `<div class="etf-card ${flash}" data-etf-code="${etf.code}" onclick="showETFDetail('${etf.shortCode}')">
                 <button class="etf-card-remove" onclick="event.stopPropagation();removeETF('${etf.shortCode}')" title="移除">✕</button>
                 <div class="etf-card-header">
                     <div class="etf-card-icon" style="background:${etf.iconBg};color:${etf.iconColor}">${etf.icon || etf.shortCode.slice(-2)}</div>
@@ -7451,8 +7514,61 @@
                     <span class="etf-card-footer-meta">开 ${etf.open ? etf.open.toFixed(3) : '--'} / 高 ${etf.high ? etf.high.toFixed(3) : '--'} / 低 ${etf.low ? etf.low.toFixed(3) : '--'}</span>
                     <span class="etf-card-detail-btn">查看详情 →</span>
                 </div>
-            </div>`;
-        }).join('');
+            </div>` };
+        };
+
+        if (grid.children.length === 0) {
+            // 首次渲染：全量 innerHTML
+            grid.innerHTML = etfs.map(etf => buildEtfCardHtml(etf).html).join('');
+        } else {
+            // 增量更新：diff 已有卡片，避免整块 DOM 重建导致闪烁
+            const newCodes = new Set(etfs.map(e => e.code));
+            Array.from(grid.children).forEach(el => {
+                if (!newCodes.has(el.dataset.etfCode)) grid.removeChild(el);
+            });
+            etfs.forEach((etf, i) => {
+                const existing = grid.querySelector(`[data-etf-code="${etf.code}"]`);
+                const { flash, html } = buildEtfCardHtml(etf);
+                if (!existing) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = html;
+                    const ref = grid.children[i] || null;
+                    grid.insertBefore(tmp.firstElementChild, ref);
+                } else {
+                    // 更新 flash 动画类
+                    if (flash) {
+                        existing.classList.remove('flash-up', 'flash-down');
+                        existing.classList.add(flash);
+                        setTimeout(() => existing.classList.remove('flash-up', 'flash-down'), 600);
+                    }
+                    // 更新价格行
+                    const tmp2 = document.createElement('div');
+                    tmp2.innerHTML = html;
+                    const newCard = tmp2.firstElementChild;
+                    const oldPriceRow = existing.querySelector('.etf-price-row');
+                    const newPriceRow = newCard.querySelector('.etf-price-row');
+                    if (oldPriceRow && newPriceRow && oldPriceRow.innerHTML !== newPriceRow.innerHTML) {
+                        oldPriceRow.innerHTML = newPriceRow.innerHTML;
+                    }
+                    // 更新 sparkline
+                    const oldSpark = existing.querySelector('.etf-spark-row');
+                    const newSpark = newCard.querySelector('.etf-spark-row');
+                    if (oldSpark && newSpark) oldSpark.innerHTML = newSpark.innerHTML;
+                    // 更新指标区
+                    const oldMetrics = existing.querySelector('.etf-metrics');
+                    const newMetrics = newCard.querySelector('.etf-metrics');
+                    if (oldMetrics && newMetrics && oldMetrics.innerHTML !== newMetrics.innerHTML) {
+                        oldMetrics.innerHTML = newMetrics.innerHTML;
+                    }
+                    // 更新 footer
+                    const oldFooter = existing.querySelector('.etf-card-footer');
+                    const newFooter = newCard.querySelector('.etf-card-footer');
+                    if (oldFooter && newFooter && oldFooter.innerHTML !== newFooter.innerHTML) {
+                        oldFooter.innerHTML = newFooter.innerHTML;
+                    }
+                }
+            });
+        }
     }
 
     function generateETFSparkSvg(prices, changePercent) {
@@ -8162,7 +8278,8 @@
             return;
         }
 
-        grid.innerHTML = data.stocks.map((s, idx) => {
+        // 构建卡片 HTML 的辅助函数（提取出来供全量和 diff 共用）
+        const buildStockCardHtml = (s, idx) => {
             const isUp = s.changePercent > 0;
             const isDown = s.changePercent < 0;
             const dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
@@ -8170,13 +8287,9 @@
             const prevPrice = stockPrevPrices[s.code];
             const priceChanged = prevPrice != null && prevPrice !== s.price;
             const flashClass = priceChanged ? (s.price > prevPrice ? 'stock-flash-up' : 'stock-flash-down') : '';
-
-            // 格式化成交额
             const amountStr = formatAmount(s.amount);
-            // 格式化市值
             const capStr = formatCap(s.marketCap);
-
-            return `<div class="stock-card ${flashClass}" id="stock-card-${idx}" data-stock-code="${s.shortCode || s.code}">
+            return { html: `<div class="stock-card ${flashClass}" id="stock-card-${idx}" data-stock-code="${s.shortCode || s.code}">
                 <button class="stock-card-remove" onclick="event.stopPropagation();removeStock('${s.shortCode || s.code}','${(s.name||'').replace(/'/g,'')}')" title="取消关注">×</button>
                 <div class="stock-card-header">
                     <div class="stock-card-icon" style="background:${s.iconBg};color:${s.iconColor}">${escapeHtml(s.icon)}</div>
@@ -8238,8 +8351,53 @@
                         <span class="stock-detail-val">${s.prevClose ? s.prevClose.toFixed(2) : '--'}</span>
                     </div>
                 </div>
-            </div>`;
-        }).join('');
+            </div>`, flashClass, dir, sign, s };
+        };
+
+        if (grid.children.length === 0) {
+            // 首次渲染：全量 innerHTML
+            grid.innerHTML = data.stocks.map((s, idx) => buildStockCardHtml(s, idx).html).join('');
+        } else {
+            // 增量更新：diff 已有卡片，避免整块 DOM 重建导致闪烁
+            const newCodes = new Set(data.stocks.map(s => s.shortCode || s.code));
+            // 移除已不在列表中的旧卡片
+            Array.from(grid.children).forEach(el => {
+                if (!newCodes.has(el.dataset.stockCode)) grid.removeChild(el);
+            });
+            data.stocks.forEach((s, idx) => {
+                const key = s.shortCode || s.code;
+                const existing = grid.querySelector(`[data-stock-code="${key}"]`);
+                const { html, flashClass, dir, sign } = buildStockCardHtml(s, idx);
+                if (!existing) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = html;
+                    const ref = grid.children[idx] || null;
+                    grid.insertBefore(tmp.firstElementChild, ref);
+                } else {
+                    // 更新 flash 动画类
+                    if (flashClass) {
+                        existing.classList.remove('stock-flash-up', 'stock-flash-down');
+                        existing.classList.add(flashClass);
+                        setTimeout(() => existing.classList.remove('stock-flash-up', 'stock-flash-down'), 600);
+                    }
+                    // 更新价格行
+                    const priceRow = existing.querySelector('.stock-price-row');
+                    if (priceRow) {
+                        priceRow.innerHTML = `<span class="stock-price ${dir}">${s.price.toFixed(2)}</span><span class="stock-change ${dir}">${sign}${s.changePercent.toFixed(2)}%</span><span class="stock-change-amt">${sign}${s.changeAmount.toFixed(2)}</span>`;
+                    }
+                    // 更新指标区（今开/最高/最低/成交额/换手率/市值）
+                    const metricsEl = existing.querySelector('.stock-metrics');
+                    if (metricsEl) {
+                        const tmp2 = document.createElement('div');
+                        tmp2.innerHTML = html;
+                        const newMetrics = tmp2.querySelector('.stock-metrics');
+                        if (newMetrics && metricsEl.innerHTML !== newMetrics.innerHTML) {
+                            metricsEl.innerHTML = newMetrics.innerHTML;
+                        }
+                    }
+                }
+            });
+        }
 
         // 画迷你走势图
         data.stocks.forEach((s, idx) => {
@@ -8477,7 +8635,7 @@
             iconBg: 'linear-gradient(135deg, #48bb78, #276749)',
             builtin: true,
             url: 'https://youzhiyouxing.cn/data',
-            desc: '知有行温度计采用独特的"温度"指标量化市场估值水平（0°-100°），结合内在收益率和股息率，提供直观的市场冷热判断。数据覆盖A股/港股主要宽基指数，每日更新，是价值投资者的重要参考。',
+            desc: '有知有行温度计采用独特的"温度"指标量化市场估值水平（0°-100°），结合内在收益率和股息率，提供直观的市场冷热判断。数据覆盖A股/港股主要宽基指数，每日更新，是价值投资者的重要参考。',
             metrics: ['指数温度', '内在收益率', '股息率', '市场温度', '温带区间'],
             coverage: '20+宽基指数',
         },
@@ -9150,11 +9308,11 @@
             btn.onclick = function () { openAuthModal(); };
             // 关闭下拉
             dropdown.classList.remove('open');
-            // 如果当前在需要登录的 Tab（config/admin-users），切回 dashboard
+            // 如果当前在需要登录的 Tab（config/admin-users/strategy），切回 dashboard
             const activeTab = document.querySelector('.nav-tab.active');
             if (activeTab) {
                 const tab = activeTab.getAttribute('data-tab');
-                if (tab === 'config' || tab === 'admin-users') {
+                if (tab === 'config' || tab === 'admin-users' || tab === 'strategy') {
                     document.querySelector('.nav-tab[data-tab="dashboard"]').click();
                 }
             }
@@ -9177,7 +9335,7 @@
     // --- Auth Modal ---
     function openAuthModal(tab) {
         document.getElementById('authModalMask').classList.add('open');
-        switchAuthTab(tab || 'login');
+        switchAuthTab((tab === 'register' ? 'login' : tab) || 'login');
         document.getElementById('loginError').textContent = '';
         document.getElementById('regError').textContent = '';
     }
