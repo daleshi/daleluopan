@@ -3253,7 +3253,7 @@
                         </div>
                         <div class="theme-toggle-thumb"></div>
                     </button>
-                    <button class="refresh-btn" id="refreshBtn" onclick="loadData(true)">
+                    <button class="refresh-btn" id="refreshBtn" onclick="refreshCurrentTab()">
                         <div class="spinner"></div>
                         <span>刷新数据</span>
                     </button>
@@ -3300,7 +3300,6 @@
                     <div class="section-line"></div>
                     <div class="section-title">指数实时行情</div>
                     <div class="section-badge" id="sourceLabel">行情 · 估值</div>
-                    <span id="indexQuoteUpdateTime" style="margin-left:auto"></span>
                     <span style="font-size:12px;color:var(--text-muted)" id="indexCountLabel"></span>
                 </div>
                 <div class="af-toolbar" style="margin-bottom:12px">
@@ -3310,7 +3309,6 @@
                         <div class="af-search-results" id="indexSearchResults"></div>
                     </div>
                     <div class="guest-hint" onclick="openAuthModal()">🔒 登录后可搜索添加指数到看板</div>
-                    <button class="af-refresh-btn" onclick="loadIndexQuotes(true)">↻ 刷新行情</button>
                 </div>
                 <div class="idx-summary-grid" id="indexSummaryGrid"></div>
             </div>
@@ -3320,7 +3318,6 @@
                     <div class="section-line"></div>
                     <div class="section-title">严选基金</div>
                     <div class="section-badge">Curated Fund Analytics</div>
-                    <span style="font-size:12px;color:var(--text-muted);margin-left:auto" id="fundUpdateTime"></span>
                 </div>
                 <p class="chart-desc" style="margin-bottom:16px">
                     跟踪关注的基金，自动按<strong>指数基金</strong>和<strong>主动基金</strong>分类展示。点击卡片查看详细持仓、净值走势、基金经理等信息。数据来源<strong>东方财富 + 蛋卷基金</strong>。
@@ -3332,7 +3329,6 @@
                         <div class="af-search-results" id="fundSearchResults"></div>
                     </div>
                     <div class="guest-hint" onclick="openAuthModal()">🔒 登录后可搜索添加基金</div>
-                    <button class="af-refresh-btn" onclick="loadActiveFundData(true)">↻ 刷新数据</button>
                 </div>
 
                 <!-- 基金分类 Tab 切换 -->
@@ -3392,14 +3388,6 @@
                         <div class="etf-search-results" id="etfSearchResults"></div>
                     </div>
                     <div class="guest-hint" onclick="openAuthModal()">🔒 登录后可搜索添加 ETF</div>
-                    <div class="etf-toolbar-right">
-                        <div class="etf-status">
-                            <span class="etf-status-dot" id="etfStatusDot"></span>
-                            <span id="etfStatusText">等待加载...</span>
-                        </div>
-                        <span id="etfUpdateTime"></span>
-                        <button class="etf-refresh-btn" id="etfRefreshBtn" onclick="loadETFData(true)">↻ 刷新</button>
-                    </div>
                 </div>
                 <div class="etf-grid" id="etfGrid">
                     <div class="loading-wrap"><div class="loading-spinner"></div></div>
@@ -3422,17 +3410,6 @@
                         <div class="stock-search-results" id="stockSearchResults"></div>
                     </div>
                     <div class="guest-hint" onclick="openAuthModal()">🔒 登录后可搜索添加股票</div>
-                    <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
-                        <div class="stock-status">
-                            <span class="stock-status-dot" id="stockStatusDot"></span>
-                            <span id="stockStatusText">等待加载...</span>
-                        </div>
-                        <span id="stockUpdateTime"></span>
-                        <button class="stock-refresh-btn" id="stockRefreshBtn" onclick="loadStockData(true)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
-                            刷新
-                        </button>
-                    </div>
                 </div>
                 <div class="stock-grid" id="stockGrid">
                     <div class="loading-wrap"><div class="loading-spinner"></div></div>
@@ -4393,35 +4370,65 @@
     }
 
     // ================================================================
-    // 基金总览 - 开盘期间自动刷新（3-5秒随机）
+    // 统一数据刷新调度器（1-3秒随机，按当前 Tab 串行刷新对应数据）
+    // ================================================================
+    /**
+     * 统一数据刷新调度器
+     * 单一 setTimeout 链，1-3 秒随机间隔，根据当前激活 Tab 串行刷新对应数据
+     */
+    function createDataRefreshScheduler() {
+        let timer = null;
+        let running = false;
+        let currentTab = 'dashboard';
+
+        function getInterval() { return Math.random() * 2000 + 1000; }
+
+        function schedule() {
+            timer = setTimeout(async () => {
+                if (!isMarketOpen()) {
+                    running = false;
+                    timer = null;
+                    return;
+                }
+                if (currentTab === 'dashboard') {
+                    await loadData(true);
+                    await loadIndexQuotes(true);
+                } else if (currentTab === 'etf') {
+                    await loadETFData(true);
+                } else if (currentTab === 'stocks') {
+                    await loadStockData(true);
+                }
+                if (running) schedule();
+            }, getInterval());
+        }
+
+        return {
+            setActiveTab(tabName) { currentTab = tabName; },
+            start() { if (running) return; running = true; schedule(); },
+            stop() { running = false; if (timer) { clearTimeout(timer); timer = null; } },
+            isRunning() { return running; },
+        };
+    }
+    const scheduler = createDataRefreshScheduler();
+
+    // ================================================================
+    // 基金总览 - 开盘期间自动刷新
     // ================================================================
     let indexIsTrading = false;
-
-    // 指数数据刷新器
-    const indexRefresher = createTradingRefresher(
-        () => loadData(true),
-        () => {
-            const at = document.querySelector('.nav-tab.active');
-            return at && at.dataset.tab === 'dashboard';
-        }
-    );
 
     function handleIndexAutoRefresh(isTrading) {
         indexIsTrading = isTrading;
         const statusDot = document.getElementById('statusDot');
         if (isTrading) {
-            // 开盘中：状态点显示为 live，启动自动刷新
+            // 开盘中：状态点显示为 live，启动统一调度器
             if (statusDot && !statusDot.classList.contains('error') && !statusDot.classList.contains('warn')) {
                 statusDot.className = 'meta-dot live';
             }
-            indexRefresher.start();
+            scheduler.start();
         } else {
-            indexRefresher.stop();
+            scheduler.stop();
         }
     }
-
-    function startIndexAutoRefresh() { indexRefresher.start(); }
-    function stopIndexAutoRefresh() { indexRefresher.stop(); }
 
     function renderAll() {
         renderIndexCards();
@@ -4431,6 +4438,29 @@
         renderAnalysisCards();
         renderStrategyTable();
         renderAdviceCards();
+    }
+
+    /** 更新顶部更新时间 badge，统一入口 */
+    function setTopUpdateTime(timeVal, isLive) {
+        const el = document.getElementById('updateTime');
+        if (el) el.innerHTML = formatUpdateBadge(timeVal, isLive != null ? isLive : indexIsTrading);
+    }
+
+    /** 顶部「刷新数据」按钮：刷新当前激活 Tab 的数据 */
+    function refreshCurrentTab() {
+        const activeTab = document.querySelector('.nav-tab.active');
+        const tab = activeTab ? activeTab.dataset.tab : 'dashboard';
+        if (tab === 'dashboard') {
+            loadData(true);
+            loadIndexQuotes(true);
+            loadActiveFundData(true);
+        } else if (tab === 'etf') {
+            loadETFData(true);
+        } else if (tab === 'stocks') {
+            loadStockData(true);
+        } else if (tab === 'daily-eval') {
+            loadDailyEval(true);
+        }
     }
 
     function isShanghaiIndex(d) {
@@ -6416,6 +6446,8 @@
                 loadSiteConfigForAdmin();
                 loadSiteStats();
             }
+            // 统一通知调度器当前激活 Tab，由调度器控制刷新目标
+            scheduler.setActiveTab(tab.dataset.tab);
             if (tab.dataset.tab === 'dashboard') {
                 // 基金总览切入时，加载指数行情和严选基金数据
                 loadIndexQuotes();
@@ -6423,21 +6455,9 @@
             }
             if (tab.dataset.tab === 'stocks') {
                 loadStockData();
-                // 自动刷新由 loadStockData 根据 trading 状态控制
-            } else {
-                stopStockAutoRefresh();
             }
             if (tab.dataset.tab === 'etf') {
                 loadETFData();
-                // 自动刷新由 loadETFData 根据 trading 状态控制
-            } else {
-                stopETFAutoRefresh();
-            }
-            // 指数自动刷新：切到 dashboard 时恢复，离开时停止
-            if (tab.dataset.tab === 'dashboard') {
-                if (indexIsTrading) startIndexAutoRefresh();
-            } else {
-                stopIndexAutoRefresh();
             }
         });
     });
@@ -6488,36 +6508,18 @@
                 indexQuotesLoaded = true;
                 renderIndexQuotesGrid(json.data);
 
-                // 交易时段自动刷新
-                if (json.trading) {
-                    startIndexQuotesAutoRefresh();
-                } else {
-                    stopIndexQuotesAutoRefresh();
-                }
             }
         } catch (err) {
             if (grid) grid.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">指数行情加载失败: ${err.message}</div>`;
         }
     }
 
-    // 指数行情刷新器（交易时段3-5秒随机）
-    const indexQuotesRefresher = createTradingRefresher(
-        () => loadIndexQuotes(true),
-        () => {
-            const at = document.querySelector('.nav-tab.active');
-            return at && at.dataset.tab === 'dashboard';
-        }
-    );
-    function startIndexQuotesAutoRefresh() { indexQuotesRefresher.start(); }
-    function stopIndexQuotesAutoRefresh() { indexQuotesRefresher.stop(); }
-
     function renderIndexQuotesGrid(data) {
         const grid = document.getElementById('indexSummaryGrid');
         const countLabel = document.getElementById('indexCountLabel');
-        const updateTimeEl = document.getElementById('indexQuoteUpdateTime');
-        // 更新时间 badge
-        if (updateTimeEl && data.updateTime) {
-            updateTimeEl.innerHTML = formatUpdateBadge(data.updateTime, indexQuotesRefresher.isRunning());
+        // 更新时间 badge → 统一更新到顶部
+        if (data.updateTime) {
+            setTopUpdateTime(data.updateTime, scheduler.isRunning());
         }
         // 过滤掉上证指数（已在上方"市场风向标"展示）
         const filtered = (data.indices || []).filter(idx => idx.code !== '000001');
@@ -6903,6 +6905,10 @@
         const timeEl = document.getElementById('fundUpdateTime');
         if (timeEl && data.updateTime) {
             timeEl.innerHTML = formatUpdateBadge(data.updateTime, false, { cached: !!data.cached });
+        }
+        // 统一更新到顶部
+        if (data.updateTime) {
+            setTopUpdateTime(data.updateTime, false);
         }
         if (!data.funds || data.funds.length === 0) {
             const emptyHtml = '<div class="af-group-empty">📊 还没有关注的基金，在上方搜索框中输入基金代码或名称添加关注</div>';
@@ -7411,7 +7417,7 @@
     const etfPrevPrices = {};
 
     async function loadETFData(forceRefresh = false) {
-        const refreshBtn = document.getElementById('etfRefreshBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
         if (refreshBtn) refreshBtn.classList.add('spinning');
         try {
             const url = forceRefresh ? '/api/etfs?refresh=1' : '/api/etfs';
@@ -7425,12 +7431,6 @@
                 }
                 renderETFs(json.data, json.trading);
                 etfLoaded = true;
-                // 根据交易状态控制自动刷新
-                if (json.trading) {
-                    etfRefresher.start();
-                } else {
-                    etfRefresher.stop();
-                }
             }
         } catch (err) {
             document.getElementById('etfGrid').innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">ETF数据加载失败: ${err.message}</div>`;
@@ -7439,35 +7439,17 @@
         }
     }
 
-    // ETF 刷新器（交易时段3-5秒随机）
-    const etfRefresher = createTradingRefresher(
-        () => loadETFData(),
-        () => {
-            const at = document.querySelector('.nav-tab.active');
-            return at && at.dataset.tab === 'etf';
-        }
-    );
-    function startETFAutoRefresh() { etfRefresher.start(); }
-    function stopETFAutoRefresh() { etfRefresher.stop(); }
-
     function renderETFs(data, isTrading) {
         const grid = document.getElementById('etfGrid');
-        const statusDot = document.getElementById('etfStatusDot');
-        const statusText = document.getElementById('etfStatusText');
-        const updateTimeEl = document.getElementById('etfUpdateTime');
 
-        if (isTrading) {
-            statusDot.className = 'etf-status-dot live';
-            statusText.textContent = '交易中';
-        } else {
-            statusDot.className = 'etf-status-dot closed';
-            statusText.textContent = '已收盘';
+        // 统一更新顶部状态点和更新时间
+        const topDot = document.getElementById('statusDot');
+        if (topDot && !topDot.classList.contains('error') && !topDot.classList.contains('warn')) {
+            topDot.className = isTrading ? 'meta-dot live' : 'meta-dot';
         }
-
-        if (updateTimeEl && data.updateTime) {
-            updateTimeEl.innerHTML = formatUpdateBadge(data.updateTime, isTrading);
+        if (data.updateTime) {
+            setTopUpdateTime(data.updateTime, isTrading);
         }
-
         const etfs = data.etfs || [];
         if (etfs.length === 0) {
             grid.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text-muted)"><div style="font-size:32px;margin-bottom:12px">📈</div>还没有关注的ETF<br><span style="font-size:12px;margin-top:8px;display:inline-block">在上方搜索框中输入ETF代码或名称添加关注</span></div>';
@@ -8205,7 +8187,7 @@
     let stockLoaded = false;
 
     async function loadStockData(forceRefresh = false) {
-        const refreshBtn = document.getElementById('stockRefreshBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
         if (refreshBtn) refreshBtn.classList.add('spinning');
 
         try {
@@ -8223,54 +8205,36 @@
 
                 renderStocks(json.data, json.trading);
                 stockLoaded = true;
-                // 根据交易状态控制自动刷新
-                if (json.trading) {
-                    stockRefresher.start();
-                } else {
-                    stockRefresher.stop();
-                }
             }
         } catch (err) {
             console.error('股票数据加载失败:', err);
-            document.getElementById('stockStatusDot').className = 'stock-status-dot warn';
-            document.getElementById('stockStatusText').textContent = '数据加载失败，请重试';
+            const topDot = document.getElementById('statusDot');
+            if (topDot) topDot.className = 'meta-dot warn';
         } finally {
             if (refreshBtn) refreshBtn.classList.remove('spinning');
         }
     }
 
-    // 股票刷新器（交易时段3-5秒随机）
-    const stockRefresher = createTradingRefresher(
-        () => loadStockData(),
-        () => {
-            const at = document.querySelector('.nav-tab.active');
-            return at && at.dataset.tab === 'stocks';
-        }
-    );
-    function startStockAutoRefresh() { stockRefresher.start(); }
-    function stopStockAutoRefresh() { stockRefresher.stop(); }
-
     function renderStocks(data, isTrading) {
         const grid = document.getElementById('stockGrid');
-        const statusDot = document.getElementById('stockStatusDot');
-        const statusText = document.getElementById('stockStatusText');
-        const updateTimeEl = document.getElementById('stockUpdateTime');
 
         const refreshStatus = data.meta?.refreshStatus;
 
-        // 状态指示
-        if (refreshStatus?.degraded) {
-            statusDot.className = 'stock-status-dot warn';
-        } else if (isTrading) {
-            statusDot.className = 'stock-status-dot live';
-        } else {
-            statusDot.className = 'stock-status-dot closed';
+        // 统一更新顶部状态点
+        const topDot = document.getElementById('statusDot');
+        if (topDot) {
+            if (refreshStatus?.degraded) {
+                topDot.className = 'meta-dot warn';
+            } else if (isTrading) {
+                topDot.className = 'meta-dot live';
+            } else {
+                topDot.className = 'meta-dot';
+            }
         }
-        statusText.textContent = buildStockStatusText(data.meta, isTrading);
 
-        // 更新时间
+        // 统一更新顶部更新时间
         if (data.updateTime) {
-            updateTimeEl.innerHTML = formatUpdateBadge(data.updateTime, isTrading);
+            setTopUpdateTime(data.updateTime, isTrading);
         }
 
         if (!data.stocks || data.stocks.length === 0) {
@@ -9659,6 +9623,8 @@
 
     loadData();
     // 基金总览是默认 Tab，初始化时也加载指数行情和严选基金数据
+    // 调度器将在 loadData 完成后由 handleIndexAutoRefresh 根据交易状态自动启动
+    scheduler.setActiveTab('dashboard');
     loadIndexQuotes();
     loadActiveFundData();
     </script>

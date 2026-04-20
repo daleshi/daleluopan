@@ -82,3 +82,95 @@
 2026-04-19T18:42:37:   [K线] 1.000300 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000300&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
 2026-04-19T18:42:37:   [K线] 东方财富历史K线进入 10 分钟冷却: 沪深300 主源请求失败，优先回退缓存/腾讯备用源
 2026-04-19T18:42:38:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T09:02:14:   [天天基金] 估值接口失败: 网络繁忙，请稍后重试！
+2026-04-20T09:02:14:   [主动基金] 123456 天天基金备用源也失败: 天天基金接口无数据
+2026-04-20T09:02:14:   [主动基金] 123456 所有源失败，回退上一轮缓存数据
+2026-04-20T09:02:16:   [K线] 1.000905 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000905&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T09:02:16:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证500 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T09:02:16:   [K线] 中证500 主源失败，回退历史缓存避免刷新抖动
+2026-04-20T09:02:16:   [K线] 1.000932 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000932&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T09:02:16:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证消费 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T09:02:16:   [K线] 中证消费 主源失败，回退历史缓存避免刷新抖动
+2026-04-20T09:02:16:   [K线] 1.000688 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000688&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T09:02:16:   [K线] 东方财富历史K线进入 10 分钟冷却: 科创50 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T09:02:16:   [K线] 科创50 主源失败，回退历史缓存避免刷新抖动
+2026-04-20T09:02:16:   [K线] 1.000922 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000922&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T09:02:16:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证红利 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T09:02:16:   [K线] 中证红利 主源失败，回退历史缓存避免刷新抖动
+2026-04-20T09:02:16:   [K线] 1.000300 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000300&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T09:02:16:   [K线] 东方财富历史K线进入 10 分钟冷却: 沪深300 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T09:02:16:   [K线] 沪深300 主源失败，回退历史缓存避免刷新抖动
+2026-04-20T09:02:17:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T09:52:29:   [天天基金] 估值接口失败: 网络繁忙，请稍后重试！
+2026-04-20T09:52:29:   [主动基金] 123456 天天基金备用源也失败: 天天基金接口无数据
+2026-04-20T09:52:29:   [主动基金] 123456 所有数据源均失败，且无缓存可回退
+2026-04-20T10:02:31:   [ETF K线] 0.159915 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.159915&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:02:31:   [ETF K线] 0.163415 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.163415&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:02:31:   [ETF K线] 1.510500 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510500&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:02:31:   [ETF K线] 1.513180 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.513180&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:02:31:   [ETF K线] 1.588000 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.588000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:02:31:   [ETF K线] 1.510310 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510310&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:30:   [天天基金] 估值接口失败: 网络繁忙，请稍后重试！
+2026-04-20T10:04:30:   [股票K线] 东方财富进入 10 分钟冷却: 宝信软件 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:04:30:   [股票K线] 1.600845 获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.600845&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:30:   [股票K线] 东方财富进入 10 分钟冷却: 隆基绿能 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:04:30:   [股票K线] 1.601012 获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.601012&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:30:   [主动基金] 123456 天天基金备用源也失败: 天天基金接口无数据
+2026-04-20T10:04:30:   [主动基金] 123456 所有数据源均失败，且无缓存可回退
+2026-04-20T10:04:30:   [ETF K线] 1.510500 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510500&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:30:   [ETF K线] 0.163415 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.163415&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:30:   [ETF K线] 1.510310 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510310&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:30:   [ETF K线] 0.159915 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.159915&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:30:   [ETF K线] 1.513180 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.513180&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:30:   [ETF K线] 1.588000 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.588000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:04:31:   [K线] 1.000932 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000932&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:04:31:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证消费 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:04:31:   [K线] 1.000905 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000905&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:04:31:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证500 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:04:31:   [K线] 1.000922 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000922&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:04:31:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证红利 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:04:31:   [K线] 1.000300 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000300&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:04:31:   [K线] 东方财富历史K线进入 10 分钟冷却: 沪深300 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:04:31:   [K线] 1.000688 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000688&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:04:31:   [K线] 东方财富历史K线进入 10 分钟冷却: 科创50 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:04:32:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:08:08:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:08:16:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:08:41:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:14:32:   [ETF K线] 1.510310 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510310&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:14:32:   [ETF K线] 0.159915 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.159915&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:14:32:   [ETF K线] 1.513180 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.513180&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:14:32:   [ETF K线] 1.510500 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510500&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:14:32:   [ETF K线] 1.588000 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.588000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:14:32:   [ETF K线] 0.163415 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.163415&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:06:   [天天基金] 估值接口失败: 网络繁忙，请稍后重试！
+2026-04-20T10:16:06:   [主动基金] 123456 天天基金备用源也失败: 天天基金接口无数据
+2026-04-20T10:16:06:   [主动基金] 123456 所有数据源均失败，且无缓存可回退
+2026-04-20T10:16:06:   [股票K线] 东方财富进入 10 分钟冷却: 隆基绿能 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:16:06:   [股票K线] 1.601012 获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.601012&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:06:   [股票K线] 东方财富进入 10 分钟冷却: 宝信软件 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:16:06:   [股票K线] 1.600845 获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.600845&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:07:   [ETF K线] 0.163415 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.163415&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:07:   [ETF K线] 1.588000 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.588000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:07:   [ETF K线] 1.510500 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510500&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:07:   [ETF K线] 1.513180 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.513180&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:07:   [ETF K线] 1.510310 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510310&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:07:   [ETF K线] 0.159915 东方财富获取失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.159915&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=60 failed, reason: socket hang up
+2026-04-20T10:16:07:   [K线] 1.000922 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000922&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:16:07:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证红利 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:16:07:   [K线] 1.000300 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000300&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:16:07:   [K线] 东方财富历史K线进入 10 分钟冷却: 沪深300 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:16:07:   [K线] 1.000905 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000905&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:16:07:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证500 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:16:07:   [K线] 1.000688 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000688&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:16:07:   [K线] 东方财富历史K线进入 10 分钟冷却: 科创50 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:16:07:   [K线] 1.000932 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000932&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:16:07:   [K线] 东方财富历史K线进入 10 分钟冷却: 中证消费 主源请求失败，优先回退缓存/腾讯备用源
+2026-04-20T10:16:08:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:16:59:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:17:06:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:17:10:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:17:14:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:17:18:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:17:23:   [K线] 2.H30269 所有secid均失败: request to https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.930955&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=0&end=20500101&lmt=300 failed, reason: socket hang up
+2026-04-20T10:21:10:   [天天基金] 估值接口失败: 网络繁忙，请稍后重试！
