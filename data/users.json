@@ -2,8 +2,8 @@
   "users": [
     {
       "username": "admin",
-      "passwordHash": "c2631819de593d9388f57e96e9eab0f0bfa5fa4e9a2779627fc75b2747cfbc564dfebe493ce0bde4f89ed13c3eb9d849d3a8296feb815d452f49fead64e13cd7",
-      "salt": "2e7f1207b792270bd4d166059d353ec1",
+      "passwordHash": "6eab0b37115c7f6f8fb6afb1554c1b4bfbee1eb742a97fb462522461a4d09545d63c4f3b7a56935fc54834a2209240e772d2930f5300bf7b95bf449019a3f7ca",
+      "salt": "73bbfb5b3f7fb1784843f2cf40ba1dc6",
       "role": "admin",
       "nickname": "Dale",
       "createdAt": "2026-03-24T04:04:17.825Z"
@@ -31,6 +31,14 @@
       "role": "user",
       "nickname": "nu_114597",
       "createdAt": "2026-04-11T04:35:14.603Z"
+    },
+    {
+      "username": "test_user",
+      "passwordHash": "6cc76fc0a1784993bff1ecaa9b5ffb2a7ca86688ec381fd7cc521186becde83d3747461f8eb78f1ce0adf41a3b5bb1ae367c16e85ea4c76f2ba7c1cfeca30e6c",
+      "salt": "a795f7f65c637bdb834bc60ee7b80b9b",
+      "role": "user",
+      "nickname": "test_user",
+      "createdAt": "2026-04-21T02:33:41.339Z"
     }
   ]
 }

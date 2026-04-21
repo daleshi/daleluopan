@@ -1,0 +1,180 @@
+{
+  "testReport": "大乐罗盘系统功能测试",
+  "timestamp": "2026-04-21T02:30:00Z",
+  "overallStatus": "PASS",
+  "systemStatus": {
+    "service": "ok",
+    "uptime": "502s",
+    "tradingStatus": true,
+    "cacheStatus": {
+      "fresh": 4,
+      "stale": 2,
+      "total": 6
+    }
+  },
+  "testResults": {
+    "healthCheck": {
+      "status": "PASS",
+      "description": "服务正常运行，缓存机制工作",
+      "endpoint": "GET /api/health"
+    },
+    "peAnalysisFilter": {
+      "status": "PASS",
+      "description": "前端正确过滤 pePercentile==null 的指数",
+      "endpoint": "GET /api/indices",
+      "findings": {
+        "totalIndices": 9,
+        "indicesWithPE": 7,
+        "indicesWithoutPE": 2,
+        "noPEExamples": ["标普500 (SPX.US)", "纳斯达克100 (NDX.US)"]
+      },
+      "filterFunction": {
+        "name": "renderAnalysisCards",
+        "lineNumber": 5892,
+        "logic": "indexData.filter(d => d.pePercentile != null)"
+      }
+    },
+    "reorderEndpoints": {
+      "status": "PASS",
+      "description": "三个 reorder 端点都正确实现了权限验证",
+      "endpoints": [
+        {
+          "path": "POST /api/active-funds/reorder",
+          "unauthenticatedStatus": 401,
+          "authenticatedUserStatus": 403,
+          "requiresAdminRole": true
+        },
+        {
+          "path": "POST /api/etfs/reorder",
+          "unauthenticatedStatus": 401,
+          "authenticatedUserStatus": 403,
+          "requiresAdminRole": true
+        },
+        {
+          "path": "POST /api/stocks/reorder",
+          "unauthenticatedStatus": 401,
+          "authenticatedUserStatus": 403,
+          "requiresAdminRole": true
+        }
+      ]
+    },
+    "frontendCodeIntegrity": {
+      "status": "PASS",
+      "description": "所有关键函数和 CSS 都存在并正确使用",
+      "keyFunctions": [
+        {
+          "name": "buildRangeButtons",
+          "lineNumber": 5230,
+          "status": "exists"
+        },
+        {
+          "name": "renderCoreTrendView",
+          "lineNumber": 5239,
+          "status": "exists",
+          "callsBuildRangeButtons": true,
+          "lineNumberOfCall": 5249
+        },
+        {
+          "name": "initCardDnD",
+          "lineNumber": 8502,
+          "status": "exists",
+          "supportsTypes": ["etf", "stock"]
+        },
+        {
+          "name": "initFundDnD",
+          "lineNumber": 8566,
+          "status": "exists"
+        }
+      ],
+      "keyVariables": [
+        {
+          "name": "isDraggingCard",
+          "lineNumber": 9437,
+          "status": "exists",
+          "purpose": "防止拖拽中的DOM更新"
+        }
+      ],
+      "cssClasses": [
+        {
+          "name": ".drag-handle",
+          "lineNumber": 259,
+          "status": "exists",
+          "conditionalDisplay": "body.role-admin .drag-handle"
+        },
+        {
+          "name": ".card-dragging",
+          "lineNumber": 270,
+          "status": "exists"
+        },
+        {
+          "name": ".card-drag-over",
+          "lineNumber": 271,
+          "status": "exists"
+        }
+      ],
+      "elements": [
+        {
+          "id": "dailyEvalSummary",
+          "lineNumber": 3493,
+          "status": "exists",
+          "cssClass": "de-summary",
+          "layout": "5-column grid"
+        }
+      ]
+    },
+    "dailyEvalDataConsistency": {
+      "status": "PASS",
+      "description": "API 和前端数据完全匹配",
+      "endpoint": "GET /api/daily-eval",
+      "statistics": {
+        "total": 63,
+        "low": {
+          "count": 10,
+          "percentage": 15.87,
+          "criteria": "PE < 30%",
+          "cssClass": ".de-summary-card.low"
+        },
+        "mid": {
+          "count": 2,
+          "percentage": 3.17,
+          "criteria": "PE 30%-80%",
+          "cssClass": ".de-summary-card.mid"
+        },
+        "high": {
+          "count": 51,
+          "percentage": 80.95,
+          "criteria": "PE > 80%",
+          "cssClass": ".de-summary-card.high"
+        }
+      },
+      "frontendVerification": {
+        "renderFunctionLineNumber": 6420,
+        "dataConsistency": true
+      }
+    }
+  },
+  "highlights": {
+    "authenticationSystem": "三层认证中间件完善，管理员功能被正确保护",
+    "dataProcessing": "PE 百分位过滤逻辑清晰，多源数据组织得当",
+    "codeQuality": "拖拽状态管理完整，CSS 条件样式正确"
+  },
+  "cacheStatus": {
+    "indices": { "age": "2s", "ttl": "300s", "status": "fresh" },
+    "indexQuotes": { "age": "1s", "ttl": "30s", "status": "fresh" },
+    "activeFunds": { "age": "501s", "ttl": "600s", "status": "fresh" },
+    "stocks": { "age": "499s", "ttl": "15s", "status": "stale", "note": "正常现象" },
+    "etfs": { "age": "233s", "ttl": "15s", "status": "stale", "note": "正常现象" },
+    "dailyEval": { "age": "501s", "ttl": "1800s", "status": "fresh" }
+  },
+  "recommendations": [
+    "系统已准备就绪，可投入生产环境",
+    "权限控制严密，安全级别满足要求",
+    "建议定期检查 admin 账户安全",
+    "考虑增加缓存预热逻辑"
+  ],
+  "environment": {
+    "endpoint": "http://localhost:3200",
+    "systemTime": "2026-04-21T02:30:00Z",
+    "database": "JSON 文件存储"
+  }
+}

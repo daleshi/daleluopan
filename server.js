@@ -968,6 +968,30 @@ app.post('/api/indices/remove', requireAuth, (req, res) => {
     }
 });
 
+/**
+ * POST /api/indices/reorder - 重排指数关注列表顺序（管理员）
+ * Body: { codes: ['000001', '000300', ...] }
+ */
+app.post('/api/indices/reorder', requireAdmin, (req, res) => {
+    try {
+        const { codes } = req.body || {};
+        if (!Array.isArray(codes)) {
+            return res.status(400).json({ success: false, error: '缺少 codes 数组' });
+        }
+        const indices = readIndexWatchlist();
+        const map = new Map(indices.map(i => [i.code, i]));
+        const reordered = codes.map(c => map.get(c)).filter(Boolean);
+        // 追加 codes 中未包含的项（防止遗漏）
+        const codesSet = new Set(codes);
+        indices.forEach(i => { if (!codesSet.has(i.code)) reordered.push(i); });
+        writeIndexWatchlist(reordered);
+        res.json({ success: true, data: { total: reordered.length } });
+    } catch (err) {
+        console.error('[API] /api/indices/reorder 错误:', err.message);
+        res.status(500).json({ success: false, error: '排序失败: ' + err.message });
+    }
+});
+
 // ============================================================
 // 站点配置（登录开关等）
 // ============================================================
@@ -1237,6 +1261,29 @@ app.post('/api/active-funds/remove', requireAuth, (req, res) => {
 });
 
 /**
+ * POST /api/active-funds/reorder - 重排基金关注列表顺序（管理员）
+ * Body: { codes: ['163415', ...] }
+ */
+app.post('/api/active-funds/reorder', requireAdmin, (req, res) => {
+    try {
+        const { codes } = req.body || {};
+        if (!Array.isArray(codes)) {
+            return res.status(400).json({ success: false, error: '缺少 codes 数组' });
+        }
+        const funds = readFundWatchlist();
+        const map = new Map(funds.map(f => [f.code, f]));
+        const reordered = codes.map(c => map.get(c)).filter(Boolean);
+        const codesSet = new Set(codes);
+        funds.forEach(f => { if (!codesSet.has(f.code)) reordered.push(f); });
+        writeFundWatchlist(reordered);
+        res.json({ success: true, data: { total: reordered.length } });
+    } catch (err) {
+        console.error('[API] /api/active-funds/reorder 错误:', err.message);
+        res.status(500).json({ success: false, error: '排序失败: ' + err.message });
+    }
+});
+
+/**
  * GET /api/active-funds/search?q=兴全 - 搜索基金
  */
 app.get('/api/active-funds/search', requireAuth, async (req, res) => {
@@ -1405,6 +1452,29 @@ app.post('/api/stocks/remove', requireAuth, (req, res) => {
     }
 });
 
+/**
+ * POST /api/stocks/reorder - 重排股票关注列表顺序（管理员）
+ * Body: { codes: ['600519', ...] }
+ */
+app.post('/api/stocks/reorder', requireAdmin, (req, res) => {
+    try {
+        const { codes } = req.body || {};
+        if (!Array.isArray(codes)) {
+            return res.status(400).json({ success: false, error: '缺少 codes 数组' });
+        }
+        const stocks = readWatchlist();
+        const map = new Map(stocks.map(s => [s.code, s]));
+        const reordered = codes.map(c => map.get(c)).filter(Boolean);
+        const codesSet = new Set(codes);
+        stocks.forEach(s => { if (!codesSet.has(s.code)) reordered.push(s); });
+        writeWatchlist(reordered);
+        res.json({ success: true, data: { total: reordered.length } });
+    } catch (err) {
+        console.error('[API] /api/stocks/reorder 错误:', err.message);
+        res.status(500).json({ success: false, error: '排序失败: ' + err.message });
+    }
+});
+
 // ============================================================
 // ETF 总览 API
 // ============================================================
@@ -1505,6 +1575,29 @@ app.post('/api/etfs/remove', requireAuth, (req, res) => {
     } catch (err) {
         console.error('[API] /api/etfs/remove 错误:', err.message);
         res.status(500).json({ success: false, error: '删除ETF失败: ' + err.message });
+    }
+});
+
+/**
+ * POST /api/etfs/reorder - 重排ETF关注列表顺序（管理员）
+ * Body: { codes: ['510300', ...] }
+ */
+app.post('/api/etfs/reorder', requireAdmin, (req, res) => {
+    try {
+        const { codes } = req.body || {};
+        if (!Array.isArray(codes)) {
+            return res.status(400).json({ success: false, error: '缺少 codes 数组' });
+        }
+        const etfs = readEtfWatchlist();
+        const map = new Map(etfs.map(e => [e.code, e]));
+        const reordered = codes.map(c => map.get(c)).filter(Boolean);
+        const codesSet = new Set(codes);
+        etfs.forEach(e => { if (!codesSet.has(e.code)) reordered.push(e); });
+        writeEtfWatchlist(reordered);
+        res.json({ success: true, data: { total: reordered.length } });
+    } catch (err) {
+        console.error('[API] /api/etfs/reorder 错误:', err.message);
+        res.status(500).json({ success: false, error: '排序失败: ' + err.message });
     }
 });
 
@@ -1894,6 +1987,7 @@ app.get('/api/position/index-pool', (req, res) => {
 
 // SPA fallback
 app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
