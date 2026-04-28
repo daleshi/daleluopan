@@ -1985,7 +1985,12 @@ async function fetchYZYXIndexDetail(code) {
     }
 
     const thermometer = await fetchYZYXThermometer();
-    const target = thermometer?.indices?.find(item => String(item.code || '').trim().toUpperCase() === normalizedCode);
+    const normalizedShortCode = normalizedCode.split('.')[0];
+    const target = thermometer?.indices?.find(item => {
+        const itemCode = String(item.code || '').trim().toUpperCase();
+        const itemShortCode = String(item.shortCode || item.code || '').split('.')[0].toUpperCase();
+        return itemCode === normalizedCode || itemShortCode === normalizedShortCode;
+    });
     if (!target || !target.detailPath) {
         return null;
     }

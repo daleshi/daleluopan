@@ -1,5 +1,5 @@
 {
-  "totalPV": 8768,
+  "totalPV": 9374,
   "totalUV": 6,
   "daily": {
     "2026-03-27": {
@@ -53,27 +53,43 @@
         "430be7e41ebc": true,
         "3a10bb599dc2": true
       }
+    },
+    "2026-04-27": {
+      "pv": 149,
+      "uv": 2,
+      "visitors": {
+        "430be7e41ebc": true,
+        "3a10bb599dc2": true
+      }
+    },
+    "2026-04-28": {
+      "pv": 457,
+      "uv": 2,
+      "visitors": {
+        "430be7e41ebc": true,
+        "3a10bb599dc2": true
+      }
     }
   },
   "pages": {
-    "/": 113,
-    "/admin": 72,
+    "/": 135,
+    "/admin": 76,
     "/.well-known/appspecific/com.chrome.devtools.json": 10
   },
   "devices": {
-    "desktop": 8768
+    "desktop": 9374
   },
   "hours": {
-    "10": 4404,
-    "11": 2140,
+    "10": 4423,
+    "11": 2571,
     "12": 7,
     "13": 83,
     "14": 339,
     "15": 192,
-    "16": 68,
-    "17": 59,
+    "16": 166,
+    "17": 110,
     "18": 118,
-    "09": 1358
+    "09": 1365
   },
   "visitors": {
     "c174cfecca94": "2026-03-27",
