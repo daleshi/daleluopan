@@ -6,7 +6,7 @@
       "monthlyAmount": 1000,
       "levels": [
         {
-          "label": "低谷",
+          "label": "低估",
           "tempRange": "30°以下",
           "investPct": 200,
           "investAmt": 2000,
@@ -38,15 +38,15 @@
           "color": "high"
         }
       ],
-      "updatedAt": "2026-03-23T12:39:33.726Z"
+      "updatedAt": "2026-04-27T09:02:21.594Z"
     },
     {
       "indexCode": "000905.SH",
-      "indexName": "中证500指数",
+      "indexName": "中证500",
       "monthlyAmount": 1000,
       "levels": [
         {
-          "label": "低谷",
+          "label": "低估",
           "tempRange": "30°以内",
           "investPct": 200,
           "investAmt": 2000,
@@ -62,7 +62,7 @@
           "color": "mid-low"
         },
         {
-          "label": "中估",
+          "label": "中高",
           "tempRange": "50°-70°",
           "investPct": 50,
           "investAmt": 500,
@@ -78,7 +78,7 @@
           "color": "high"
         }
       ],
-      "updatedAt": "2026-03-23T12:40:30.924Z"
+      "updatedAt": "2026-04-27T09:02:13.212Z"
     },
     {
       "indexCode": "000922.SH",
@@ -86,7 +86,7 @@
       "monthlyAmount": 1000,
       "levels": [
         {
-          "label": "低谷",
+          "label": "低估",
           "tempRange": "20°以下",
           "investPct": 200,
           "investAmt": 2000,
@@ -103,7 +103,7 @@
         },
         {
           "label": "中高",
-          "tempRange": "30°-40°",
+          "tempRange": "30°-50°",
           "investPct": 50,
           "investAmt": 500,
           "reserveAmt": 500,
@@ -111,14 +111,14 @@
         },
         {
           "label": "高估",
-          "tempRange": "40°以上",
+          "tempRange": "50°以上",
           "investPct": 0,
           "investAmt": 0,
           "reserveAmt": 1000,
           "color": "high"
         }
       ],
-      "updatedAt": "2026-03-23T12:45:30.627Z"
+      "updatedAt": "2026-04-28T03:20:54.975Z"
     }
   ]
 }

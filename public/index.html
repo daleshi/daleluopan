@@ -242,8 +242,7 @@
         body.guest .cfg-remove-btn,
         body.guest .pos-record-add-btn,
         body.guest [data-tab="config"],
-        body.guest [data-tab="admin-users"],
-        body.guest [data-tab="strategy"] {
+        body.guest [data-tab="admin-users"] {
             display: none !important;
         }
         /* 策略编辑 + 用户管理 功能仅管理员可见 */
@@ -1259,13 +1258,127 @@
         .dca-level-field label { font-size: 10px; color: var(--text-muted); margin-bottom: 0; }
         .dca-level-field input, .dca-level-field select { font-size: 13px; padding: 7px 10px; }
         @media (max-width: 768px) {
-            .dca-plan-header { flex-wrap: wrap; }
-            .dca-plan-actions { margin-left: 0; margin-top: 8px; }
-            .dca-plan-table { font-size: 12px; }
+            /* 策略卡片头部：指数名+金额换行 */
+            .dca-plan-header { flex-wrap: wrap; padding: 14px 16px; gap: 10px; }
+            .dca-plan-info { min-width: calc(100% - 52px); }
+            .dca-plan-monthly { margin-left: auto; }
+            .dca-plan-actions { margin-left: 0; margin-top: 0; width: 100%; justify-content: flex-end; }
+            .dca-plan-monthly-value { font-size: 18px; }
+
+            /* 今日建议横幅：垂直堆叠 */
+            .dca-action-banner { flex-wrap: wrap; padding: 12px 16px; gap: 6px; }
+            .dca-action-text { font-size: 17px; }
+            .dca-action-amount { margin-left: 0; font-size: 14px; }
+            .dca-action-temp { width: 100%; margin-top: 2px; }
+
+            /* 温度进度条：调整内边距和刻度字号 */
+            .dca-temp-bar-wrap { padding: 10px 16px 8px; }
+            .dca-temp-bar-ticks { font-size: 9px; }
+
+            /* 策略表格：横向滚动 */
+            .dca-plan-card .dca-plan-table-wrap {
+                overflow-x: auto; -webkit-overflow-scrolling: touch;
+            }
+            .dca-plan-table { font-size: 12px; min-width: 420px; }
             .dca-plan-table th, .dca-plan-table td { padding: 10px 12px; }
+
+            /* 汇总摘要卡片 */
+            .dca-summary-card { padding: 14px 16px; margin-bottom: 16px; }
+            .dca-summary-row { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
+            .dca-summary-row-name { font-size: 12px; min-width: 60px; }
+            .dca-summary-row-amount { font-size: 13px; min-width: 60px; }
+            .dca-summary-total-value { font-size: 16px; }
+
+            /* 编辑表单行 */
             .dca-level-row { flex-direction: column; align-items: stretch; }
             .dca-level-row .pos-input, .dca-level-row .pos-select { max-width: 100%; }
         }
+
+        /* DCA 月度汇总摘要卡片 */
+        .dca-summary-card {
+            background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            padding: 20px 24px; margin-bottom: 24px; overflow: hidden;
+        }
+        .dca-summary-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+        }
+        .dca-summary-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .dca-summary-subtitle { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+        .dca-summary-rows { display: flex; flex-direction: column; gap: 8px; }
+        .dca-summary-row {
+            display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+            background: var(--overlay-02); border-radius: 8px; border: 1px solid var(--border-subtle);
+        }
+        .dca-summary-row-icon {
+            width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center;
+            justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;
+        }
+        .dca-summary-row-name { font-size: 13px; font-weight: 500; color: var(--text-primary); flex: 1; }
+        .dca-summary-row-action { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 5px; }
+        .dca-summary-row-action.act-double { color: #22863a; background: rgba(72,187,120,0.15); }
+        .dca-summary-row-action.act-normal { color: var(--accent-blue); background: var(--accent-blue-dim); }
+        .dca-summary-row-action.act-half { color: #d68910; background: rgba(237,137,54,0.15); }
+        .dca-summary-row-action.act-stop { color: var(--red-danger); background: var(--red-dim); }
+        .dca-summary-row-action.act-unknown { color: var(--text-muted); background: var(--overlay-02); }
+        .dca-summary-row-amount { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--accent-gold); min-width: 80px; text-align: right; }
+        .dca-summary-total {
+            display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+            padding-top: 12px; margin-top: 4px; border-top: 1px solid var(--border-subtle);
+        }
+        .dca-summary-total-label { font-size: 12px; color: var(--text-muted); }
+        .dca-summary-total-value { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--accent-gold); }
+
+        /* DCA 卡片今日建议横幅 */
+        .dca-action-banner {
+            display: flex; align-items: center; gap: 12px; padding: 14px 22px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .dca-action-banner.banner-double { background: linear-gradient(135deg, rgba(72,187,120,0.1), rgba(56,161,105,0.05)); border-left: 3px solid #48bb78; }
+        .dca-action-banner.banner-normal { background: linear-gradient(135deg, rgba(99,179,237,0.1), rgba(66,153,225,0.05)); border-left: 3px solid var(--accent-blue); }
+        .dca-action-banner.banner-half { background: linear-gradient(135deg, rgba(237,137,54,0.1), rgba(221,107,32,0.05)); border-left: 3px solid #ed8936; }
+        .dca-action-banner.banner-stop { background: linear-gradient(135deg, rgba(229,62,62,0.1), rgba(197,48,48,0.05)); border-left: 3px solid var(--red-danger); }
+        .dca-action-banner.banner-unknown { background: var(--overlay-02); border-left: 3px solid var(--border-subtle); }
+        .dca-action-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+        .dca-action-text { font-size: 20px; font-weight: 700; line-height: 1.2; }
+        .dca-action-text.text-double { color: #38a169; }
+        .dca-action-text.text-normal { color: var(--accent-blue); }
+        .dca-action-text.text-half { color: #dd6b20; }
+        .dca-action-text.text-stop { color: var(--red-danger); }
+        .dca-action-text.text-unknown { color: var(--text-muted); }
+        .dca-action-amount { font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--accent-gold); margin-left: auto; }
+        .dca-action-temp { font-size: 12px; color: var(--text-secondary); }
+
+        /* DCA 温度进度条 */
+        .dca-temp-bar-wrap {
+            padding: 12px 22px 10px; border-bottom: 1px solid var(--border-subtle);
+            background: var(--overlay-02);
+        }
+        .dca-temp-bar-label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+        .dca-temp-bar-track {
+            position: relative; height: 10px; border-radius: 5px; overflow: visible;
+            background: linear-gradient(to right, #48bb78 0%, #48bb78 30%, #ed8936 30%, #ed8936 50%, #e07b29 50%, #e07b29 70%, #e53e3e 70%, #e53e3e 100%);
+        }
+        .dca-temp-bar-pointer {
+            position: absolute; top: 50%; transform: translate(-50%, -50%);
+            width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent;
+            border-bottom: 11px solid var(--text-primary); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+        }
+        .dca-temp-bar-ticks {
+            display: flex; justify-content: space-between; margin-top: 4px;
+            font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);
+        }
+        .dca-temp-bar-val {
+            font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+            color: var(--text-primary); text-align: center; margin-top: 4px;
+        }
+
+
+        /* 操作建议列 */
+        .dca-op-advice { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 5px; display: inline-block; }
+        .dca-op-advice.adv-double { color: #22863a; background: rgba(72,187,120,0.15); }
+        .dca-op-advice.adv-normal { color: var(--accent-blue); background: var(--accent-blue-dim); }
+        .dca-op-advice.adv-half { color: #d68910; background: rgba(237,137,54,0.15); }
+        .dca-op-advice.adv-stop { color: var(--red-danger); background: var(--red-dim); }
 
         /* DAILY EVAL TAB */
         .de-summary {
@@ -3659,37 +3772,9 @@
             </div>
         </div>
 
-        <!-- TAB: STRATEGY (投资策略 — 操作建议 + 综合建议 + 温度计定投) -->
+        <!-- TAB: STRATEGY (投资策略 — 温度计定投) -->
         <div class="tab-content" id="tab-strategy">
-            <!-- 第一层：操作策略总览 -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-line"></div>
-                    <div class="section-title">操作策略</div>
-                    <div class="section-badge">Action Plan</div>
-                </div>
-                <div class="strategy-table-wrap">
-                    <table class="strategy-table" id="strategyTable">
-                        <thead><tr>
-                            <th>指数名称</th><th>当前PE</th><th>PE百分位</th><th>PB百分位</th>
-                            <th>估值状态</th><th>建议操作</th><th>定投建议</th><th>仓位建议</th>
-                        </tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 第二层：综合投资建议 -->
-            <div class="section" style="margin-top:36px">
-                <div class="section-header">
-                    <div class="section-line"></div>
-                    <div class="section-title">综合投资建议</div>
-                    <div class="section-badge">Professional Advice</div>
-                </div>
-                <div class="advice-grid" id="adviceGrid"></div>
-            </div>
-
-            <!-- 第三层：温度计定投策略 -->
+            <!-- 温度计定投策略 -->
             <div class="section" style="margin-top:36px">
                 <div class="section-header">
                     <div class="section-line"></div>
@@ -3700,6 +3785,8 @@
                 <p class="chart-desc" style="margin-bottom:16px;font-size:12px;color:var(--text-muted)">
                     参考有知有行温度计投资法，根据指数当前温度（估值水位）自动匹配投入比例和金额。低温多投、高温少投、过热暂停。
                 </p>
+                <!-- 本月操作摘要卡片 -->
+                <div id="dcaSummaryCard" class="dca-summary-card" style="display:none"></div>
                 <div id="dcaPlanList" class="dca-plan-list"></div>
                 <!-- 策略编辑表单（隐藏） -->
                 <div id="dcaFormWrap" class="pos-form-wrap" style="display:none">
@@ -4515,8 +4602,6 @@
         renderValueMeters();
         renderPercentileBars();
         renderAnalysisCards();
-        renderStrategyTable();
-        renderAdviceCards();
     }
 
     /** 更新顶部更新时间 badge，统一入口 */
@@ -5943,74 +6028,6 @@
         }).join('');
     }
 
-    function renderStrategyTable() {
-        const tbody = document.querySelector('#strategyTable tbody');
-        tbody.innerHTML = indexData.map(d => {
-            const state = valState(d);
-            const pct = d.pePercentile;
-            const action = actionInfo(pct);
-            return `<tr>
-                <td><div class="idx-name"><span class="idx-dot" style="background:${state.color}"></span>${d.name}</div></td>
-                <td class="mono">${d.pe != null && d.pe > 0 ? d.pe.toFixed(2) : '<span class="na">N/A</span>'}</td>
-                <td class="mono" style="color:${state.color}">${pct != null ? pct.toFixed(2) + '%' : '<span class="na">N/A</span>'}</td>
-                <td class="mono">${d.pbPercentile != null ? d.pbPercentile.toFixed(2) + '%' : '<span class="na">N/A</span>'}</td>
-                <td><span class="card-badge ${state.badge}" style="font-size:11px;padding:3px 10px">${state.label}</span></td>
-                <td><span class="strategy-action ${action.cls}">${action.text}</span></td>
-                <td style="font-weight:500">${dipAdvice(pct)}</td>
-                <td class="mono">${posAdvice(pct)}</td>
-            </tr>`;
-        }).join('');
-    }
-
-    function renderAdviceCards() {
-        const grid = document.getElementById('adviceGrid');
-        const low = indexData.filter(d => d.evaType === 'low');
-        const highDiv = indexData.filter(d => d.dividend != null && d.dividend >= 3);
-        const high = indexData.filter(d => d.evaType === 'high' && d.pePercentile != null && d.pePercentile > 80);
-
-        const cards = [
-            {
-                icon: '&#x1F4CA;', iconBg: 'var(--green-dim)', title: '低估指数机会',
-                level: '重点关注', levelCls: 'badge-undervalue',
-                body: low.length > 0
-                    ? `当前${low.map(d => `<strong>${d.name}</strong>(PE百分位${d.pePercentile != null ? d.pePercentile.toFixed(1) : '--'}%)`).join('、')}被蛋卷基金(Wind)评为低估。低估区间是长期投资者建仓的理想时机，建议采用"越跌越买"的逆向策略，通过定期定额或手动加仓方式分批介入。`
-                    : '当前暂无处于明显低估区域的指数。建议保持耐心，等待估值回落后再积极布局。',
-                tags: ['低估区域', '逆向投资', '定投加码']
-            },
-            {
-                icon: '&#x1F4B0;', iconBg: 'var(--accent-gold-dim)', title: '高股息策略',
-                level: '推荐配置', levelCls: 'badge-normal',
-                body: highDiv.length > 0
-                    ? `${highDiv.map(d => `<strong>${d.name}</strong>(股息率${d.dividend.toFixed(2)}%)`).join('、')}具有较高股息收益。在低利率环境下，高股息策略兼具防御性与收益性。${high.some(d => highDiv.includes(d)) ? '但需注意部分红利指数PE百分位已偏高，建议控制仓位。' : '建议将红利类指数基金作为组合的"压舱石"。'}`
-                    : '部分红利类指数具有较高股息收益，在低利率环境下兼具防御性与收益性。',
-                tags: ['高股息', '防御配置', '红利策略']
-            },
-            {
-                icon: '&#x2696;', iconBg: 'var(--purple-dim)', title: '均衡配置建议',
-                level: '组合方案', levelCls: 'badge-normal',
-                body: '基于当前各指数估值水平（来源Wind），建议采用<strong>"核心+卫星"</strong>配置策略。重点关注估值处于低位的指数进行超配，对PE百分位超过80%的指数控制仓位。动态调整的核心原则是：低估多买、高估少持、极高估减仓。',
-                tags: ['资产配置', '核心卫星', '动态调整']
-            },
-            {
-                icon: '&#x1F6E1;', iconBg: 'var(--orange-dim)', title: '风险控制要点',
-                level: '注意事项', levelCls: 'badge-caution',
-                body: `${high.length > 0 ? `当前<strong>${high.map(d=>d.name).join('、')}</strong>PE百分位超过80%，需警惕估值回调风险。` : ''}建议：(1)单一指数仓位不超过总投资额的30%；(2)PE百分位超过80%时逐步减仓；(3)保持至少20%现金仓位以应对波动；(4)坚持长期定投纪律，避免追涨杀跌。`,
-                tags: ['风险管理', '仓位控制', '纪律投资']
-            }
-        ];
-
-        grid.innerHTML = cards.map(c => `<div class="advice-card">
-            <div class="advice-header">
-                <div class="advice-icon" style="background:${c.iconBg}">${c.icon}</div>
-                <div class="advice-title">${c.title}</div>
-                <div class="advice-level ${c.levelCls}" style="border:none">${c.level}</div>
-            </div>
-            <div class="advice-body">${c.body}</div>
-            <div class="advice-tags">${c.tags.map(t => `<span class="advice-tag">${t}</span>`).join('')}</div>
-        </div>`).join('');
-    }
-
-    // ================================================================
     // DCA THERMOMETER — 温度计定投策略
     // ================================================================
     let dcaPlans = [];
@@ -6019,7 +6036,7 @@
     let dcaPlansLoaded = false;
 
     const DEFAULT_DCA_LEVELS = [
-        { label: '低谷', tempRange: '30°以下', investPct: 200, investAmt: 2000, reserveAmt: 0, color: 'low' },
+        { label: '低估', tempRange: '30°以下', investPct: 200, investAmt: 2000, reserveAmt: 0, color: 'low' },
         { label: '中估', tempRange: '30°-50°', investPct: 100, investAmt: 1000, reserveAmt: 0, color: 'mid-low' },
         { label: '中估', tempRange: '50°-70°', investPct: 50, investAmt: 500, reserveAmt: 500, color: 'mid' },
         { label: '高估', tempRange: '70°以上', investPct: 0, investAmt: 0, reserveAmt: 1000, color: 'high' },
@@ -6041,27 +6058,197 @@
         }
     }
 
-    function renderDcaPlans() {
+    /**
+     * 解析温度区间文本，返回 { min, max } 对象
+     * 示例: "30°以下" → { min: null, max: 30 }
+     *       "30°-50°" → { min: 30, max: 50 }
+     *       "70°以上" → { min: 70, max: null }
+     */
+    function parseTempRange(tempRange) {
+        if (!tempRange) return { min: null, max: null };
+        // 匹配 "X°以下"（含X，如"30°以下" = ≤30°）
+        let match = tempRange.match(/^(\d+)°以下$/);
+        if (match) return { min: null, max: Number(match[1]) };
+        // 匹配 "X°以上"（含X，如"70°以上" = ≥70°）
+        match = tempRange.match(/^(\d+)°以上$/);
+        if (match) return { min: Number(match[1]), max: null };
+        // 匹配 "X°-Y°"（含边界）
+        match = tempRange.match(/^(\d+)°[-~](\d+)°?$/);
+        if (match) return { min: Number(match[1]), max: Number(match[2]) };
+        return { min: null, max: null };
+    }
+
+    /**
+     * 根据当前温度匹配对应的 level 配置
+     * @param {number|null} currentTemp - 当前温度
+     * @param {Array} levels - 温度区间配置数组
+     * @returns {Object|null} 匹配的 level 或 null
+     */
+    function matchTemperature(currentTemp, levels) {
+        if (currentTemp == null) return null;
+        for (const level of levels) {
+            const { min, max } = parseTempRange(level.tempRange);
+            // "X°以下"：currentTemp ≤ max（含边界）
+            if (min === null && max !== null && currentTemp <= max) return level;
+            // "X°以上"：currentTemp ≥ min（含边界）
+            if (max === null && min !== null && currentTemp >= min) return level;
+            // "X°-Y°"：min ≤ currentTemp ≤ max（含边界）
+            if (min !== null && max !== null && currentTemp >= min && currentTemp <= max) return level;
+        }
+        return null;
+    }
+
+    // 根据 investPct 返回操作建议对象 { text, cls }
+    function getDcaOpAdvice(investPct) {
+        if (investPct > 100) return { text: '加倍定投', cls: 'adv-double', bannerCls: 'banner-double', textCls: 'text-double', actCls: 'act-double' };
+        if (investPct === 100) return { text: '正常定投', cls: 'adv-normal', bannerCls: 'banner-normal', textCls: 'text-normal', actCls: 'act-normal' };
+        if (investPct > 0) return { text: '减半定投', cls: 'adv-half', bannerCls: 'banner-half', textCls: 'text-half', actCls: 'act-half' };
+        return { text: '暂停定投', cls: 'adv-stop', bannerCls: 'banner-stop', textCls: 'text-stop', actCls: 'act-stop' };
+    }
+
+    async function renderDcaPlans() {
         const list = document.getElementById('dcaPlanList');
+        const summaryCard = document.getElementById('dcaSummaryCard');
         if (dcaPlans.length === 0) {
             list.innerHTML = '<div class="pos-empty">暂无温度计定投策略，点击右上角"＋ 添加策略"开始配置</div>';
+            summaryCard.style.display = 'none';
             return;
         }
-        list.innerHTML = dcaPlans.map(plan => {
+        // 并行获取所有策略对应指数的温度数据
+        const tempPromises = dcaPlans.map(plan =>
+            fetch(`/api/thermometer/detail?code=${plan.indexCode}`)
+                .then(r => r.json())
+                .catch(() => null)
+        );
+        const tempResults = await Promise.all(tempPromises);
+
+        // 构建汇总摘要数据
+        const summaryRows = dcaPlans.map((plan, idx) => {
+            const tempResult = tempResults[idx];
             const poolItem = dcaIndexPool.find(p => p.code === plan.indexCode);
             const iconBg = poolItem?.iconBg || 'linear-gradient(135deg, #a0aec0, #718096)';
             const iconColor = poolItem?.iconColor || '#fff';
             const iconText = poolItem?.icon || plan.indexName.slice(0, 2);
+            let opAdvice = null;
+            let suggestAmt = 0;
+            let currentTemp = null;
+            if (tempResult && tempResult.success && tempResult.data) {
+                currentTemp = tempResult.data.temperature;
+                const match = matchTemperature(currentTemp, plan.levels);
+                if (match) {
+                    opAdvice = getDcaOpAdvice(match.investPct);
+                    suggestAmt = match.investAmt;
+                }
+            }
+            return { plan, poolItem, iconBg, iconColor, iconText, opAdvice, suggestAmt, currentTemp };
+        });
+
+        // 渲染汇总摘要卡片（D）
+        const nowLabel = (() => {
+            const now = new Date();
+            return `${now.getFullYear()}年${now.getMonth()+1}月`;
+        })();
+        const totalSuggest = summaryRows.reduce((s, r) => s + r.suggestAmt, 0);
+        const summaryRowsHtml = summaryRows.map(r => {
+            const adviceHtml = r.opAdvice
+                ? `<span class="dca-summary-row-action ${r.opAdvice.actCls}">${r.opAdvice.text}</span>`
+                : `<span class="dca-summary-row-action act-unknown">暂无数据</span>`;
+            const tempStr = r.currentTemp != null ? `${r.currentTemp}°` : '--';
+            return `<div class="dca-summary-row">
+                <div class="dca-summary-row-icon" style="background:${r.iconBg};color:${r.iconColor}">${r.iconText}</div>
+                <div class="dca-summary-row-name">${escapeHtml(r.plan.indexName)}</div>
+                <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${tempStr}</span>
+                ${adviceHtml}
+                <div class="dca-summary-row-amount">${r.suggestAmt > 0 ? '¥' + r.suggestAmt.toLocaleString() : r.opAdvice?.text === '暂停定投' ? '暂停' : '--'}</div>
+            </div>`;
+        }).join('');
+        summaryCard.innerHTML = `
+            <div class="dca-summary-header">
+                <span class="dca-summary-title">本月操作摘要</span>
+                <span class="dca-summary-subtitle">${nowLabel} · ${summaryRows.length} 个策略</span>
+            </div>
+            <div class="dca-summary-rows">${summaryRowsHtml}</div>
+            <div class="dca-summary-total">
+                <span class="dca-summary-total-label">本月建议总投入</span>
+                <span class="dca-summary-total-value">¥${totalSuggest.toLocaleString()}</span>
+            </div>`;
+        summaryCard.style.display = 'block';
+
+        // 渲染策略卡片列表
+        list.innerHTML = summaryRows.map(({ plan, iconBg, iconColor, iconText, opAdvice, suggestAmt, currentTemp }, idx) => {
+            const tempResult = tempResults[idx];
+
+            // A: 今日建议横幅
+            let bannerHtml = '';
+            if (tempResult && tempResult.success && tempResult.data) {
+                const match = matchTemperature(currentTemp, plan.levels);
+                if (match && opAdvice) {
+                    const amountStr = match.investAmt > 0 ? `¥${match.investAmt.toLocaleString()}` : '暂停投入';
+                    bannerHtml = `
+                    <div class="dca-action-banner ${opAdvice.bannerCls}">
+                        <div>
+                            <div class="dca-action-label">今日操作建议</div>
+                            <div class="dca-action-text ${opAdvice.textCls}">${opAdvice.text}</div>
+                        </div>
+                        <div class="dca-action-temp">当前 ${currentTemp}°（${match.label}）</div>
+                        <div class="dca-action-amount">${amountStr}</div>
+                    </div>`;
+                } else if (!match) {
+                    bannerHtml = `
+                    <div class="dca-action-banner banner-unknown">
+                        <div class="dca-action-label">当前温度 ${currentTemp}°，未匹配策略区间</div>
+                    </div>`;
+                }
+            } else if (tempResult && tempResult.success === false) {
+                bannerHtml = `
+                    <div class="dca-action-banner banner-unknown">
+                        <div class="dca-action-label">该指数暂无温度数据（知有行未收录）</div>
+                    </div>`;
+            } else {
+                bannerHtml = `
+                    <div class="dca-action-banner banner-unknown">
+                        <div class="dca-action-label">温度获取失败，请稍后刷新</div>
+                    </div>`;
+            }
+
+            // B: 温度进度条
+            let tempBarHtml = '';
+            if (currentTemp != null) {
+                const pct = Math.min(Math.max(currentTemp, 0), 100);
+                // 从 plan.levels 推导区间分界点
+                const boundaries = new Set([0, 100]);
+                plan.levels.forEach(l => {
+                    const r = parseTempRange(l.tempRange);
+                    if (r.min != null) boundaries.add(r.min);
+                    if (r.max != null) boundaries.add(r.max);
+                });
+                const ticks = Array.from(boundaries).sort((a, b) => a - b);
+                const ticksHtml = ticks.map(t => `<span>${t}°</span>`).join('');
+                tempBarHtml = `
+                <div class="dca-temp-bar-wrap">
+                    <div class="dca-temp-bar-label">温度水位</div>
+                    <div class="dca-temp-bar-track">
+                        <div class="dca-temp-bar-pointer" style="left:${pct}%"></div>
+                    </div>
+                    <div class="dca-temp-bar-ticks">${ticksHtml}</div>
+                    <div class="dca-temp-bar-val">当前 ${currentTemp}°</div>
+                </div>`;
+            }
+
+            // 问题2: 操作建议列
             const levelsHtml = plan.levels.map(l => {
                 const colorCls = l.color || 'mid';
+                const adv = getDcaOpAdvice(l.investPct);
                 return `<tr>
                     <td><span class="dca-temp-badge ${colorCls}">${escapeHtml(l.label)}</span></td>
                     <td class="dca-temp-range">${escapeHtml(l.tempRange)}</td>
                     <td class="dca-invest-pct">${l.investPct}%</td>
+                    <td><span class="dca-op-advice ${adv.cls}">${adv.text}</span></td>
                     <td class="dca-invest-amt">${l.investAmt.toLocaleString()}</td>
                     <td class="dca-reserve-amt">${l.reserveAmt.toLocaleString()}</td>
                 </tr>`;
             }).join('');
+
             return `<div class="dca-plan-card">
                 <div class="dca-plan-header">
                     <div class="dca-plan-icon" style="background:${iconBg};color:${iconColor}">${iconText}</div>
@@ -6070,7 +6257,7 @@
                         <div class="dca-plan-code">${escapeHtml(plan.indexCode)}</div>
                     </div>
                     <div class="dca-plan-monthly">
-                        <div class="dca-plan-monthly-label">每月定投</div>
+                        <div class="dca-plan-monthly-label">每月定投基准</div>
                         <div class="dca-plan-monthly-value">${plan.monthlyAmount.toLocaleString()}<span class="dca-plan-monthly-unit">元</span></div>
                     </div>
                     <div class="dca-plan-actions">
@@ -6078,12 +6265,16 @@
                         <button class="dca-plan-action-btn danger" onclick="deleteDcaPlan('${plan.indexCode}')">删除</button>
                     </div>
                 </div>
+                ${bannerHtml}
+                ${tempBarHtml}
+                <div class="dca-plan-table-wrap">
                 <table class="dca-plan-table">
                     <thead><tr>
-                        <th>价值</th><th>温度</th><th>投入比例</th><th>投入金额</th><th>备用金</th>
+                        <th>价值</th><th>温度</th><th>投入比例</th><th>操作建议</th><th>投入金额</th><th>备用金</th>
                     </tr></thead>
                     <tbody>${levelsHtml}</tbody>
                 </table>
+                </div>
             </div>`;
         }).join('');
     }
@@ -6140,7 +6331,7 @@
                 <div class="dca-level-field">
                     <label>价值标签</label>
                     <select class="pos-select dca-label-sel" style="width:100px">
-                        <option value="低谷" ${l.label === '低谷' ? 'selected' : ''}>低谷</option>
+                        <option value="低估" ${l.label === '低估' ? 'selected' : ''}>低估</option>
                         <option value="中估" ${l.label === '中估' ? 'selected' : ''}>中估</option>
                         <option value="中高" ${l.label === '中高' ? 'selected' : ''}>中高</option>
                         <option value="高估" ${l.label === '高估' ? 'selected' : ''}>高估</option>
@@ -6195,8 +6386,8 @@
             <div class="dca-level-field">
                 <label>价值标签</label>
                 <select class="pos-select dca-label-sel" style="width:100px">
-                    <option value="低谷">低谷</option>
-                    <option value="中估" selected>中估</option>
+                    <option value="低估" selected>低估</option>
+                    <option value="中估">中估</option>
                     <option value="中高">中高</option>
                     <option value="高估">高估</option>
                 </select>
@@ -6220,8 +6411,8 @@
             <div class="dca-level-field">
                 <label>颜色</label>
                 <select class="pos-select dca-color-sel" style="width:90px">
-                    <option value="low">绿(低估)</option>
-                    <option value="mid-low" selected>橙(中低)</option>
+                    <option value="low" selected>绿(低估)</option>
+                    <option value="mid-low">橙(中低)</option>
                     <option value="mid">橙(中)</option>
                     <option value="mid-high">红(中高)</option>
                     <option value="high">红(高估)</option>
