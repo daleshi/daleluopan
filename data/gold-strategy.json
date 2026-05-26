@@ -1,0 +1,97 @@
+{
+  "strategies": [
+    {
+      "fundCode": "000216",
+      "fundName": "华安黄金ETF联接A",
+      "monthlyAmount": 1000,
+      "priceWindow": 1250,
+      "drawdownWindow": 250,
+      "rules": [
+        {
+          "id": "pause",
+          "label": "暂停定投",
+          "color": "purple",
+          "multiplier": 0,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "fundPricePercentile5Y",
+              "op": ">=",
+              "value": 90
+            }
+          ]
+        },
+        {
+          "id": "double",
+          "label": "加倍定投",
+          "color": "red",
+          "multiplier": 200,
+          "logic": "OR",
+          "conditions": [
+            {
+              "field": "fundPricePercentile5Y",
+              "op": "<=",
+              "value": 20
+            },
+            {
+              "field": "fundDrawdown1Y",
+              "op": ">=",
+              "value": 25
+            }
+          ]
+        },
+        {
+          "id": "half",
+          "label": "减半定投",
+          "color": "yellow",
+          "multiplier": 50,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "fundPricePercentile5Y",
+              "op": ">=",
+              "value": 70
+            },
+            {
+              "field": "fundPricePercentile5Y",
+              "op": "<",
+              "value": 90
+            }
+          ]
+        },
+        {
+          "id": "normal",
+          "label": "正常定投",
+          "color": "green",
+          "multiplier": 100,
+          "logic": "AND",
+          "conditions": []
+        }
+      ],
+      "takeProfitTiers": [
+        {
+          "id": "tp30",
+          "label": "30% 止盈",
+          "thresholdReturn": 30,
+          "sellPct": 10,
+          "triggeredAt": null
+        },
+        {
+          "id": "tp60",
+          "label": "60% 止盈",
+          "thresholdReturn": 60,
+          "sellPct": 20,
+          "triggeredAt": null
+        },
+        {
+          "id": "tp100",
+          "label": "100% 止盈",
+          "thresholdReturn": 100,
+          "sellPct": 30,
+          "triggeredAt": null
+        }
+      ],
+      "updatedAt": "2026-05-26T01:44:54.482Z"
+    }
+  ]
+}

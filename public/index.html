@@ -1257,6 +1257,253 @@
         .dca-level-field { display: flex; flex-direction: column; gap: 3px; }
         .dca-level-field label { font-size: 10px; color: var(--text-muted); margin-bottom: 0; }
         .dca-level-field input, .dca-level-field select { font-size: 13px; padding: 7px 10px; }
+
+        /* ACTIVE FUND DCA (主动基金定投策略) */
+        .active-fund-context {
+            display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+            padding: 14px 18px; margin-bottom: 18px;
+            background: var(--overlay-02); border: 1px solid var(--border-subtle); border-radius: 10px;
+            font-size: 13px;
+        }
+        .afund-ctx-label { color: var(--text-muted); font-size: 12px; }
+        .afund-ctx-value {
+            font-family: var(--font-mono); font-weight: 700; color: var(--text-primary);
+        }
+        .afund-ctx-pe { font-size: 14px; color: var(--accent-blue); }
+        .afund-ctx-pct {
+            display: inline-block; padding: 2px 10px; border-radius: 5px;
+            font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+        }
+        .afund-ctx-pct.eva-low { color: #fff; background: linear-gradient(135deg, #48bb78, #38a169); }
+        .afund-ctx-pct.eva-mid { color: #fff; background: linear-gradient(135deg, #ed8936, #dd6b20); }
+        .afund-ctx-pct.eva-high { color: #fff; background: linear-gradient(135deg, #e53e3e, #9b2c2c); }
+        .afund-ctx-date { color: var(--text-muted); font-size: 12px; margin-left: auto; }
+
+        .active-fund-cards { display: flex; flex-direction: column; gap: 18px; }
+        .active-fund-card {
+            background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            overflow: hidden; transition: border-color .25s;
+        }
+        .active-fund-card:hover { border-color: var(--accent-blue); }
+        .afund-card-header {
+            display: flex; align-items: center; gap: 14px; padding: 18px 22px;
+            border-bottom: 1px solid var(--border-subtle); background: var(--overlay-02);
+        }
+        .afund-card-info { flex: 1; min-width: 0; }
+        .afund-card-name { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+        .afund-card-sub {
+            font-size: 12px; color: var(--text-muted); margin-top: 2px;
+            display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        }
+        .afund-card-sub-code { font-family: var(--font-mono); }
+        .afund-stale-tag {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            background: var(--overlay-03); color: var(--text-muted); font-size: 11px;
+        }
+        .afund-card-actions { display: flex; gap: 8px; }
+        .afund-decision {
+            padding: 16px 22px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .afund-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 8px;
+            font-size: 14px; font-weight: 700; min-width: 110px; justify-content: center;
+        }
+        .afund-badge.color-red    { color: #fff; background: linear-gradient(135deg, #e53e3e, #9b2c2c); }
+        .afund-badge.color-yellow { color: #fff; background: linear-gradient(135deg, #ed8936, #c05621); }
+        .afund-badge.color-green  { color: #fff; background: linear-gradient(135deg, #48bb78, #2f855a); }
+        .afund-badge.color-purple { color: #fff; background: linear-gradient(135deg, #b794f4, #6b46c1); }
+        .afund-amount-block { display: flex; flex-direction: column; gap: 2px; }
+        .afund-amount-label { font-size: 11px; color: var(--text-muted); }
+        .afund-amount-value {
+            font-size: 22px; font-weight: 700; font-family: var(--font-mono);
+            color: var(--accent-gold);
+        }
+        .afund-amount-value.zero { color: var(--text-muted); }
+        .afund-amount-meta { font-size: 11px; color: var(--text-muted); }
+        .afund-trigger {
+            margin-left: auto; flex: 1 1 320px; min-width: 220px;
+            font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+        }
+        .afund-trigger strong { color: var(--text-primary); }
+
+        .afund-indicators {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--border-subtle);
+            background: var(--overlay-02);
+        }
+        .afund-ind-item { display: flex; flex-direction: column; gap: 3px; }
+        .afund-ind-label { font-size: 11px; color: var(--text-muted); }
+        .afund-ind-value { font-size: 14px; font-weight: 600; font-family: var(--font-mono); color: var(--text-primary); }
+        .afund-ind-value.na { color: var(--text-muted); font-weight: 400; }
+
+        .afund-rule-toggle {
+            padding: 10px 22px; cursor: pointer; user-select: none;
+            font-size: 12px; color: var(--text-muted);
+            display: flex; align-items: center; gap: 6px;
+            transition: color .2s, background .2s;
+        }
+        .afund-rule-toggle:hover { color: var(--accent-blue); background: var(--overlay-02); }
+        .afund-rule-toggle .toggle-icon { transition: transform .25s; }
+        .afund-rule-toggle.open .toggle-icon { transform: rotate(90deg); }
+        .afund-rule-scan-list {
+            list-style: none; margin: 0; padding: 0 22px 18px;
+            display: none;
+        }
+        .afund-rule-scan-list.open { display: block; }
+        .afund-rule-scan-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 0;
+            border-top: 1px dashed var(--border-subtle);
+            font-size: 12px;
+        }
+        .afund-rule-scan-item:first-child { border-top: none; }
+        .afund-rule-scan-status {
+            min-width: 64px; padding: 3px 8px; border-radius: 4px;
+            text-align: center; font-size: 11px; font-weight: 600;
+        }
+        .afund-rule-scan-status.hit {
+            color: #fff; background: linear-gradient(135deg, #e53e3e, #c53030);
+        }
+        .afund-rule-scan-status.miss {
+            color: var(--text-muted); background: var(--overlay-03);
+        }
+        .afund-rule-scan-label { font-weight: 600; color: var(--text-primary); min-width: 70px; }
+        .afund-rule-scan-summary { color: var(--text-secondary); flex: 1; }
+
+        .afund-empty {
+            padding: 40px 20px; text-align: center;
+            color: var(--text-muted); font-size: 13px;
+            background: var(--overlay-02); border: 1px dashed var(--border-subtle); border-radius: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .afund-card-header { flex-wrap: wrap; padding: 14px 16px; gap: 10px; }
+            .afund-decision { padding: 14px 16px; gap: 12px; }
+            .afund-indicators { padding: 12px 16px; grid-template-columns: repeat(2, 1fr); }
+            .afund-rule-toggle { padding: 10px 16px; }
+            .afund-rule-scan-list { padding: 0 16px 14px; }
+            .afund-rule-scan-item { flex-wrap: wrap; gap: 6px; }
+            .afund-trigger { margin-left: 0; flex-basis: 100%; }
+            .afund-ctx-date { margin-left: 0; flex-basis: 100%; }
+        }
+
+        /* GOLD DCA (黄金定投策略) — 复用 afund-* 的徽章配色，新增止盈与持仓样式 */
+        .gold-cards { display: flex; flex-direction: column; gap: 18px; }
+        .gold-card {
+            background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            overflow: hidden; transition: border-color .25s;
+        }
+        .gold-card:hover { border-color: var(--accent-gold); }
+        .gold-card-header {
+            display: flex; align-items: center; gap: 14px; padding: 18px 22px;
+            border-bottom: 1px solid var(--border-subtle); background: var(--overlay-02);
+        }
+        .gold-card-icon {
+            width: 42px; height: 42px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+            background: linear-gradient(135deg, #f6c343, #d69e2e); color: #fff;
+        }
+        .gold-card-info { flex: 1; min-width: 0; }
+        .gold-card-name { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+        .gold-card-sub {
+            font-size: 12px; color: var(--text-muted); margin-top: 2px;
+            display: flex; gap: 12px; flex-wrap: wrap;
+        }
+        .gold-card-actions { display: flex; gap: 8px; }
+
+        /* 持仓汇总 */
+        .gold-summary {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 14px; padding: 16px 22px; border-bottom: 1px solid var(--border-subtle);
+            background: var(--overlay-02);
+        }
+        .gold-summary-item { display: flex; flex-direction: column; gap: 3px; }
+        .gold-summary-label { font-size: 11px; color: var(--text-muted); }
+        .gold-summary-value {
+            font-size: 15px; font-weight: 700; font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+        .gold-summary-value.gain-pos { color: #48bb78; }
+        .gold-summary-value.gain-neg { color: #e53e3e; }
+        .gold-summary-value.na { color: var(--text-muted); font-weight: 400; }
+
+        /* 止盈进度 */
+        .gold-tp-block {
+            padding: 16px 22px; border-bottom: 1px solid var(--border-subtle);
+        }
+        .gold-tp-title {
+            font-size: 13px; font-weight: 600; color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .gold-tp-list { display: flex; flex-direction: column; gap: 8px; }
+        .gold-tp-row {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 10px 14px; border-radius: 8px;
+            background: var(--overlay-02); border: 1px solid var(--border-subtle);
+            font-size: 12px;
+        }
+        .gold-tp-row.actionable {
+            background: linear-gradient(135deg, rgba(246,195,67,0.12), rgba(214,158,46,0.08));
+            border-color: var(--accent-gold);
+        }
+        .gold-tp-row.triggered { opacity: 0.65; }
+        .gold-tp-icon { font-size: 16px; width: 22px; text-align: center; }
+        .gold-tp-label { font-weight: 600; color: var(--text-primary); min-width: 80px; }
+        .gold-tp-desc { color: var(--text-secondary); flex: 1; }
+        .gold-tp-desc strong { color: var(--text-primary); }
+        .gold-tp-btn {
+            padding: 6px 14px; border-radius: 6px; border: 1px solid var(--accent-gold);
+            background: var(--accent-gold); color: #fff;
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: opacity .2s; font-family: var(--font-sans);
+        }
+        .gold-tp-btn:hover { opacity: 0.85; }
+
+        /* 持仓记录表 */
+        .gold-holdings-toggle {
+            padding: 10px 22px; cursor: pointer; user-select: none;
+            font-size: 12px; color: var(--text-muted);
+            display: flex; align-items: center; gap: 6px;
+            border-bottom: 1px solid var(--border-subtle);
+            transition: color .2s, background .2s;
+        }
+        .gold-holdings-toggle:hover { color: var(--accent-blue); background: var(--overlay-02); }
+        .gold-holdings-toggle .toggle-icon { transition: transform .25s; }
+        .gold-holdings-toggle.open .toggle-icon { transform: rotate(90deg); }
+        .gold-holdings-section { padding: 0 22px 16px; display: none; }
+        .gold-holdings-section.open { display: block; }
+        .gold-holdings-actions { padding: 10px 0; display: flex; justify-content: flex-end; }
+        .gold-holdings-table { width: 100%; border-collapse: collapse; }
+        .gold-holdings-table th {
+            padding: 8px 10px; font-size: 11px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px; text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .gold-holdings-table td {
+            padding: 8px 10px; font-size: 12px; color: var(--text-primary);
+            border-bottom: 1px dashed var(--border-subtle);
+            font-family: var(--font-mono);
+        }
+        .gold-holdings-table td.type-buy  { color: #48bb78; font-weight: 600; }
+        .gold-holdings-table td.type-sell { color: #e53e3e; font-weight: 600; }
+        .gold-holdings-empty {
+            padding: 16px 0; text-align: center; color: var(--text-muted); font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .gold-card-header { flex-wrap: wrap; padding: 14px 16px; gap: 10px; }
+            .gold-summary { padding: 12px 16px; grid-template-columns: repeat(2, 1fr); }
+            .gold-tp-block { padding: 12px 16px; }
+            .gold-tp-row { gap: 8px; padding: 10px 12px; }
+            .gold-holdings-toggle { padding: 10px 16px; }
+            .gold-holdings-section { padding: 0 16px 14px; }
+            .gold-holdings-table th, .gold-holdings-table td { padding: 6px 8px; font-size: 11px; }
+        }
+
         @media (max-width: 768px) {
             /* 策略卡片头部：指数名+金额换行 */
             .dca-plan-header { flex-wrap: wrap; padding: 14px 16px; gap: 10px; }
@@ -3774,6 +4021,168 @@
 
         <!-- TAB: STRATEGY (投资策略 — 温度计定投) -->
         <div class="tab-content" id="tab-strategy">
+            <!-- 黄金定投策略 -->
+            <div class="section" style="margin-top:36px">
+                <div class="section-header">
+                    <div class="section-line"></div>
+                    <div class="section-title">黄金定投策略</div>
+                    <div class="section-badge">Gold DCA</div>
+                    <button class="dca-add-btn" onclick="openGoldForm()">＋ 添加策略</button>
+                </div>
+                <p class="chart-desc" style="margin-bottom:16px;font-size:12px;color:var(--text-muted)">
+                    基于黄金 ETF 联接基金的近5年价格分位 + 近1年回撤，给出 4 档动态定投建议；持有端配合 30% / 60% / 100% 三档止盈机制，长期持有 10+ 年争取年化 10%。
+                </p>
+                <div id="goldCards" class="gold-cards"></div>
+                <!-- 策略编辑表单（隐藏） -->
+                <div id="goldFormWrap" class="pos-form-wrap" style="display:none">
+                    <div class="pos-form">
+                        <div class="pos-form-title" id="goldFormTitle">添加黄金定投策略</div>
+                        <div class="pos-form-row">
+                            <label>基金代码</label>
+                            <input type="text" id="goldFundCode" class="pos-input" placeholder="如 000216" maxlength="10">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>基金名称</label>
+                            <input type="text" id="goldFundName" class="pos-input" placeholder="如 华安黄金ETF联接A">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>每月定投基准（元）</label>
+                            <input type="number" id="goldMonthly" class="pos-input" placeholder="如 1000" step="100" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>买入档阈值</label>
+                            <div class="dca-levels-editor">
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>🟣 暂停：近5年分位 ≥</label><input type="number" id="gold_pause_pct" class="pos-input" value="90" step="1"> %</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>🔴 加倍：近5年分位 ≤</label><input type="number" id="gold_double_pct" class="pos-input" value="20" step="1"> %</div>
+                                    <div class="dca-level-field"><label>或 近1年回撤 ≥</label><input type="number" id="gold_double_dd" class="pos-input" value="25" step="1"> %（OR）</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>🟡 减半：近5年分位 区间 [</label><input type="number" id="gold_half_min" class="pos-input" value="70" step="1"> % ,
+                                        <input type="number" id="gold_half_max" class="pos-input" value="90" step="1"> %)</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <span style="font-size:12px;color:var(--text-muted)">🟢 正常定投：兜底档（其它情况）</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>止盈档（按收益升序）</label>
+                            <div class="dca-levels-editor">
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>💰 一档：收益 ≥</label><input type="number" id="gold_tp1_th" class="pos-input" value="30" step="5"> % → 卖
+                                        <input type="number" id="gold_tp1_pct" class="pos-input" value="10" step="5"> %</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>💰 二档：收益 ≥</label><input type="number" id="gold_tp2_th" class="pos-input" value="60" step="5"> % → 卖
+                                        <input type="number" id="gold_tp2_pct" class="pos-input" value="20" step="5"> %</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>💰 三档：收益 ≥</label><input type="number" id="gold_tp3_th" class="pos-input" value="100" step="5"> % → 卖
+                                        <input type="number" id="gold_tp3_pct" class="pos-input" value="30" step="5"> %</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-form-actions">
+                            <button class="pos-btn pos-btn-primary" onclick="saveGoldStrategy()">保存策略</button>
+                            <button class="pos-btn pos-btn-ghost" onclick="closeGoldForm()">取消</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- 持仓记录表单（隐藏） -->
+                <div id="goldHoldingFormWrap" class="pos-form-wrap" style="display:none">
+                    <div class="pos-form">
+                        <div class="pos-form-title" id="goldHoldingFormTitle">添加持仓记录</div>
+                        <input type="hidden" id="goldHoldingFundCode">
+                        <input type="hidden" id="goldHoldingTierId">
+                        <div class="pos-form-row">
+                            <label>基金</label>
+                            <input type="text" id="goldHoldingFundName" class="pos-input" readonly>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>操作类型</label>
+                            <select id="goldHoldingType" class="pos-select">
+                                <option value="buy">买入（定投）</option>
+                                <option value="sell">卖出（止盈）</option>
+                            </select>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>日期</label>
+                            <input type="date" id="goldHoldingDate" class="pos-input">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>金额（元）</label>
+                            <input type="number" id="goldHoldingAmount" class="pos-input" step="0.01" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>份额</label>
+                            <input type="number" id="goldHoldingShares" class="pos-input" step="0.0001" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>当日单位净值</label>
+                            <input type="number" id="goldHoldingNav" class="pos-input" step="0.0001" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>备注</label>
+                            <input type="text" id="goldHoldingNote" class="pos-input" placeholder="可选">
+                        </div>
+                        <div class="pos-form-actions">
+                            <button class="pos-btn pos-btn-primary" onclick="saveGoldHolding()">保存</button>
+                            <button class="pos-btn pos-btn-ghost" onclick="closeGoldHoldingForm()">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主动基金定投策略 -->
+            <div class="section" style="margin-top:36px">
+                <div class="section-header">
+                    <div class="section-line"></div>
+                    <div class="section-title">主动基金定投策略</div>
+                    <div class="section-badge">Active Fund DCA</div>
+                    <button class="dca-add-btn" onclick="openActiveFundForm()">＋ 添加策略</button>
+                </div>
+                <p class="chart-desc" style="margin-bottom:16px;font-size:12px;color:var(--text-muted)">
+                    根据沪深300 PE 分位与基金自身回撤/涨幅，自动判定每只主动基金当前应执行的定投档位（加倍 / 正常 / 减半 / 暂停）。规则按"防御优先，命中即停"的顺序匹配。
+                </p>
+                <div id="activeFundContext" class="active-fund-context"></div>
+                <div id="activeFundCards" class="active-fund-cards"></div>
+                <!-- 策略编辑表单（隐藏） -->
+                <div id="activeFundFormWrap" class="pos-form-wrap" style="display:none">
+                    <div class="pos-form">
+                        <div class="pos-form-title" id="activeFundFormTitle">添加主动基金定投策略</div>
+                        <div class="pos-form-row">
+                            <label>选择基金</label>
+                            <select id="activeFundSelect" class="pos-select">
+                                <option value="">请选择主动基金...</option>
+                            </select>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>基金经理（可选）</label>
+                            <input type="text" id="activeFundManager" class="pos-input" placeholder="如 乔迁">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>每月定投基准金额（元）</label>
+                            <input type="number" id="activeFundMonthly" class="pos-input" placeholder="如 1000" step="100" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>策略模板</label>
+                            <select id="activeFundTemplate" class="pos-select" onchange="renderActiveFundTemplateForm()">
+                                <option value="single">单因子 PE 模板（徐彦风格）</option>
+                                <option value="dual">双因子 PE+基金 模板（乔迁风格）</option>
+                            </select>
+                        </div>
+                        <div id="activeFundTemplateFields"></div>
+                        <div class="pos-form-actions">
+                            <button class="pos-btn pos-btn-primary" onclick="saveActiveFundStrategy()">保存策略</button>
+                            <button class="pos-btn pos-btn-ghost" onclick="closeActiveFundForm()">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 温度计定投策略 -->
             <div class="section" style="margin-top:36px">
                 <div class="section-header">
@@ -6028,6 +6437,920 @@
         }).join('');
     }
 
+    // ================================================================
+    // GOLD DCA — 黄金定投策略
+    // ================================================================
+    let goldStrategies = [];
+    let goldRecommendations = null;
+    let goldHoldings = [];
+    let goldLoading = false;
+    let goldEditingCode = null;
+
+    async function loadGoldData(forceRefresh) {
+        if (goldLoading) return;
+        goldLoading = true;
+        try {
+            const recUrl = '/api/strategy/gold-recommendations' + (forceRefresh ? '?refresh=1' : '');
+            const [recRes, planRes, holdRes] = await Promise.all([
+                fetch(recUrl).then(r => r.json()).catch(() => ({ success: false })),
+                fetch('/api/strategy/gold-plans').then(r => r.json()).catch(() => ({ success: false })),
+                fetch('/api/strategy/gold-holdings').then(r => r.json()).catch(() => ({ success: false })),
+            ]);
+            if (planRes.success) goldStrategies = planRes.data.strategies || [];
+            if (recRes.success) goldRecommendations = recRes.data;
+            if (holdRes.success) goldHoldings = holdRes.data.records || [];
+            renderGoldCards();
+        } catch (err) {
+            console.error('[黄金策略] 加载失败:', err);
+        } finally {
+            goldLoading = false;
+        }
+    }
+
+    function renderGoldCards() {
+        const container = document.getElementById('goldCards');
+        if (!container) return;
+        const isAdmin = !!(authUser && authUser.role === 'admin');
+        const recs = goldRecommendations?.recommendations || [];
+        if (recs.length === 0) {
+            container.innerHTML = '<div class="afund-empty">暂无黄金定投策略' + (isAdmin ? '，点击右上角"＋ 添加策略"开始配置' : '') + '</div>';
+            return;
+        }
+        container.innerHTML = recs.map(rec => renderGoldCard(rec, isAdmin)).join('');
+    }
+
+    function renderGoldCard(rec, isAdmin) {
+        const hit = rec.hitRule || { id: 'normal', label: '正常定投', color: 'green', multiplier: 100 };
+        const colorCls = `color-${hit.color || 'green'}`;
+        const amountZero = rec.actualAmount === 0;
+        const staleTag = rec.stale ? '<span class="afund-stale-tag">⚠ 数据陈旧</span>' : '';
+
+        // 指标行
+        const indCells = [
+            { label: '近5年价格分位', val: rec.indicators.fundPricePercentile5Y, sfx: '%' },
+            { label: '近1年回撤', val: rec.indicators.fundDrawdown1Y, sfx: '%', prefix: '-' },
+            { label: '最新净值', val: rec.latestNav, fmt: v => Number(v).toFixed(4) },
+        ];
+        const indHtml = indCells.map(c => {
+            const v = c.val;
+            const isNa = (v == null || isNaN(v));
+            let valStr;
+            if (isNa) valStr = 'N/A';
+            else if (c.fmt) valStr = c.fmt(v);
+            else valStr = (c.prefix || '') + Number(v).toFixed(2) + (c.sfx || '');
+            return `
+                <div class="afund-ind-item">
+                    <span class="afund-ind-label">${escapeHtml(c.label)}</span>
+                    <span class="afund-ind-value${isNa ? ' na' : ''}">${escapeHtml(valStr)}</span>
+                </div>`;
+        }).join('');
+
+        // 规则扫描 toggle id
+        const ruleId = `gold-rule-${rec.fundCode}`;
+        const ruleListHtml = renderRuleScanList(rec.ruleScans);
+
+        // 持仓汇总
+        const h = rec.holdings || {};
+        const returnPct = h.totalReturnPct;
+        const returnCls = returnPct == null ? 'na' : (returnPct >= 0 ? 'gain-pos' : 'gain-neg');
+        const returnText = returnPct == null
+            ? 'N/A'
+            : (returnPct >= 0 ? '+' : '') + Number(returnPct).toFixed(2) + '%';
+        const summaryHtml = `
+            <div class="gold-summary">
+                <div class="gold-summary-item">
+                    <span class="gold-summary-label">累计成本</span>
+                    <span class="gold-summary-value">${(h.totalCost || 0).toLocaleString()} 元</span>
+                </div>
+                <div class="gold-summary-item">
+                    <span class="gold-summary-label">累计份额</span>
+                    <span class="gold-summary-value">${(h.totalShares || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</span>
+                </div>
+                <div class="gold-summary-item">
+                    <span class="gold-summary-label">当前市值</span>
+                    <span class="gold-summary-value">${h.marketValue == null ? 'N/A' : Number(h.marketValue).toLocaleString() + ' 元'}</span>
+                </div>
+                <div class="gold-summary-item">
+                    <span class="gold-summary-label">累计收益率</span>
+                    <span class="gold-summary-value ${returnCls}">${returnText}</span>
+                </div>
+            </div>
+        `;
+
+        // 止盈进度
+        const tpHtml = renderGoldTakeProfitTiers(rec.takeProfitStatus, rec.fundCode, rec.fundName, isAdmin);
+
+        // 持仓记录折叠区
+        const holdingsId = `gold-holdings-${rec.fundCode}`;
+        const holdingsHtml = renderGoldHoldingsTable(rec.fundCode, isAdmin);
+
+        const adminBtns = isAdmin
+            ? `<button class="dca-plan-action-btn" onclick="editGoldStrategy('${escapeAttr(rec.fundCode)}')">编辑</button>
+               <button class="dca-plan-action-btn danger" onclick="deleteGoldStrategy('${escapeAttr(rec.fundCode)}')">删除</button>`
+            : '';
+
+        return `
+            <div class="gold-card">
+                <div class="gold-card-header">
+                    <div class="gold-card-icon">🥇</div>
+                    <div class="gold-card-info">
+                        <div class="gold-card-name">${escapeHtml(rec.fundName)}</div>
+                        <div class="gold-card-sub">
+                            <span>${escapeHtml(rec.fundCode)}</span>
+                            ${rec.navDate ? `<span>· 净值 ${escapeHtml(rec.navDate)}</span>` : ''}
+                            ${staleTag}
+                        </div>
+                    </div>
+                    <div class="gold-card-actions">${adminBtns}</div>
+                </div>
+                <div class="afund-decision">
+                    <span class="afund-badge ${colorCls}">${escapeHtml(hit.label)}</span>
+                    <div class="afund-amount-block">
+                        <span class="afund-amount-label">本月定投</span>
+                        <span class="afund-amount-value${amountZero ? ' zero' : ''}">${rec.actualAmount} <span style="font-size:13px;color:var(--text-muted)">元</span></span>
+                        <span class="afund-amount-meta">基准 ${rec.monthlyAmount} 元 × ${hit.multiplier}%</span>
+                    </div>
+                    <div class="afund-trigger"><strong>触发依据：</strong>${escapeHtml(rec.triggerReason || '—')}</div>
+                </div>
+                <div class="afund-indicators">${indHtml}</div>
+                <div class="afund-rule-toggle" onclick="toggleActiveFundRules('${ruleId}', this)">
+                    <span class="toggle-icon">▶</span>
+                    <span>规则一览（${rec.ruleScans.length} 条）</span>
+                </div>
+                <ul class="afund-rule-scan-list" id="${ruleId}">${ruleListHtml}</ul>
+                ${summaryHtml}
+                <div class="gold-tp-block">
+                    <div class="gold-tp-title">💰 止盈进度</div>
+                    <div class="gold-tp-list">${tpHtml}</div>
+                </div>
+                <div class="gold-holdings-toggle" onclick="toggleGoldHoldings('${holdingsId}', this)">
+                    <span class="toggle-icon">▶</span>
+                    <span>持仓记录（${(h.buyCount || 0) + (h.sellCount || 0)} 笔：${h.buyCount || 0} 买 / ${h.sellCount || 0} 卖）</span>
+                </div>
+                <div class="gold-holdings-section" id="${holdingsId}">${holdingsHtml}</div>
+            </div>
+        `;
+    }
+
+    function renderGoldTakeProfitTiers(tiers, fundCode, fundName, isAdmin) {
+        if (!Array.isArray(tiers) || tiers.length === 0) {
+            return '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px">未配置止盈档</div>';
+        }
+        return tiers.map(t => {
+            let icon, desc, actionBtn = '';
+            const rowCls = t.state === 'actionable' ? 'actionable' : (t.state === 'triggered' ? 'triggered' : '');
+            if (t.state === 'triggered') {
+                icon = '✅';
+                const dateStr = t.triggeredAt ? new Date(t.triggeredAt).toISOString().split('T')[0] : '';
+                desc = `已止盈（${dateStr}）→ 已卖出 <strong>${t.sellPct}%</strong> 持仓`;
+            } else if (t.state === 'actionable') {
+                icon = '⚠';
+                const s = t.suggestion || {};
+                desc = `当前收益已达 <strong>${t.thresholdReturn}%</strong>，建议卖出 <strong>${(s.shares || 0).toLocaleString('en-US', {maximumFractionDigits: 2})}</strong> 份 ≈ <strong>${s.amountApprox != null ? Number(s.amountApprox).toLocaleString() : 'N/A'}</strong> 元`;
+                if (isAdmin) {
+                    actionBtn = `<button class="gold-tp-btn" onclick="openTakeProfitConfirm('${escapeAttr(fundCode)}', '${escapeAttr(fundName)}', '${escapeAttr(t.id)}', ${(s.shares || 0)}, ${(s.amountApprox || 0)})">已止盈</button>`;
+                }
+            } else {
+                icon = '⏳';
+                desc = `未触发（阈值 <strong>${t.thresholdReturn}%</strong>，卖出 ${t.sellPct}%）`;
+            }
+            return `
+                <div class="gold-tp-row ${rowCls}">
+                    <span class="gold-tp-icon">${icon}</span>
+                    <span class="gold-tp-label">${escapeHtml(t.label)}</span>
+                    <span class="gold-tp-desc">${desc}</span>
+                    ${actionBtn}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderGoldHoldingsTable(fundCode, isAdmin) {
+        const records = goldHoldings.filter(r => r.fundCode === fundCode);
+        const adminAddBtn = isAdmin
+            ? `<button class="dca-plan-action-btn" onclick="openGoldHoldingForm('${escapeAttr(fundCode)}', 'buy')">＋ 添加持仓记录</button>`
+            : '';
+        const actionsHtml = `<div class="gold-holdings-actions">${adminAddBtn}</div>`;
+        if (records.length === 0) {
+            return actionsHtml + '<div class="gold-holdings-empty">暂无持仓记录' + (isAdmin ? '，点击上方按钮录入' : '') + '</div>';
+        }
+        const rows = records.map(r => {
+            const typeCls = r.type === 'buy' ? 'type-buy' : 'type-sell';
+            const typeText = r.type === 'buy' ? '买入' : '卖出';
+            const delBtn = isAdmin
+                ? `<button class="dca-plan-action-btn danger" style="padding:3px 8px;font-size:11px" onclick="deleteGoldHolding('${escapeAttr(r.id)}')">删除</button>`
+                : '';
+            return `
+                <tr>
+                    <td>${escapeHtml(r.date)}</td>
+                    <td class="${typeCls}">${typeText}</td>
+                    <td>${Number(r.amount).toLocaleString()} 元</td>
+                    <td>${Number(r.shares).toLocaleString('en-US', {maximumFractionDigits: 4})}</td>
+                    <td>${Number(r.nav).toFixed(4)}</td>
+                    <td>${escapeHtml(r.note || '')}</td>
+                    <td>${delBtn}</td>
+                </tr>
+            `;
+        }).join('');
+        return actionsHtml + `
+            <table class="gold-holdings-table">
+                <thead><tr><th>日期</th><th>类型</th><th>金额</th><th>份额</th><th>净值</th><th>备注</th><th></th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    }
+
+    function toggleGoldHoldings(id, el) {
+        const sec = document.getElementById(id);
+        if (!sec) return;
+        const open = sec.classList.toggle('open');
+        if (el) el.classList.toggle('open', open);
+    }
+
+    // ---------------- 策略配置表单 ----------------
+
+    function openGoldForm(fundCode) {
+        if (!authUser || authUser.role !== 'admin') {
+            alert('仅管理员可编辑策略');
+            return;
+        }
+        goldEditingCode = fundCode || null;
+        const wrap = document.getElementById('goldFormWrap');
+        const title = document.getElementById('goldFormTitle');
+
+        if (fundCode) {
+            const existing = goldStrategies.find(s => s.fundCode === fundCode);
+            if (existing) {
+                title.textContent = '编辑黄金定投策略：' + (existing.fundName || fundCode);
+                document.getElementById('goldFundCode').value = existing.fundCode;
+                document.getElementById('goldFundCode').disabled = true;
+                document.getElementById('goldFundName').value = existing.fundName || '';
+                document.getElementById('goldMonthly').value = existing.monthlyAmount || 1000;
+                fillGoldFormFromRules(existing.rules);
+                fillGoldFormFromTiers(existing.takeProfitTiers);
+            }
+        } else {
+            title.textContent = '添加黄金定投策略';
+            document.getElementById('goldFundCode').value = '';
+            document.getElementById('goldFundCode').disabled = false;
+            document.getElementById('goldFundName').value = '';
+            document.getElementById('goldMonthly').value = 1000;
+            // 重置阈值为默认
+            document.getElementById('gold_pause_pct').value = 90;
+            document.getElementById('gold_double_pct').value = 20;
+            document.getElementById('gold_double_dd').value = 25;
+            document.getElementById('gold_half_min').value = 70;
+            document.getElementById('gold_half_max').value = 90;
+            document.getElementById('gold_tp1_th').value = 30;
+            document.getElementById('gold_tp1_pct').value = 10;
+            document.getElementById('gold_tp2_th').value = 60;
+            document.getElementById('gold_tp2_pct').value = 20;
+            document.getElementById('gold_tp3_th').value = 100;
+            document.getElementById('gold_tp3_pct').value = 30;
+        }
+        wrap.style.display = 'block';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeGoldForm() {
+        const wrap = document.getElementById('goldFormWrap');
+        if (wrap) wrap.style.display = 'none';
+        goldEditingCode = null;
+    }
+
+    function fillGoldFormFromRules(rules) {
+        if (!Array.isArray(rules)) return;
+        const find = (id, field, op) => {
+            const r = rules.find(x => x.id === id);
+            if (!r) return null;
+            return (r.conditions || []).find(c => c.field === field && c.op === op);
+        };
+        const pP = find('pause', 'fundPricePercentile5Y', '>=');
+        if (pP) document.getElementById('gold_pause_pct').value = pP.value;
+        const dP = find('double', 'fundPricePercentile5Y', '<=');
+        if (dP) document.getElementById('gold_double_pct').value = dP.value;
+        const dD = find('double', 'fundDrawdown1Y', '>=');
+        if (dD) document.getElementById('gold_double_dd').value = dD.value;
+        const hMin = find('half', 'fundPricePercentile5Y', '>=');
+        const hMax = find('half', 'fundPricePercentile5Y', '<');
+        if (hMin) document.getElementById('gold_half_min').value = hMin.value;
+        if (hMax) document.getElementById('gold_half_max').value = hMax.value;
+    }
+
+    function fillGoldFormFromTiers(tiers) {
+        if (!Array.isArray(tiers)) return;
+        const ids = ['gold_tp1', 'gold_tp2', 'gold_tp3'];
+        tiers.slice(0, 3).forEach((t, i) => {
+            const th = document.getElementById(ids[i] + '_th');
+            const pct = document.getElementById(ids[i] + '_pct');
+            if (th) th.value = t.thresholdReturn;
+            if (pct) pct.value = t.sellPct;
+        });
+    }
+
+    function goldFormToRules() {
+        const num = (id) => Number(document.getElementById(id).value);
+        return [
+            { id: 'pause', label: '暂停定投', color: 'purple', multiplier: 0, logic: 'AND',
+                conditions: [{ field: 'fundPricePercentile5Y', op: '>=', value: num('gold_pause_pct') }] },
+            { id: 'double', label: '加倍定投', color: 'red', multiplier: 200, logic: 'OR',
+                conditions: [
+                    { field: 'fundPricePercentile5Y', op: '<=', value: num('gold_double_pct') },
+                    { field: 'fundDrawdown1Y',        op: '>=', value: num('gold_double_dd') },
+                ] },
+            { id: 'half', label: '减半定投', color: 'yellow', multiplier: 50, logic: 'AND',
+                conditions: [
+                    { field: 'fundPricePercentile5Y', op: '>=', value: num('gold_half_min') },
+                    { field: 'fundPricePercentile5Y', op: '<',  value: num('gold_half_max') },
+                ] },
+            { id: 'normal', label: '正常定投', color: 'green', multiplier: 100, logic: 'AND', conditions: [] },
+        ];
+    }
+
+    function goldFormToTakeProfitTiers() {
+        const num = (id) => Number(document.getElementById(id).value);
+        return [
+            { id: 'tp30',  label: '30% 止盈',  thresholdReturn: num('gold_tp1_th'), sellPct: num('gold_tp1_pct'), triggeredAt: null },
+            { id: 'tp60',  label: '60% 止盈',  thresholdReturn: num('gold_tp2_th'), sellPct: num('gold_tp2_pct'), triggeredAt: null },
+            { id: 'tp100', label: '100% 止盈', thresholdReturn: num('gold_tp3_th'), sellPct: num('gold_tp3_pct'), triggeredAt: null },
+        ];
+    }
+
+    async function saveGoldStrategy() {
+        if (!authUser || authUser.role !== 'admin') return;
+        const fundCode = document.getElementById('goldFundCode').value.trim();
+        const fundName = document.getElementById('goldFundName').value.trim();
+        const monthlyAmount = Number(document.getElementById('goldMonthly').value);
+        if (!fundCode) { alert('请输入基金代码'); return; }
+        if (!fundName) { alert('请输入基金名称'); return; }
+        if (!monthlyAmount || monthlyAmount <= 0) { alert('请输入正确的月定投金额'); return; }
+
+        const body = {
+            fundCode, fundName, monthlyAmount,
+            priceWindow: 1250,
+            drawdownWindow: 250,
+            rules: goldFormToRules(),
+            takeProfitTiers: goldFormToTakeProfitTiers(),
+        };
+        try {
+            const res = await fetch('/api/strategy/gold-plans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) {
+                alert('保存失败：' + (res.error || '未知错误'));
+                return;
+            }
+            closeGoldForm();
+            await loadGoldData(true);
+        } catch (err) {
+            alert('保存失败：' + err.message);
+        }
+    }
+
+    function editGoldStrategy(fundCode) {
+        openGoldForm(fundCode);
+    }
+
+    async function deleteGoldStrategy(fundCode) {
+        if (!authUser || authUser.role !== 'admin') return;
+        if (!confirm('确定删除该黄金定投策略？（持仓记录不会被删除）')) return;
+        try {
+            const res = await fetch('/api/strategy/gold-plans/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fundCode }),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) {
+                alert('删除失败：' + (res.error || '未知错误'));
+                return;
+            }
+            await loadGoldData(true);
+        } catch (err) {
+            alert('删除失败：' + err.message);
+        }
+    }
+
+    // ---------------- 持仓记录表单 ----------------
+
+    function openGoldHoldingForm(fundCode, defaultType, prefilled) {
+        if (!authUser || authUser.role !== 'admin') return;
+        const strat = goldStrategies.find(s => s.fundCode === fundCode);
+        const fundName = strat ? strat.fundName : fundCode;
+        document.getElementById('goldHoldingFundCode').value = fundCode;
+        document.getElementById('goldHoldingFundName').value = fundName + ' (' + fundCode + ')';
+        document.getElementById('goldHoldingType').value = defaultType || 'buy';
+        document.getElementById('goldHoldingDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('goldHoldingAmount').value = prefilled?.amount || '';
+        document.getElementById('goldHoldingShares').value = prefilled?.shares || '';
+        const rec = (goldRecommendations?.recommendations || []).find(r => r.fundCode === fundCode);
+        document.getElementById('goldHoldingNav').value = prefilled?.nav || (rec?.latestNav || '');
+        document.getElementById('goldHoldingNote').value = prefilled?.note || '';
+        document.getElementById('goldHoldingTierId').value = prefilled?.tierId || '';
+        const title = document.getElementById('goldHoldingFormTitle');
+        if (prefilled?.tierId) {
+            title.textContent = '确认止盈：' + (prefilled.tierLabel || prefilled.tierId);
+        } else {
+            title.textContent = '添加持仓记录';
+        }
+        const wrap = document.getElementById('goldHoldingFormWrap');
+        wrap.style.display = 'block';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeGoldHoldingForm() {
+        document.getElementById('goldHoldingFormWrap').style.display = 'none';
+    }
+
+    async function saveGoldHolding() {
+        if (!authUser || authUser.role !== 'admin') return;
+        const body = {
+            fundCode: document.getElementById('goldHoldingFundCode').value,
+            type: document.getElementById('goldHoldingType').value,
+            date: document.getElementById('goldHoldingDate').value,
+            amount: Number(document.getElementById('goldHoldingAmount').value),
+            shares: Number(document.getElementById('goldHoldingShares').value),
+            nav: Number(document.getElementById('goldHoldingNav').value),
+            note: document.getElementById('goldHoldingNote').value.trim(),
+        };
+        const tierId = document.getElementById('goldHoldingTierId').value;
+        if (tierId) body.tierId = tierId;
+        if (!body.date) { alert('请选择日期'); return; }
+        if (!body.amount || body.amount <= 0) { alert('请填写金额'); return; }
+        if (!body.shares || body.shares <= 0) { alert('请填写份额'); return; }
+        if (!body.nav || body.nav <= 0) { alert('请填写当日净值'); return; }
+        try {
+            const res = await fetch('/api/strategy/gold-holdings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) {
+                alert('保存失败：' + (res.error || '未知错误'));
+                return;
+            }
+            closeGoldHoldingForm();
+            await loadGoldData(true);
+        } catch (err) {
+            alert('保存失败：' + err.message);
+        }
+    }
+
+    async function deleteGoldHolding(id) {
+        if (!authUser || authUser.role !== 'admin') return;
+        if (!confirm('确定删除该持仓记录？\n（如果是关联止盈档的卖出记录，对应止盈档状态会自动重置）')) return;
+        try {
+            const res = await fetch('/api/strategy/gold-holdings/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) {
+                alert('删除失败：' + (res.error || '未知错误'));
+                return;
+            }
+            await loadGoldData(true);
+        } catch (err) {
+            alert('删除失败：' + err.message);
+        }
+    }
+
+    function openTakeProfitConfirm(fundCode, fundName, tierId, suggestShares, suggestAmount) {
+        if (!authUser || authUser.role !== 'admin') return;
+        openGoldHoldingForm(fundCode, 'sell', {
+            amount: suggestAmount,
+            shares: suggestShares,
+            tierId,
+            tierLabel: tierId,
+            note: '止盈卖出 - ' + tierId,
+        });
+    }
+
+    // ================================================================
+    // ACTIVE FUND DCA — 主动基金定投策略
+    // ================================================================
+    let activeFundStrategies = [];
+    let activeFundRecommendations = null;
+    let activeFundDataLoaded = false;
+    let activeFundEditingCode = null;
+    let activeFundLoading = false;
+
+    async function loadActiveFundRecommendations(forceRefresh) {
+        if (activeFundLoading) return;
+        activeFundLoading = true;
+        try {
+            const url = '/api/strategy/active-fund-recommendations' + (forceRefresh ? '?refresh=1' : '');
+            const [recRes, planRes] = await Promise.all([
+                fetch(url).then(r => r.json()).catch(() => ({ success: false })),
+                fetch('/api/strategy/active-fund-plans').then(r => r.json()).catch(() => ({ success: false })),
+            ]);
+            if (planRes.success) activeFundStrategies = planRes.data.strategies || [];
+            if (recRes.success) activeFundRecommendations = recRes.data;
+            activeFundDataLoaded = true;
+            renderActiveFundContext();
+            renderActiveFundCards();
+        } catch (err) {
+            console.error('[主动基金策略] 加载失败:', err);
+        } finally {
+            activeFundLoading = false;
+        }
+    }
+
+    function renderActiveFundContext() {
+        const ctx = document.getElementById('activeFundContext');
+        if (!ctx) return;
+        const benchmarks = activeFundRecommendations?.marketContext?.benchmarks || {};
+        const codes = Object.keys(benchmarks);
+        if (codes.length === 0) {
+            ctx.innerHTML = '<span class="afund-ctx-label">市场基准数据加载中...</span>';
+            return;
+        }
+        // 通常只用沪深300，逐个渲染
+        const parts = codes.map(code => {
+            const b = benchmarks[code];
+            if (!b || b.pePercentile == null) {
+                return `<span class="afund-ctx-label">${escapeHtml(b?.name || code)}：数据不可用</span>`;
+            }
+            const evaCls = b.pePercentile >= 70 ? 'eva-high' : (b.pePercentile <= 30 ? 'eva-low' : 'eva-mid');
+            return `
+                <span class="afund-ctx-label">${escapeHtml(b.name || code)} PE</span>
+                <span class="afund-ctx-value afund-ctx-pe">${b.pe != null ? Number(b.pe).toFixed(2) : '—'}</span>
+                <span class="afund-ctx-label">分位</span>
+                <span class="afund-ctx-pct ${evaCls}">${Number(b.pePercentile).toFixed(2)}%</span>
+            `;
+        });
+        const date = benchmarks[codes[0]]?.date;
+        const dateStr = date ? `<span class="afund-ctx-date">数据日期：${escapeHtml(String(date))}</span>` : '';
+        ctx.innerHTML = parts.join('') + dateStr;
+    }
+
+    function renderActiveFundCards() {
+        const container = document.getElementById('activeFundCards');
+        if (!container) return;
+
+        const isAdmin = !!(authUser && authUser.role === 'admin');
+        const recs = activeFundRecommendations?.recommendations || [];
+        if (recs.length === 0) {
+            container.innerHTML = '<div class="afund-empty">暂无主动基金定投策略' + (isAdmin ? '，点击右上角"＋ 添加策略"开始配置' : '') + '</div>';
+            return;
+        }
+
+        container.innerHTML = recs.map(rec => renderActiveFundCard(rec, isAdmin)).join('');
+    }
+
+    function renderActiveFundCard(rec, isAdmin) {
+        const hit = rec.hitRule || { id: 'normal', label: '正常定投', color: 'green', multiplier: 100 };
+        const colorCls = `color-${hit.color || 'green'}`;
+        const amountZero = rec.actualAmount === 0;
+        const staleTag = rec.stale ? '<span class="afund-stale-tag">⚠ 数据陈旧</span>' : '';
+
+        const indCells = [
+            { label: '基金回撤', val: rec.indicators.fundDrawdownAbs, fmt: v => v.toFixed(2) + '%', sign: '-' },
+            { label: '近3月涨幅', val: rec.indicators.fundGain3M, fmt: v => (v > 0 ? '+' : '') + v.toFixed(2) + '%' },
+            { label: '近6月涨幅', val: rec.indicators.fundGain6M, fmt: v => (v > 0 ? '+' : '') + v.toFixed(2) + '%' },
+            { label: '最新净值', val: rec.latestNav, fmt: v => Number(v).toFixed(4) },
+        ];
+        const indHtml = indCells.map(c => {
+            const v = c.val;
+            const valStr = (v == null || isNaN(v)) ? 'N/A' : (c.sign === '-' ? '-' + c.fmt(v).replace(/^[-+]/, '') : c.fmt(v));
+            const naCls = (v == null || isNaN(v)) ? ' na' : '';
+            return `
+                <div class="afund-ind-item">
+                    <span class="afund-ind-label">${escapeHtml(c.label)}</span>
+                    <span class="afund-ind-value${naCls}">${escapeHtml(valStr)}</span>
+                </div>`;
+        }).join('');
+
+        const ruleId = `afund-rule-${rec.fundCode}`;
+        const ruleListHtml = renderRuleScanList(rec.ruleScans);
+
+        const adminBtns = isAdmin
+            ? `<button class="dca-plan-action-btn" onclick="editActiveFundStrategy('${escapeAttr(rec.fundCode)}')">编辑</button>
+               <button class="dca-plan-action-btn danger" onclick="deleteActiveFundStrategy('${escapeAttr(rec.fundCode)}')">删除</button>`
+            : '';
+
+        return `
+            <div class="active-fund-card">
+                <div class="afund-card-header">
+                    <div class="afund-card-info">
+                        <div class="afund-card-name">${escapeHtml(rec.fundName)}</div>
+                        <div class="afund-card-sub">
+                            <span class="afund-card-sub-code">${escapeHtml(rec.fundCode)}</span>
+                            ${rec.managerName ? `<span>· ${escapeHtml(rec.managerName)}</span>` : ''}
+                            <span>· 基准 ${escapeHtml(rec.benchmarkName || '沪深300')}</span>
+                            ${rec.navDate ? `<span>· 净值 ${escapeHtml(rec.navDate)}</span>` : ''}
+                            ${staleTag}
+                        </div>
+                    </div>
+                    <div class="afund-card-actions">${adminBtns}</div>
+                </div>
+                <div class="afund-decision">
+                    <span class="afund-badge ${colorCls}">${escapeHtml(hit.label)}</span>
+                    <div class="afund-amount-block">
+                        <span class="afund-amount-label">本月定投</span>
+                        <span class="afund-amount-value${amountZero ? ' zero' : ''}">${rec.actualAmount} <span style="font-size:13px;color:var(--text-muted)">元</span></span>
+                        <span class="afund-amount-meta">基准 ${rec.monthlyAmount} 元 × ${hit.multiplier}%</span>
+                    </div>
+                    <div class="afund-trigger"><strong>触发依据：</strong>${escapeHtml(rec.triggerReason || '—')}</div>
+                </div>
+                <div class="afund-indicators">${indHtml}</div>
+                <div class="afund-rule-toggle" onclick="toggleActiveFundRules('${ruleId}', this)">
+                    <span class="toggle-icon">▶</span>
+                    <span>规则一览（${rec.ruleScans.length} 条）</span>
+                </div>
+                <ul class="afund-rule-scan-list" id="${ruleId}">${ruleListHtml}</ul>
+            </div>
+        `;
+    }
+
+    function renderRuleScanList(ruleScans) {
+        if (!Array.isArray(ruleScans) || ruleScans.length === 0) return '';
+        return ruleScans.map(s => {
+            const cls = s.hit ? 'hit' : 'miss';
+            const text = s.hit ? '⚠ 当前' : '未触发';
+            const colorCls = `color-${s.color || 'green'}`;
+            return `
+                <li class="afund-rule-scan-item">
+                    <span class="afund-rule-scan-status ${cls}">${text}</span>
+                    <span class="afund-badge ${colorCls}" style="min-width:80px;font-size:11px;padding:3px 8px">${escapeHtml(s.label || s.id)}</span>
+                    <span class="afund-rule-scan-summary">${escapeHtml(s.summary || '')}</span>
+                </li>
+            `;
+        }).join('');
+    }
+
+    function toggleActiveFundRules(id, toggleEl) {
+        const list = document.getElementById(id);
+        if (!list) return;
+        const open = list.classList.toggle('open');
+        if (toggleEl) toggleEl.classList.toggle('open', open);
+    }
+
+    // ---------------- 配置表单 ----------------
+
+    function openActiveFundForm(fundCode) {
+        if (!authUser || authUser.role !== 'admin') {
+            alert('仅管理员可编辑策略');
+            return;
+        }
+        activeFundEditingCode = fundCode || null;
+        const wrap = document.getElementById('activeFundFormWrap');
+        const title = document.getElementById('activeFundFormTitle');
+        const select = document.getElementById('activeFundSelect');
+
+        // 填充基金选择器（从全局已加载的基金 watchlist；若无则现取）
+        populateActiveFundSelect(select).then(() => {
+            if (fundCode) {
+                const existing = activeFundStrategies.find(s => s.fundCode === fundCode);
+                if (existing) {
+                    title.textContent = '编辑主动基金定投策略：' + (existing.fundName || fundCode);
+                    select.value = existing.fundCode;
+                    select.disabled = true;
+                    document.getElementById('activeFundManager').value = existing.managerName || '';
+                    document.getElementById('activeFundMonthly').value = existing.monthlyAmount || 1000;
+                    const tmpl = detectTemplateFromRules(existing.rules) || 'single';
+                    document.getElementById('activeFundTemplate').value = tmpl;
+                    renderActiveFundTemplateForm();
+                    fillTemplateFromRules(tmpl, existing.rules);
+                    return;
+                }
+            }
+            title.textContent = '添加主动基金定投策略';
+            select.disabled = false;
+            select.value = '';
+            document.getElementById('activeFundManager').value = '';
+            document.getElementById('activeFundMonthly').value = 1000;
+            document.getElementById('activeFundTemplate').value = 'single';
+            renderActiveFundTemplateForm();
+        });
+
+        wrap.style.display = 'block';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeActiveFundForm() {
+        const wrap = document.getElementById('activeFundFormWrap');
+        if (wrap) wrap.style.display = 'none';
+        activeFundEditingCode = null;
+    }
+
+    async function populateActiveFundSelect(selectEl) {
+        if (!selectEl) return;
+        try {
+            const res = await fetch('/api/active-funds/watchlist').then(r => r.json());
+            const funds = (res?.data?.funds) || [];
+            selectEl.innerHTML = '<option value="">请选择主动基金...</option>'
+                + funds.map(f => `<option value="${escapeAttr(f.code)}" data-name="${escapeAttr(f.name)}">${escapeHtml(f.code)} ${escapeHtml(f.name)}</option>`).join('');
+        } catch (e) {
+            console.warn('加载基金列表失败:', e);
+        }
+    }
+
+    function renderActiveFundTemplateForm() {
+        const tmpl = document.getElementById('activeFundTemplate').value;
+        const target = document.getElementById('activeFundTemplateFields');
+        if (tmpl === 'single') {
+            target.innerHTML = `
+                <div class="pos-form-row">
+                    <label>单因子 PE 模板（4 段连续区间）</label>
+                    <div class="dca-levels-editor">
+                        <div class="dca-level-row">
+                            <div class="dca-level-field"><label>🔴 加倍：PE分位 ≤</label><input type="number" id="aft_double_pe" class="pos-input" value="20" step="1"> %</div>
+                            <div class="dca-level-field"><label>且 基金回撤 ≥</label><input type="number" id="aft_double_dd" class="pos-input" value="15" step="1"> %</div>
+                        </div>
+                        <div class="dca-level-row">
+                            <div class="dca-level-field"><label>🟢 正常：PE分位 区间 [</label><input type="number" id="aft_normal_min" class="pos-input" value="20" step="1"> % ,
+                                <input type="number" id="aft_normal_max" class="pos-input" value="80" step="1"> %)</div>
+                        </div>
+                        <div class="dca-level-row">
+                            <div class="dca-level-field"><label>🟡 减半：PE分位 区间 [</label><input type="number" id="aft_half_min" class="pos-input" value="80" step="1"> % ,
+                                <input type="number" id="aft_half_max" class="pos-input" value="95" step="1"> %)</div>
+                        </div>
+                        <div class="dca-level-row">
+                            <div class="dca-level-field"><label>🟣 暂停：PE分位 ≥</label><input type="number" id="aft_pause_pe" class="pos-input" value="95" step="1"> %</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            target.innerHTML = `
+                <div class="pos-form-row">
+                    <label>双因子模板（PE 分位 + 基金表现）</label>
+                    <div class="dca-levels-editor">
+                        <div class="dca-level-row">
+                            <div class="dca-level-field"><label>🔴 加倍：PE分位 ≤</label><input type="number" id="aft_double_pe" class="pos-input" value="20" step="1"> %</div>
+                            <div class="dca-level-field"><label>且 基金回撤 ≥</label><input type="number" id="aft_double_dd" class="pos-input" value="20" step="1"> %</div>
+                        </div>
+                        <div class="dca-level-row">
+                            <div class="dca-level-field"><label>🟡 减半：PE分位 区间 [</label><input type="number" id="aft_half_min" class="pos-input" value="80" step="1"> % ,
+                                <input type="number" id="aft_half_max" class="pos-input" value="90" step="1"> %)</div>
+                            <div class="dca-level-field"><label>且 近3月涨幅 ≥</label><input type="number" id="aft_half_g3m" class="pos-input" value="15" step="1"> %</div>
+                        </div>
+                        <div class="dca-level-row">
+                            <div class="dca-level-field"><label>🟣 暂停：PE分位 ≥</label><input type="number" id="aft_pause_pe" class="pos-input" value="90" step="1"> %（OR 联结，单独命中即触发）</div>
+                        </div>
+                        <div class="dca-level-row">
+                            <span style="font-size:12px;color:var(--text-muted)">🟢 正常定投：兜底档位（其它规则均未命中时触发）</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function detectTemplateFromRules(rules) {
+        if (!Array.isArray(rules)) return null;
+        const half = rules.find(r => r.id === 'half');
+        if (!half) return 'single';
+        const hasFundCondition = (half.conditions || []).some(c => c.field === 'fundGain3M' || c.field === 'fundDrawdownAbs');
+        return hasFundCondition ? 'dual' : 'single';
+    }
+
+    function fillTemplateFromRules(tmpl, rules) {
+        if (!Array.isArray(rules)) return;
+        const findCond = (id, field, op) => {
+            const r = rules.find(x => x.id === id);
+            if (!r) return null;
+            return (r.conditions || []).find(c => c.field === field && c.op === op);
+        };
+        if (tmpl === 'single') {
+            const c = findCond('double', 'indexPePercentile', '<=');
+            if (c) document.getElementById('aft_double_pe').value = c.value;
+            const dd = findCond('double', 'fundDrawdownAbs', '>=');
+            if (dd) document.getElementById('aft_double_dd').value = dd.value;
+            const nMin = findCond('normal', 'indexPePercentile', '>=') || findCond('half', 'indexPePercentile', '>=');
+            const hMin = findCond('half', 'indexPePercentile', '>=');
+            const hMax = findCond('half', 'indexPePercentile', '<');
+            const pP = findCond('pause', 'indexPePercentile', '>=');
+            if (hMin) document.getElementById('aft_half_min').value = hMin.value;
+            if (hMax) document.getElementById('aft_half_max').value = hMax.value;
+            if (pP) document.getElementById('aft_pause_pe').value = pP.value;
+            // normal 区间：[double_pe, half_min)
+            document.getElementById('aft_normal_min').value = c ? c.value : 20;
+            document.getElementById('aft_normal_max').value = hMin ? hMin.value : 80;
+        } else {
+            const c = findCond('double', 'indexPePercentile', '<=');
+            if (c) document.getElementById('aft_double_pe').value = c.value;
+            const dd = findCond('double', 'fundDrawdownAbs', '>=');
+            if (dd) document.getElementById('aft_double_dd').value = dd.value;
+            const hMin = findCond('half', 'indexPePercentile', '>=');
+            const hMax = findCond('half', 'indexPePercentile', '<');
+            const hG3 = findCond('half', 'fundGain3M', '>=');
+            const pP = findCond('pause', 'indexPePercentile', '>=');
+            if (hMin) document.getElementById('aft_half_min').value = hMin.value;
+            if (hMax) document.getElementById('aft_half_max').value = hMax.value;
+            if (hG3) document.getElementById('aft_half_g3m').value = hG3.value;
+            if (pP) document.getElementById('aft_pause_pe').value = pP.value;
+        }
+    }
+
+    function templateToRules(tmpl) {
+        const num = (id) => Number(document.getElementById(id).value);
+        if (tmpl === 'single') {
+            return [
+                { id: 'pause', label: '暂停定投', color: 'purple', multiplier: 0, logic: 'AND',
+                    conditions: [{ field: 'indexPePercentile', op: '>=', value: num('aft_pause_pe') }] },
+                { id: 'half', label: '减半定投', color: 'yellow', multiplier: 50, logic: 'AND',
+                    conditions: [
+                        { field: 'indexPePercentile', op: '>=', value: num('aft_half_min') },
+                        { field: 'indexPePercentile', op: '<',  value: num('aft_half_max') },
+                    ] },
+                { id: 'double', label: '加倍定投', color: 'red', multiplier: 200, logic: 'AND',
+                    conditions: [
+                        { field: 'indexPePercentile', op: '<=', value: num('aft_double_pe') },
+                        { field: 'fundDrawdownAbs',   op: '>=', value: num('aft_double_dd') },
+                    ] },
+                { id: 'normal', label: '正常定投', color: 'green', multiplier: 100, logic: 'AND', conditions: [] },
+            ];
+        }
+        return [
+            { id: 'pause', label: '暂停定投', color: 'purple', multiplier: 0, logic: 'OR',
+                conditions: [{ field: 'indexPePercentile', op: '>=', value: num('aft_pause_pe') }] },
+            { id: 'half', label: '减半定投', color: 'yellow', multiplier: 50, logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '>=', value: num('aft_half_min') },
+                    { field: 'indexPePercentile', op: '<',  value: num('aft_half_max') },
+                    { field: 'fundGain3M',        op: '>=', value: num('aft_half_g3m') },
+                ] },
+            { id: 'double', label: '加倍定投', color: 'red', multiplier: 200, logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '<=', value: num('aft_double_pe') },
+                    { field: 'fundDrawdownAbs',   op: '>=', value: num('aft_double_dd') },
+                ] },
+            { id: 'normal', label: '正常定投', color: 'green', multiplier: 100, logic: 'AND', conditions: [] },
+        ];
+    }
+
+    async function saveActiveFundStrategy() {
+        if (!authUser || authUser.role !== 'admin') return;
+        const select = document.getElementById('activeFundSelect');
+        const fundCode = select.value;
+        if (!fundCode) { alert('请选择基金'); return; }
+        const fundName = select.options[select.selectedIndex].dataset.name || fundCode;
+        const managerName = document.getElementById('activeFundManager').value.trim();
+        const monthlyAmount = Number(document.getElementById('activeFundMonthly').value);
+        if (!monthlyAmount || monthlyAmount <= 0) { alert('请输入正确的月定投金额'); return; }
+        const tmpl = document.getElementById('activeFundTemplate').value;
+        const rules = templateToRules(tmpl);
+
+        const body = {
+            fundCode, fundName, managerName,
+            benchmarkIndex: '000300',
+            benchmarkName: '沪深300',
+            monthlyAmount,
+            rules,
+        };
+        try {
+            const res = await fetch('/api/strategy/active-fund-plans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) {
+                alert('保存失败：' + (res.error || '未知错误'));
+                return;
+            }
+            closeActiveFundForm();
+            await loadActiveFundRecommendations(true);
+        } catch (err) {
+            alert('保存失败：' + err.message);
+        }
+    }
+
+    async function editActiveFundStrategy(fundCode) {
+        openActiveFundForm(fundCode);
+    }
+
+    async function deleteActiveFundStrategy(fundCode) {
+        if (!authUser || authUser.role !== 'admin') return;
+        if (!confirm('确定删除该主动基金定投策略？')) return;
+        try {
+            const res = await fetch('/api/strategy/active-fund-plans/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fundCode }),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) {
+                alert('删除失败：' + (res.error || '未知错误'));
+                return;
+            }
+            await loadActiveFundRecommendations(true);
+        } catch (err) {
+            alert('删除失败：' + err.message);
+        }
+    }
+
+    function escapeAttr(s) {
+        return String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     // DCA THERMOMETER — 温度计定投策略
     // ================================================================
     let dcaPlans = [];
@@ -6768,6 +8091,8 @@
                 renderThermometer();
             }
             if (tab.dataset.tab === 'strategy') {
+                loadGoldData();
+                loadActiveFundRecommendations();
                 loadDcaPlans();
                 loadPositionData(); // 投资基准已合并到投资策略
             }

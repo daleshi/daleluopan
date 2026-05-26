@@ -1,0 +1,153 @@
+{
+  "strategies": [
+    {
+      "fundCode": "163415",
+      "fundName": "兴全商业模式混合(LOF)A",
+      "managerName": "乔迁",
+      "benchmarkIndex": "000300",
+      "benchmarkName": "沪深300",
+      "monthlyAmount": 1000,
+      "drawdownBaseline": "history",
+      "rules": [
+        {
+          "id": "pause",
+          "label": "暂停定投",
+          "color": "purple",
+          "multiplier": 0,
+          "logic": "OR",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": ">=",
+              "value": 90
+            }
+          ]
+        },
+        {
+          "id": "half",
+          "label": "减半定投",
+          "color": "yellow",
+          "multiplier": 50,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": ">=",
+              "value": 80
+            },
+            {
+              "field": "indexPePercentile",
+              "op": "<",
+              "value": 90
+            },
+            {
+              "field": "fundGain3M",
+              "op": ">=",
+              "value": 15
+            }
+          ]
+        },
+        {
+          "id": "double",
+          "label": "加倍定投",
+          "color": "red",
+          "multiplier": 200,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": "<=",
+              "value": 20
+            },
+            {
+              "field": "fundDrawdownAbs",
+              "op": ">=",
+              "value": 20
+            }
+          ]
+        },
+        {
+          "id": "normal",
+          "label": "正常定投",
+          "color": "green",
+          "multiplier": 100,
+          "logic": "AND",
+          "conditions": []
+        }
+      ],
+      "updatedAt": "2026-05-26T01:46:33.901Z"
+    },
+    {
+      "fundCode": "008269",
+      "fundName": "大成睿享混合A",
+      "managerName": "徐彦",
+      "benchmarkIndex": "000300",
+      "benchmarkName": "沪深300",
+      "monthlyAmount": 1000,
+      "drawdownBaseline": "history",
+      "rules": [
+        {
+          "id": "pause",
+          "label": "暂停定投",
+          "color": "purple",
+          "multiplier": 0,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": ">=",
+              "value": 95
+            }
+          ]
+        },
+        {
+          "id": "half",
+          "label": "减半定投",
+          "color": "yellow",
+          "multiplier": 50,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": ">=",
+              "value": 80
+            },
+            {
+              "field": "indexPePercentile",
+              "op": "<",
+              "value": 95
+            }
+          ]
+        },
+        {
+          "id": "double",
+          "label": "加倍定投",
+          "color": "red",
+          "multiplier": 200,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": "<=",
+              "value": 20
+            },
+            {
+              "field": "fundDrawdownAbs",
+              "op": ">=",
+              "value": 15
+            }
+          ]
+        },
+        {
+          "id": "normal",
+          "label": "正常定投",
+          "color": "green",
+          "multiplier": 100,
+          "logic": "AND",
+          "conditions": []
+        }
+      ],
+      "updatedAt": "2026-05-25T14:42:16.515Z"
+    }
+  ]
+}

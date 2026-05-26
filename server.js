@@ -248,6 +248,8 @@ function getCacheTTL(key) {
     if (key === 'stocks' || key === 'etfs') return trading ? 15 * 1000 : 30 * 60 * 1000;
     if (key === 'active-funds') return trading ? 10 * 60 * 1000 : 60 * 60 * 1000;
     if (key === 'daily-eval') return 30 * 60 * 1000; // 每日估值：30分钟
+    if (key === 'active-fund-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
+    if (key === 'gold-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
     return trading ? CACHE_TTL_TRADING : CACHE_TTL_CLOSED;
 }
 
@@ -1763,6 +1765,852 @@ app.post('/api/strategy/dca-plans/delete', requireAdmin, (req, res) => {
     } catch (err) {
         console.error('[API] /api/strategy/dca-plans/delete 错误:', err.message);
         res.status(500).json({ success: false, error: '删除策略失败: ' + err.message });
+    }
+});
+
+// ============================================================
+// 主动基金定投策略 API
+// ============================================================
+const ACTIVE_FUND_STRATEGY_FILE = path.join(__dirname, 'data', 'active-fund-strategy.json');
+
+const {
+    ALLOWED_FIELDS: AF_ALLOWED_FIELDS,
+    ALLOWED_OPS: AF_ALLOWED_OPS,
+    computeRecommendations: afComputeRecommendations,
+} = require('./services/activeFundStrategyEngine');
+
+const { readFundWatchlist: afReadFundWatchlist } = require('./services/fundFetcher');
+
+// 默认策略（首次启动自动写入），与 design.md 数据结构小节保持一致
+const DEFAULT_ACTIVE_FUND_STRATEGIES = [
+    {
+        fundCode: '163415',
+        fundName: '兴全商业模式混合(LOF)A',
+        managerName: '乔迁',
+        benchmarkIndex: '000300',
+        benchmarkName: '沪深300',
+        monthlyAmount: 1000,
+        drawdownBaseline: 'history',
+        rules: [
+            {
+                id: 'pause',
+                label: '暂停定投',
+                color: 'purple',
+                multiplier: 0,
+                logic: 'OR',
+                conditions: [
+                    { field: 'indexPePercentile', op: '>=', value: 90 },
+                ],
+            },
+            {
+                id: 'half',
+                label: '减半定投',
+                color: 'yellow',
+                multiplier: 50,
+                logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '>=', value: 80 },
+                    { field: 'indexPePercentile', op: '<',  value: 90 },
+                    { field: 'fundGain3M',        op: '>=', value: 15 },
+                ],
+            },
+            {
+                id: 'double',
+                label: '加倍定投',
+                color: 'red',
+                multiplier: 200,
+                logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '<=', value: 20 },
+                    { field: 'fundDrawdownAbs',   op: '>=', value: 20 },
+                ],
+            },
+            {
+                id: 'normal',
+                label: '正常定投',
+                color: 'green',
+                multiplier: 100,
+                logic: 'AND',
+                conditions: [],
+            },
+        ],
+    },
+    {
+        fundCode: '008269',
+        fundName: '大成睿享混合A',
+        managerName: '徐彦',
+        benchmarkIndex: '000300',
+        benchmarkName: '沪深300',
+        monthlyAmount: 1000,
+        drawdownBaseline: 'history',
+        rules: [
+            {
+                id: 'pause',
+                label: '暂停定投',
+                color: 'purple',
+                multiplier: 0,
+                logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '>=', value: 95 },
+                ],
+            },
+            {
+                id: 'half',
+                label: '减半定投',
+                color: 'yellow',
+                multiplier: 50,
+                logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '>=', value: 80 },
+                    { field: 'indexPePercentile', op: '<',  value: 95 },
+                ],
+            },
+            {
+                id: 'double',
+                label: '加倍定投',
+                color: 'red',
+                multiplier: 200,
+                logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '<=', value: 20 },
+                    { field: 'fundDrawdownAbs',   op: '>=', value: 15 },
+                ],
+            },
+            {
+                id: 'normal',
+                label: '正常定投',
+                color: 'green',
+                multiplier: 100,
+                logic: 'AND',
+                conditions: [],
+            },
+        ],
+    },
+];
+
+function readActiveFundStrategies() {
+    try {
+        ensureDataDir();
+        if (fs.existsSync(ACTIVE_FUND_STRATEGY_FILE)) {
+            const raw = fs.readFileSync(ACTIVE_FUND_STRATEGY_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data.strategies)) return data.strategies;
+        }
+    } catch (err) {
+        console.warn('[主动基金策略] 读取配置失败:', err.message);
+    }
+    return [];
+}
+
+function writeActiveFundStrategies(strategies) {
+    ensureDataDir();
+    fs.writeFileSync(
+        ACTIVE_FUND_STRATEGY_FILE,
+        JSON.stringify({ strategies }, null, 2),
+        'utf8'
+    );
+}
+
+/**
+ * 首次启动自检：若配置文件不存在，写入默认两只基金的预设规则。
+ * 已存在的文件不会被覆盖。
+ */
+function ensureDefaultActiveFundStrategies() {
+    try {
+        ensureDataDir();
+        if (!fs.existsSync(ACTIVE_FUND_STRATEGY_FILE)) {
+            const initial = DEFAULT_ACTIVE_FUND_STRATEGIES.map(s => ({
+                ...s,
+                updatedAt: new Date().toISOString(),
+            }));
+            writeActiveFundStrategies(initial);
+            console.log('[主动基金策略] 首次启动，已写入默认策略配置（共', initial.length, '只）');
+        }
+    } catch (err) {
+        console.warn('[主动基金策略] 默认配置初始化失败:', err.message);
+    }
+}
+
+// 启动时执行一次默认配置初始化
+ensureDefaultActiveFundStrategies();
+
+/**
+ * 校验单只基金的策略对象，返回 { ok, error, processed }。
+ * processed 是经过净化的存储用对象（剔除多余字段）。
+ */
+function validateActiveFundStrategy(input) {
+    if (!input || typeof input !== 'object') {
+        return { ok: false, error: '请求体不合法' };
+    }
+    const { fundCode, fundName, managerName, benchmarkIndex, benchmarkName,
+        monthlyAmount, drawdownBaseline, rules } = input;
+
+    if (!fundCode || typeof fundCode !== 'string') {
+        return { ok: false, error: '缺少基金代码 fundCode' };
+    }
+    if (!fundName || typeof fundName !== 'string') {
+        return { ok: false, error: '缺少基金名称 fundName' };
+    }
+    if (monthlyAmount == null || isNaN(Number(monthlyAmount)) || Number(monthlyAmount) <= 0) {
+        return { ok: false, error: '每月定投基准金额必须为正数' };
+    }
+    if (!Array.isArray(rules) || rules.length === 0) {
+        return { ok: false, error: '至少需要一条规则' };
+    }
+
+    // 必须包含 id="normal" 兜底规则
+    if (!rules.some(r => r && r.id === 'normal')) {
+        return { ok: false, error: '必须包含 normal 兜底规则' };
+    }
+
+    // 校验 fundCode 必须存在于基金 watchlist
+    try {
+        const watchlist = afReadFundWatchlist();
+        if (!watchlist.some(f => f.code === fundCode)) {
+            return { ok: false, error: `基金代码 ${fundCode} 不在关注列表中，请先添加到主动基金 watchlist` };
+        }
+    } catch (e) {
+        // watchlist 不可读时放过，避免误杀
+    }
+
+    // 校验 rules 各字段
+    const processedRules = [];
+    for (let i = 0; i < rules.length; i++) {
+        const r = rules[i];
+        if (!r || typeof r !== 'object') {
+            return { ok: false, error: `规则 #${i + 1} 不是对象` };
+        }
+        const id = (r.id || '').trim();
+        const label = (r.label || '').trim();
+        const color = (r.color || 'green').trim();
+        if (!id || !label) {
+            return { ok: false, error: `规则 #${i + 1} 缺少 id 或 label` };
+        }
+        const multiplier = Number(r.multiplier);
+        if (isNaN(multiplier) || multiplier < 0 || multiplier > 500) {
+            return { ok: false, error: `规则 ${id} 的 multiplier 必须在 0-500 之间` };
+        }
+        const logic = (r.logic || 'AND').toUpperCase();
+        if (logic !== 'AND' && logic !== 'OR') {
+            return { ok: false, error: `规则 ${id} 的 logic 必须是 AND 或 OR` };
+        }
+        const conds = Array.isArray(r.conditions) ? r.conditions : [];
+        const processedConds = [];
+        for (let j = 0; j < conds.length; j++) {
+            const c = conds[j];
+            if (!c || typeof c !== 'object') {
+                return { ok: false, error: `规则 ${id} 第 ${j + 1} 个条件不是对象` };
+            }
+            if (!AF_ALLOWED_FIELDS.includes(c.field)) {
+                return { ok: false, error: `未知 field: ${c.field}（规则 ${id}）` };
+            }
+            if (!AF_ALLOWED_OPS.includes(c.op)) {
+                return { ok: false, error: `未知 op: ${c.op}（规则 ${id}）` };
+            }
+            if (c.value == null || isNaN(Number(c.value))) {
+                return { ok: false, error: `规则 ${id} 条件值必须是数字` };
+            }
+            processedConds.push({
+                field: c.field,
+                op: c.op,
+                value: Number(c.value),
+            });
+        }
+        processedRules.push({
+            id, label, color,
+            multiplier,
+            logic,
+            conditions: processedConds,
+        });
+    }
+
+    const processed = {
+        fundCode: fundCode.trim(),
+        fundName: fundName.trim(),
+        managerName: typeof managerName === 'string' ? managerName.trim() : null,
+        benchmarkIndex: typeof benchmarkIndex === 'string' && benchmarkIndex.trim()
+            ? benchmarkIndex.trim() : '000300',
+        benchmarkName: typeof benchmarkName === 'string' && benchmarkName.trim()
+            ? benchmarkName.trim() : '沪深300',
+        monthlyAmount: Number(monthlyAmount),
+        drawdownBaseline: drawdownBaseline === 'rolling-1y' ? 'rolling-1y' : 'history',
+        rules: processedRules,
+        updatedAt: new Date().toISOString(),
+    };
+    return { ok: true, processed };
+}
+
+/**
+ * GET /api/strategy/active-fund-plans - 获取所有主动基金策略配置（公开）
+ */
+app.get('/api/strategy/active-fund-plans', (req, res) => {
+    const strategies = readActiveFundStrategies();
+    res.json({ success: true, data: { strategies } });
+});
+
+/**
+ * POST /api/strategy/active-fund-plans - 新增/更新单只基金的策略（管理员）
+ * Body: 单只基金的策略对象
+ */
+app.post('/api/strategy/active-fund-plans', requireAdmin, (req, res) => {
+    try {
+        const validation = validateActiveFundStrategy(req.body);
+        if (!validation.ok) {
+            return res.status(400).json({ success: false, error: validation.error });
+        }
+        const entry = validation.processed;
+
+        const strategies = readActiveFundStrategies();
+        const existIdx = strategies.findIndex(s => s.fundCode === entry.fundCode);
+        if (existIdx >= 0) {
+            strategies[existIdx] = entry;
+        } else {
+            if (strategies.length >= 20) {
+                return res.status(400).json({ success: false, error: '最多支持 20 个主动基金策略' });
+            }
+            strategies.push(entry);
+        }
+        writeActiveFundStrategies(strategies);
+        console.log(`[主动基金策略] 配置更新: ${entry.fundName} (${entry.fundCode})`);
+
+        // 写入后清空推荐缓存，下次请求即时重算
+        clearRecommendationCache();
+
+        res.json({ success: true, data: { strategies } });
+    } catch (err) {
+        console.error('[API] /api/strategy/active-fund-plans POST 错误:', err.message);
+        res.status(500).json({ success: false, error: '保存策略失败: ' + err.message });
+    }
+});
+
+/**
+ * POST /api/strategy/active-fund-plans/delete - 删除单只基金的策略（管理员）
+ * Body: { fundCode }
+ */
+app.post('/api/strategy/active-fund-plans/delete', requireAdmin, (req, res) => {
+    try {
+        const { fundCode } = req.body || {};
+        if (!fundCode) {
+            return res.status(400).json({ success: false, error: '缺少 fundCode' });
+        }
+        let strategies = readActiveFundStrategies();
+        const before = strategies.length;
+        strategies = strategies.filter(s => s.fundCode !== fundCode);
+        if (strategies.length === before) {
+            return res.status(404).json({ success: false, error: '该策略不存在' });
+        }
+        writeActiveFundStrategies(strategies);
+        console.log(`[主动基金策略] 配置删除: ${fundCode}`);
+
+        clearRecommendationCache();
+        res.json({ success: true, data: { strategies } });
+    } catch (err) {
+        console.error('[API] /api/strategy/active-fund-plans/delete 错误:', err.message);
+        res.status(500).json({ success: false, error: '删除策略失败: ' + err.message });
+    }
+});
+
+// 推荐结果缓存清理：写后立即作废内存 + 磁盘缓存，下次请求重算
+function clearRecommendationCache() {
+    try {
+        const cacheFile = path.join(CACHE_DIR, 'active-fund-recommendations.json');
+        if (fs.existsSync(cacheFile)) fs.unlinkSync(cacheFile);
+    } catch (e) { /* ignore */ }
+    if (_smartCache && _smartCache['active-fund-recommendations']) {
+        delete _smartCache['active-fund-recommendations'];
+    }
+}
+
+/**
+ * GET /api/strategy/active-fund-recommendations - 实时计算每只基金当前定投档位（公开）
+ * 参数: ?refresh=1 强制刷新缓存
+ */
+app.get('/api/strategy/active-fund-recommendations', async (req, res) => {
+    try {
+        const forceRefresh = req.query.refresh === '1';
+        const result = await smartCacheGet(
+            'active-fund-recommendations',
+            async () => {
+                const strategies = readActiveFundStrategies();
+                return await afComputeRecommendations(strategies);
+            },
+            forceRefresh
+        );
+        if (!result) {
+            return res.status(503).json({
+                success: false,
+                error: '主动基金推荐计算中，请稍后重试',
+            });
+        }
+        res.json({ success: true, data: result });
+    } catch (err) {
+        console.error('[API] /api/strategy/active-fund-recommendations 错误:', err.message);
+        res.status(500).json({
+            success: false,
+            error: '推荐计算失败: ' + err.message,
+        });
+    }
+});
+
+// ============================================================
+// 黄金定投策略 API（gold-dca-strategy）
+// ============================================================
+const GOLD_STRATEGY_FILE = path.join(__dirname, 'data', 'gold-strategy.json');
+const GOLD_HOLDINGS_FILE = path.join(__dirname, 'data', 'gold-holdings.json');
+
+const {
+    computeGoldRecommendations: goldComputeRecommendations,
+} = require('./services/goldStrategyEngine');
+
+// 默认黄金策略配置（首次启动自动注入）
+const DEFAULT_GOLD_STRATEGIES = [
+    {
+        fundCode: '000216',
+        fundName: '华安黄金ETF联接A',
+        monthlyAmount: 1000,
+        priceWindow: 1250,
+        drawdownWindow: 250,
+        rules: [
+            {
+                id: 'pause',
+                label: '暂停定投',
+                color: 'purple',
+                multiplier: 0,
+                logic: 'AND',
+                conditions: [
+                    { field: 'fundPricePercentile5Y', op: '>=', value: 90 },
+                ],
+            },
+            {
+                id: 'double',
+                label: '加倍定投',
+                color: 'red',
+                multiplier: 200,
+                logic: 'OR',
+                conditions: [
+                    { field: 'fundPricePercentile5Y', op: '<=', value: 20 },
+                    { field: 'fundDrawdown1Y',        op: '>=', value: 25 },
+                ],
+            },
+            {
+                id: 'half',
+                label: '减半定投',
+                color: 'yellow',
+                multiplier: 50,
+                logic: 'AND',
+                conditions: [
+                    { field: 'fundPricePercentile5Y', op: '>=', value: 70 },
+                    { field: 'fundPricePercentile5Y', op: '<',  value: 90 },
+                ],
+            },
+            {
+                id: 'normal',
+                label: '正常定投',
+                color: 'green',
+                multiplier: 100,
+                logic: 'AND',
+                conditions: [],
+            },
+        ],
+        takeProfitTiers: [
+            { id: 'tp30',  label: '30% 止盈',  thresholdReturn: 30,  sellPct: 10, triggeredAt: null },
+            { id: 'tp60',  label: '60% 止盈',  thresholdReturn: 60,  sellPct: 20, triggeredAt: null },
+            { id: 'tp100', label: '100% 止盈', thresholdReturn: 100, sellPct: 30, triggeredAt: null },
+        ],
+    },
+];
+
+function readGoldStrategies() {
+    try {
+        ensureDataDir();
+        if (fs.existsSync(GOLD_STRATEGY_FILE)) {
+            const raw = fs.readFileSync(GOLD_STRATEGY_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data.strategies)) return data.strategies;
+        }
+    } catch (err) {
+        console.warn('[黄金策略] 读取配置失败:', err.message);
+    }
+    return [];
+}
+
+function writeGoldStrategies(strategies) {
+    ensureDataDir();
+    fs.writeFileSync(GOLD_STRATEGY_FILE, JSON.stringify({ strategies }, null, 2), 'utf8');
+}
+
+function readGoldHoldings() {
+    try {
+        ensureDataDir();
+        if (fs.existsSync(GOLD_HOLDINGS_FILE)) {
+            const raw = fs.readFileSync(GOLD_HOLDINGS_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data.records)) return data.records;
+        }
+    } catch (err) {
+        console.warn('[黄金策略] 读取持仓记录失败:', err.message);
+    }
+    return [];
+}
+
+function writeGoldHoldings(records) {
+    ensureDataDir();
+    fs.writeFileSync(GOLD_HOLDINGS_FILE, JSON.stringify({ records }, null, 2), 'utf8');
+}
+
+/** 首次启动自检：写入默认策略配置 */
+function ensureDefaultGoldStrategies() {
+    try {
+        ensureDataDir();
+        if (!fs.existsSync(GOLD_STRATEGY_FILE)) {
+            const initial = DEFAULT_GOLD_STRATEGIES.map(s => ({
+                ...s,
+                updatedAt: new Date().toISOString(),
+            }));
+            writeGoldStrategies(initial);
+            console.log('[黄金策略] 首次启动，已写入默认策略（共', initial.length, '只）');
+        }
+        if (!fs.existsSync(GOLD_HOLDINGS_FILE)) {
+            writeGoldHoldings([]);
+            console.log('[黄金策略] 首次启动，已创建空持仓记录文件');
+        }
+    } catch (err) {
+        console.warn('[黄金策略] 默认配置初始化失败:', err.message);
+    }
+}
+ensureDefaultGoldStrategies();
+
+/** 清空黄金推荐缓存 */
+function clearGoldRecommendationCache() {
+    try {
+        const cacheFile = path.join(CACHE_DIR, 'gold-recommendations.json');
+        if (fs.existsSync(cacheFile)) fs.unlinkSync(cacheFile);
+    } catch (e) { /* ignore */ }
+    if (_smartCache && _smartCache['gold-recommendations']) {
+        delete _smartCache['gold-recommendations'];
+    }
+}
+
+/** 校验黄金策略对象 */
+function validateGoldStrategy(input) {
+    if (!input || typeof input !== 'object') {
+        return { ok: false, error: '请求体不合法' };
+    }
+    const { fundCode, fundName, monthlyAmount, priceWindow, drawdownWindow,
+        rules, takeProfitTiers } = input;
+
+    if (!fundCode || typeof fundCode !== 'string') {
+        return { ok: false, error: '缺少基金代码 fundCode' };
+    }
+    if (!fundName || typeof fundName !== 'string') {
+        return { ok: false, error: '缺少基金名称 fundName' };
+    }
+    if (monthlyAmount == null || isNaN(Number(monthlyAmount)) || Number(monthlyAmount) <= 0) {
+        return { ok: false, error: '每月定投金额必须为正数' };
+    }
+    if (!Array.isArray(rules) || rules.length === 0) {
+        return { ok: false, error: '至少需要一条规则' };
+    }
+    if (!rules.some(r => r && r.id === 'normal')) {
+        return { ok: false, error: '必须包含 normal 兜底规则' };
+    }
+
+    // 校验 rules 字段（仅限黄金策略允许的 2 个 field）
+    const GOLD_ALLOWED_FIELDS = ['fundPricePercentile5Y', 'fundDrawdown1Y'];
+    const processedRules = [];
+    for (let i = 0; i < rules.length; i++) {
+        const r = rules[i];
+        if (!r || typeof r !== 'object') {
+            return { ok: false, error: `规则 #${i + 1} 不是对象` };
+        }
+        const id = (r.id || '').trim();
+        const label = (r.label || '').trim();
+        const color = (r.color || 'green').trim();
+        if (!id || !label) {
+            return { ok: false, error: `规则 #${i + 1} 缺少 id 或 label` };
+        }
+        const multiplier = Number(r.multiplier);
+        if (isNaN(multiplier) || multiplier < 0 || multiplier > 500) {
+            return { ok: false, error: `规则 ${id} 的 multiplier 必须在 0-500 之间` };
+        }
+        const logic = (r.logic || 'AND').toUpperCase();
+        if (logic !== 'AND' && logic !== 'OR') {
+            return { ok: false, error: `规则 ${id} 的 logic 必须是 AND 或 OR` };
+        }
+        const conds = Array.isArray(r.conditions) ? r.conditions : [];
+        const processedConds = [];
+        for (let j = 0; j < conds.length; j++) {
+            const c = conds[j];
+            if (!c || typeof c !== 'object') {
+                return { ok: false, error: `规则 ${id} 第 ${j + 1} 个条件不是对象` };
+            }
+            if (!GOLD_ALLOWED_FIELDS.includes(c.field)) {
+                return { ok: false, error: `黄金策略仅支持 fundPricePercentile5Y / fundDrawdown1Y 字段（规则 ${id}）` };
+            }
+            if (!['>=', '>', '<=', '<', '=='].includes(c.op)) {
+                return { ok: false, error: `未知 op: ${c.op}（规则 ${id}）` };
+            }
+            if (c.value == null || isNaN(Number(c.value))) {
+                return { ok: false, error: `规则 ${id} 条件值必须是数字` };
+            }
+            processedConds.push({ field: c.field, op: c.op, value: Number(c.value) });
+        }
+        processedRules.push({ id, label, color, multiplier, logic, conditions: processedConds });
+    }
+
+    // 校验 takeProfitTiers
+    if (!Array.isArray(takeProfitTiers) || takeProfitTiers.length === 0) {
+        return { ok: false, error: '至少需要一个止盈档' };
+    }
+    let lastThreshold = -Infinity;
+    const processedTiers = [];
+    for (let i = 0; i < takeProfitTiers.length; i++) {
+        const t = takeProfitTiers[i];
+        if (!t || !t.id || !t.label) {
+            return { ok: false, error: `止盈档 #${i + 1} 缺少 id 或 label` };
+        }
+        const thresholdReturn = Number(t.thresholdReturn);
+        const sellPct = Number(t.sellPct);
+        if (isNaN(thresholdReturn) || thresholdReturn <= 0) {
+            return { ok: false, error: `止盈档 ${t.id} 的 thresholdReturn 必须是正数` };
+        }
+        if (isNaN(sellPct) || sellPct < 0 || sellPct > 100) {
+            return { ok: false, error: `止盈档 ${t.id} 的 sellPct 必须在 0-100 之间` };
+        }
+        if (thresholdReturn <= lastThreshold) {
+            return { ok: false, error: '止盈档必须按 thresholdReturn 严格升序排列' };
+        }
+        lastThreshold = thresholdReturn;
+        processedTiers.push({
+            id: String(t.id).trim(),
+            label: String(t.label).trim(),
+            thresholdReturn,
+            sellPct,
+            triggeredAt: t.triggeredAt || null,
+        });
+    }
+
+    const processed = {
+        fundCode: fundCode.trim(),
+        fundName: fundName.trim(),
+        monthlyAmount: Number(monthlyAmount),
+        priceWindow: Number(priceWindow) > 0 ? Number(priceWindow) : 1250,
+        drawdownWindow: Number(drawdownWindow) > 0 ? Number(drawdownWindow) : 250,
+        rules: processedRules,
+        takeProfitTiers: processedTiers,
+        updatedAt: new Date().toISOString(),
+    };
+    return { ok: true, processed };
+}
+
+/**
+ * GET /api/strategy/gold-plans - 获取所有黄金策略配置（公开）
+ */
+app.get('/api/strategy/gold-plans', (req, res) => {
+    const strategies = readGoldStrategies();
+    res.json({ success: true, data: { strategies } });
+});
+
+/**
+ * POST /api/strategy/gold-plans - 创建/更新黄金策略（管理员）
+ */
+app.post('/api/strategy/gold-plans', requireAdmin, (req, res) => {
+    try {
+        const v = validateGoldStrategy(req.body);
+        if (!v.ok) return res.status(400).json({ success: false, error: v.error });
+        const entry = v.processed;
+        const strategies = readGoldStrategies();
+        const idx = strategies.findIndex(s => s.fundCode === entry.fundCode);
+        if (idx >= 0) {
+            // 合并 triggeredAt：保留现有 tier 的 triggeredAt 状态（避免覆盖用户已止盈的记录）
+            const existing = strategies[idx];
+            entry.takeProfitTiers = entry.takeProfitTiers.map(t => {
+                const old = (existing.takeProfitTiers || []).find(x => x.id === t.id);
+                return old && old.triggeredAt ? { ...t, triggeredAt: old.triggeredAt } : t;
+            });
+            strategies[idx] = entry;
+        } else {
+            if (strategies.length >= 20) {
+                return res.status(400).json({ success: false, error: '最多支持 20 个黄金策略' });
+            }
+            strategies.push(entry);
+        }
+        writeGoldStrategies(strategies);
+        clearGoldRecommendationCache();
+        console.log(`[黄金策略] 配置更新: ${entry.fundName} (${entry.fundCode})`);
+        res.json({ success: true, data: { strategies } });
+    } catch (err) {
+        console.error('[API] /api/strategy/gold-plans POST 错误:', err.message);
+        res.status(500).json({ success: false, error: '保存策略失败: ' + err.message });
+    }
+});
+
+/**
+ * POST /api/strategy/gold-plans/delete - 删除黄金策略（管理员）
+ */
+app.post('/api/strategy/gold-plans/delete', requireAdmin, (req, res) => {
+    try {
+        const { fundCode } = req.body || {};
+        if (!fundCode) return res.status(400).json({ success: false, error: '缺少 fundCode' });
+        let strategies = readGoldStrategies();
+        const before = strategies.length;
+        strategies = strategies.filter(s => s.fundCode !== fundCode);
+        if (strategies.length === before) {
+            return res.status(404).json({ success: false, error: '该策略不存在' });
+        }
+        writeGoldStrategies(strategies);
+        clearGoldRecommendationCache();
+        console.log(`[黄金策略] 配置删除: ${fundCode}`);
+        res.json({ success: true, data: { strategies } });
+    } catch (err) {
+        console.error('[API] /api/strategy/gold-plans/delete 错误:', err.message);
+        res.status(500).json({ success: false, error: '删除策略失败: ' + err.message });
+    }
+});
+
+/**
+ * GET /api/strategy/gold-recommendations - 实时计算黄金推荐（公开，带缓存）
+ */
+app.get('/api/strategy/gold-recommendations', async (req, res) => {
+    try {
+        const forceRefresh = req.query.refresh === '1';
+        const result = await smartCacheGet(
+            'gold-recommendations',
+            async () => {
+                const strategies = readGoldStrategies();
+                const holdings = readGoldHoldings();
+                return await goldComputeRecommendations(strategies, holdings);
+            },
+            forceRefresh
+        );
+        if (!result) {
+            return res.status(503).json({ success: false, error: '黄金推荐计算中，请稍后重试' });
+        }
+        res.json({ success: true, data: result });
+    } catch (err) {
+        console.error('[API] /api/strategy/gold-recommendations 错误:', err.message);
+        res.status(500).json({ success: false, error: '推荐计算失败: ' + err.message });
+    }
+});
+
+/**
+ * GET /api/strategy/gold-holdings - 获取持仓记录（公开，按日期降序）
+ */
+app.get('/api/strategy/gold-holdings', (req, res) => {
+    const records = readGoldHoldings();
+    const sorted = [...records].sort((a, b) => {
+        if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+    res.json({ success: true, data: { records: sorted } });
+});
+
+/**
+ * POST /api/strategy/gold-holdings - 新增持仓记录（管理员）
+ * Body: { fundCode, type: 'buy'|'sell', date, amount, shares, nav, tierId?, note? }
+ */
+app.post('/api/strategy/gold-holdings', requireAdmin, (req, res) => {
+    try {
+        const { fundCode, type, date, amount, shares, nav, tierId, note } = req.body || {};
+        if (!fundCode) return res.status(400).json({ success: false, error: '缺少 fundCode' });
+        if (!['buy', 'sell'].includes(type)) {
+            return res.status(400).json({ success: false, error: 'type 必须是 buy 或 sell' });
+        }
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ success: false, error: 'date 必须是 YYYY-MM-DD' });
+        }
+        const amt = Number(amount), sh = Number(shares), nv = Number(nav);
+        if (isNaN(amt) || amt <= 0) return res.status(400).json({ success: false, error: 'amount 必须为正数' });
+        if (isNaN(sh) || sh <= 0)   return res.status(400).json({ success: false, error: 'shares 必须为正数' });
+        if (isNaN(nv) || nv <= 0)   return res.status(400).json({ success: false, error: 'nav 必须为正数' });
+
+        // 若是 sell + tierId：校验 tier 存在且未触发
+        let strategies = null;
+        if (type === 'sell' && tierId) {
+            strategies = readGoldStrategies();
+            const strat = strategies.find(s => s.fundCode === fundCode);
+            if (!strat) {
+                return res.status(400).json({ success: false, error: '指定基金的策略不存在，无法关联止盈档' });
+            }
+            const tier = (strat.takeProfitTiers || []).find(t => t.id === tierId);
+            if (!tier) {
+                return res.status(400).json({ success: false, error: `止盈档 ${tierId} 不存在` });
+            }
+            if (tier.triggeredAt) {
+                return res.status(400).json({ success: false, error: '该止盈档已触发，请先删除关联的卖出记录' });
+            }
+        }
+
+        const records = readGoldHoldings();
+        const record = {
+            id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            fundCode: fundCode.trim(),
+            type,
+            date,
+            amount: amt,
+            shares: sh,
+            nav: nv,
+            tierId: (type === 'sell' && tierId) ? tierId : null,
+            note: typeof note === 'string' ? note.trim() : '',
+            createdAt: new Date().toISOString(),
+        };
+        records.push(record);
+        writeGoldHoldings(records);
+
+        // 联动：sell + tierId → 标记 tier triggeredAt
+        if (type === 'sell' && tierId && strategies) {
+            const strat = strategies.find(s => s.fundCode === fundCode);
+            const tier = strat.takeProfitTiers.find(t => t.id === tierId);
+            tier.triggeredAt = new Date(date + 'T00:00:00.000Z').toISOString();
+            strat.updatedAt = new Date().toISOString();
+            writeGoldStrategies(strategies);
+        }
+
+        clearGoldRecommendationCache();
+        console.log(`[黄金策略] 持仓记录新增: ${fundCode} ${type} ${amt}元/${sh}份 @${date}`);
+        res.json({ success: true, data: { record } });
+    } catch (err) {
+        console.error('[API] /api/strategy/gold-holdings POST 错误:', err.message);
+        res.status(500).json({ success: false, error: '新增记录失败: ' + err.message });
+    }
+});
+
+/**
+ * POST /api/strategy/gold-holdings/delete - 删除持仓记录（管理员）
+ * Body: { id }
+ * 若被删除的是关联 tier 的 sell 记录，自动重置对应 tier 的 triggeredAt
+ */
+app.post('/api/strategy/gold-holdings/delete', requireAdmin, (req, res) => {
+    try {
+        const { id } = req.body || {};
+        if (!id) return res.status(400).json({ success: false, error: '缺少 id' });
+        const records = readGoldHoldings();
+        const idx = records.findIndex(r => r.id === id);
+        if (idx < 0) return res.status(404).json({ success: false, error: '该记录不存在' });
+        const removed = records[idx];
+        records.splice(idx, 1);
+        writeGoldHoldings(records);
+
+        // 联动：若被删除的是 sell 类型且关联了 tier → 重置 tier triggeredAt
+        if (removed.type === 'sell' && removed.tierId) {
+            const strategies = readGoldStrategies();
+            const strat = strategies.find(s => s.fundCode === removed.fundCode);
+            if (strat) {
+                const tier = (strat.takeProfitTiers || []).find(t => t.id === removed.tierId);
+                if (tier) {
+                    tier.triggeredAt = null;
+                    strat.updatedAt = new Date().toISOString();
+                    writeGoldStrategies(strategies);
+                }
+            }
+        }
+
+        clearGoldRecommendationCache();
+        console.log(`[黄金策略] 持仓记录删除: ${id}`);
+        res.json({ success: true, data: { removed } });
+    } catch (err) {
+        console.error('[API] /api/strategy/gold-holdings/delete 错误:', err.message);
+        res.status(500).json({ success: false, error: '删除记录失败: ' + err.message });
     }
 });
 
