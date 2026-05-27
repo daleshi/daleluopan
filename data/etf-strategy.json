@@ -1,0 +1,496 @@
+{
+  "strategies": [
+    {
+      "fundCode": "588080",
+      "fundName": "科创50 ETF",
+      "shortName": "科创50",
+      "secid": "1.588080",
+      "allocationPct": 35,
+      "priceTiers": [
+        {
+          "id": "pause",
+          "label": "暂停定投",
+          "color": "red",
+          "priceMin": 1.6,
+          "priceMax": null,
+          "monthlyAmount": 0,
+          "note": "PE>150x，估值极高，不追高"
+        },
+        {
+          "id": "watch",
+          "label": "观望",
+          "color": "yellow",
+          "priceMin": 1.22,
+          "priceMax": 1.6,
+          "monthlyAmount": 700,
+          "note": "PE 100-150x，轻仓保持在场"
+        },
+        {
+          "id": "normal",
+          "label": "正常定投",
+          "color": "green",
+          "priceMin": 0.92,
+          "priceMax": 1.22,
+          "monthlyAmount": 2100,
+          "note": "PE 70-100x，合理估值区"
+        },
+        {
+          "id": "double",
+          "label": "加倍定投",
+          "color": "orange",
+          "priceMin": 0.72,
+          "priceMax": 0.92,
+          "monthlyAmount": 4200,
+          "note": "PE 50-70x，低估区猛干"
+        },
+        {
+          "id": "extreme",
+          "label": "极限加仓",
+          "color": "purple",
+          "priceMin": null,
+          "priceMax": 0.72,
+          "monthlyAmount": 12600,
+          "note": "PE<50x，打6个月额度"
+        }
+      ],
+      "takeProfitTiers": [
+        {
+          "id": "tp1",
+          "label": "第一批止盈",
+          "sellPct": 33.3,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 50
+            }
+          ],
+          "displayHint": "价格>1.60 或 PE>150x"
+        },
+        {
+          "id": "tp2",
+          "label": "第二批止盈",
+          "sellPct": 33.3,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 100
+            }
+          ],
+          "displayHint": "价格>1.90 或 PE>180x"
+        },
+        {
+          "id": "tp3",
+          "label": "清仓",
+          "sellPct": 100,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 150
+            }
+          ],
+          "displayHint": "价格翻倍 或 PE>200x"
+        }
+      ],
+      "crashTiers": [
+        {
+          "id": "lv1",
+          "label": "一级·加倍",
+          "threshold": -12,
+          "multiplier": 3,
+          "executionHint": "次日开盘"
+        },
+        {
+          "id": "lv2",
+          "label": "二级·极限",
+          "threshold": -20,
+          "multiplier": 6,
+          "executionHint": "次日开盘"
+        },
+        {
+          "id": "lv3",
+          "label": "三级·史诗",
+          "threshold": -30,
+          "multiplier": null,
+          "executionHint": "当日尾盘",
+          "note": "全部可用资金"
+        }
+      ],
+      "updatedAt": "2026-05-27T01:14:36.168Z"
+    },
+    {
+      "fundCode": "159949",
+      "fundName": "创业板50 ETF",
+      "shortName": "创业板50",
+      "secid": "0.159949",
+      "allocationPct": 25,
+      "priceTiers": [
+        {
+          "id": "pause",
+          "label": "暂停定投",
+          "color": "red",
+          "priceMin": 1.9,
+          "priceMax": null,
+          "monthlyAmount": 0,
+          "note": "价格处于历史高位，PE>50%分位"
+        },
+        {
+          "id": "watch",
+          "label": "观望",
+          "color": "yellow",
+          "priceMin": 1.5,
+          "priceMax": 1.9,
+          "monthlyAmount": 500,
+          "note": "PE 20-50%分位，轻仓观察"
+        },
+        {
+          "id": "normal",
+          "label": "正常定投",
+          "color": "green",
+          "priceMin": 1.2,
+          "priceMax": 1.5,
+          "monthlyAmount": 1500,
+          "note": "PE<20%分位，低估区定投"
+        },
+        {
+          "id": "double",
+          "label": "加倍定投",
+          "color": "orange",
+          "priceMin": 1,
+          "priceMax": 1.2,
+          "monthlyAmount": 3000,
+          "note": "极度低估，双倍入场"
+        },
+        {
+          "id": "extreme",
+          "label": "极限加仓",
+          "color": "purple",
+          "priceMin": null,
+          "priceMax": 1,
+          "monthlyAmount": 9000,
+          "note": "史诗级低估，打6个月额度"
+        }
+      ],
+      "takeProfitTiers": [
+        {
+          "id": "tp1",
+          "label": "第一批止盈",
+          "sellPct": 33.3,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 45
+            }
+          ],
+          "displayHint": "PE>50%分位（约>1.90）"
+        },
+        {
+          "id": "tp2",
+          "label": "第二批止盈",
+          "sellPct": 33.3,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 90
+            }
+          ],
+          "displayHint": "PE>70%分位（约>2.40）"
+        },
+        {
+          "id": "tp3",
+          "label": "清仓",
+          "sellPct": 100,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 130
+            }
+          ],
+          "displayHint": "PE>80%分位 或价格翻倍"
+        }
+      ],
+      "crashTiers": [
+        {
+          "id": "lv1",
+          "label": "一级·加倍",
+          "threshold": -12,
+          "multiplier": 3,
+          "executionHint": "次日开盘"
+        },
+        {
+          "id": "lv2",
+          "label": "二级·极限",
+          "threshold": -20,
+          "multiplier": 6,
+          "executionHint": "次日开盘"
+        },
+        {
+          "id": "lv3",
+          "label": "三级·史诗",
+          "threshold": -30,
+          "multiplier": null,
+          "executionHint": "当日尾盘",
+          "note": "全部可用资金"
+        }
+      ],
+      "updatedAt": "2026-05-27T01:14:36.169Z"
+    },
+    {
+      "fundCode": "512400",
+      "fundName": "有色金属 ETF",
+      "shortName": "有色金属",
+      "secid": "1.512400",
+      "allocationPct": 20,
+      "priceTiers": [
+        {
+          "id": "pause",
+          "label": "暂停定投",
+          "color": "red",
+          "priceMin": 2.3,
+          "priceMax": null,
+          "monthlyAmount": 0,
+          "note": "周期顶部\"低PE陷阱\""
+        },
+        {
+          "id": "watch",
+          "label": "观望",
+          "color": "yellow",
+          "priceMin": 1.8,
+          "priceMax": 2.3,
+          "monthlyAmount": 500,
+          "note": "高位回调中"
+        },
+        {
+          "id": "normal",
+          "label": "正常定投",
+          "color": "green",
+          "priceMin": 1.4,
+          "priceMax": 1.8,
+          "monthlyAmount": 1200,
+          "note": "回调至合理区间"
+        },
+        {
+          "id": "double",
+          "label": "加倍定投",
+          "color": "orange",
+          "priceMin": 1.1,
+          "priceMax": 1.4,
+          "monthlyAmount": 2400,
+          "note": "深度回调，双倍入场"
+        },
+        {
+          "id": "extreme",
+          "label": "极限加仓",
+          "color": "purple",
+          "priceMin": null,
+          "priceMax": 1.1,
+          "monthlyAmount": 7200,
+          "note": "极度恐慌，打6个月额度"
+        }
+      ],
+      "takeProfitTiers": [
+        {
+          "id": "tp1",
+          "label": "第一批止盈",
+          "sellPct": 33.3,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 25
+            }
+          ],
+          "displayHint": "价格>2.40"
+        },
+        {
+          "id": "tp2",
+          "label": "第二批止盈",
+          "sellPct": 33.3,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 50
+            }
+          ],
+          "displayHint": "价格>2.67（前高）"
+        },
+        {
+          "id": "tp3",
+          "label": "清仓",
+          "sellPct": 100,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 80
+            }
+          ],
+          "displayHint": "价格>3.00 或PB>90%分位（周期股看PB）"
+        }
+      ],
+      "crashTiers": [
+        {
+          "id": "lv1",
+          "label": "一级·加倍",
+          "threshold": -12,
+          "multiplier": 3,
+          "executionHint": "次日开盘"
+        },
+        {
+          "id": "lv2",
+          "label": "二级·极限",
+          "threshold": -20,
+          "multiplier": 6,
+          "executionHint": "次日开盘"
+        },
+        {
+          "id": "lv3",
+          "label": "三级·史诗",
+          "threshold": -30,
+          "multiplier": null,
+          "executionHint": "当日尾盘",
+          "note": "全部可用资金"
+        }
+      ],
+      "updatedAt": "2026-05-27T01:14:36.169Z"
+    },
+    {
+      "fundCode": "513180",
+      "fundName": "恒生科技 ETF",
+      "shortName": "恒生科技",
+      "secid": "1.513180",
+      "allocationPct": 20,
+      "priceTiers": [
+        {
+          "id": "pause",
+          "label": "暂停定投",
+          "color": "red",
+          "priceMin": 0.8,
+          "priceMax": null,
+          "monthlyAmount": 0,
+          "note": "PE>60%分位"
+        },
+        {
+          "id": "watch",
+          "label": "正常定投",
+          "color": "green",
+          "priceMin": 0.63,
+          "priceMax": 0.8,
+          "monthlyAmount": 1200,
+          "note": "PE 20-40%分位，低估修复中"
+        },
+        {
+          "id": "normal",
+          "label": "加倍定投",
+          "color": "orange",
+          "priceMin": 0.5,
+          "priceMax": 0.63,
+          "monthlyAmount": 2400,
+          "note": "PE<20%分位，深度低估区"
+        },
+        {
+          "id": "double",
+          "label": "三倍定投",
+          "color": "red",
+          "priceMin": 0.4,
+          "priceMax": 0.5,
+          "monthlyAmount": 3600,
+          "note": "PE<15%分位，极度恐慌"
+        },
+        {
+          "id": "extreme",
+          "label": "极限加仓",
+          "color": "purple",
+          "priceMin": null,
+          "priceMax": 0.4,
+          "monthlyAmount": 14400,
+          "note": "史诗级低估，打6个月额度"
+        }
+      ],
+      "takeProfitTiers": [
+        {
+          "id": "tp1",
+          "label": "第一批止盈",
+          "sellPct": 33.3,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 30
+            }
+          ],
+          "displayHint": "PE>40%分位（约>0.80）"
+        },
+        {
+          "id": "tp2",
+          "label": "第二批止盈",
+          "sellPct": 33.3,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 60
+            }
+          ],
+          "displayHint": "PE>60%分位（约>1.00）"
+        },
+        {
+          "id": "tp3",
+          "label": "清仓",
+          "sellPct": 100,
+          "triggeredAt": null,
+          "triggerConditions": [
+            {
+              "field": "fundReturnPct",
+              "op": ">=",
+              "value": 100
+            }
+          ],
+          "displayHint": "PE>80%分位 或价格翻倍"
+        }
+      ],
+      "crashTiers": [
+        {
+          "id": "lv1",
+          "label": "一级·加倍",
+          "threshold": -12,
+          "multiplier": 3,
+          "executionHint": "次日开盘"
+        },
+        {
+          "id": "lv2",
+          "label": "二级·极限",
+          "threshold": -20,
+          "multiplier": 6,
+          "executionHint": "次日开盘"
+        },
+        {
+          "id": "lv3",
+          "label": "三级·史诗",
+          "threshold": -30,
+          "multiplier": null,
+          "executionHint": "当日尾盘",
+          "note": "全部可用资金"
+        }
+      ],
+      "updatedAt": "2026-05-27T01:14:36.169Z"
+    }
+  ]
+}

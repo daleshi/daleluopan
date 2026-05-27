@@ -609,5 +609,6 @@ module.exports = {
     fetchAllETFData,
     fetchETFMinuteData,
     fetchETFKlinesForRange,
+    fetchETFQuotes,
     isTradingHours,
 };

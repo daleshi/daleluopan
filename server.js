@@ -250,6 +250,7 @@ function getCacheTTL(key) {
     if (key === 'daily-eval') return 30 * 60 * 1000; // 每日估值：30分钟
     if (key === 'active-fund-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
     if (key === 'gold-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
+    if (key === 'etf-recommendations') return trading ? 30 * 1000 : 30 * 60 * 1000;
     return trading ? CACHE_TTL_TRADING : CACHE_TTL_CLOSED;
 }
 
@@ -2153,7 +2154,7 @@ app.get('/api/strategy/active-fund-recommendations', async (req, res) => {
 });
 
 // ============================================================
-// 黄金定投策略 API（gold-dca-strategy）
+// 黄金投资策略 API（gold-dca-strategy）
 // ============================================================
 const GOLD_STRATEGY_FILE = path.join(__dirname, 'data', 'gold-strategy.json');
 const GOLD_HOLDINGS_FILE = path.join(__dirname, 'data', 'gold-holdings.json');
@@ -2610,6 +2611,603 @@ app.post('/api/strategy/gold-holdings/delete', requireAdmin, (req, res) => {
         res.json({ success: true, data: { removed } });
     } catch (err) {
         console.error('[API] /api/strategy/gold-holdings/delete 错误:', err.message);
+        res.status(500).json({ success: false, error: '删除记录失败: ' + err.message });
+    }
+});
+
+// ============================================================
+// ETF 定投策略 API（etf-dca-strategy）
+// ============================================================
+const ETF_STRATEGY_FILE = path.join(__dirname, 'data', 'etf-strategy.json');
+const ETF_HOLDINGS_FILE = path.join(__dirname, 'data', 'etf-holdings.json');
+
+const {
+    computeEtfRecommendations: etfComputeRecommendations,
+} = require('./services/etfStrategyEngine');
+
+const {
+    fetchETFKlinesForRange: etfFetchKlines,
+    fetchETFQuotes: etfFetchQuotes,
+} = require('./services/etfFetcher');
+
+// 默认 4 只 ETF 策略（首次启动自动注入，来自 4ETF.md）
+const DEFAULT_ETF_STRATEGIES = [
+    {
+        fundCode: '588080',
+        fundName: '科创50 ETF',
+        shortName: '科创50',
+        secid: '1.588080',
+        allocationPct: 35,
+        priceTiers: [
+            { id: 'pause',   label: '暂停定投', color: 'red',    priceMin: 1.60, priceMax: null, monthlyAmount: 0,     note: 'PE>150x，估值极高，不追高' },
+            { id: 'watch',   label: '观望',     color: 'yellow', priceMin: 1.22, priceMax: 1.60, monthlyAmount: 700,   note: 'PE 100-150x，轻仓保持在场' },
+            { id: 'normal',  label: '正常定投', color: 'green',  priceMin: 0.92, priceMax: 1.22, monthlyAmount: 2100,  note: 'PE 70-100x，合理估值区' },
+            { id: 'double',  label: '加倍定投', color: 'orange', priceMin: 0.72, priceMax: 0.92, monthlyAmount: 4200,  note: 'PE 50-70x，低估区猛干' },
+            { id: 'extreme', label: '极限加仓', color: 'purple', priceMin: null, priceMax: 0.72, monthlyAmount: 12600, note: 'PE<50x，打6个月额度' },
+        ],
+        takeProfitTiers: [
+            { id: 'tp1', label: '第一批止盈', sellPct: 33.3, triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 50 }],
+                displayHint: '价格>1.60 或 PE>150x' },
+            { id: 'tp2', label: '第二批止盈', sellPct: 33.3, triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 100 }],
+                displayHint: '价格>1.90 或 PE>180x' },
+            { id: 'tp3', label: '清仓',       sellPct: 100,  triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 150 }],
+                displayHint: '价格翻倍 或 PE>200x' },
+        ],
+        crashTiers: [
+            { id: 'lv1', label: '一级·加倍', threshold: -12, multiplier: 3, executionHint: '次日开盘' },
+            { id: 'lv2', label: '二级·极限', threshold: -20, multiplier: 6, executionHint: '次日开盘' },
+            { id: 'lv3', label: '三级·史诗', threshold: -30, multiplier: null, executionHint: '当日尾盘', note: '全部可用资金' },
+        ],
+    },
+    {
+        fundCode: '159949',
+        fundName: '创业板50 ETF',
+        shortName: '创业板50',
+        secid: '0.159949',
+        allocationPct: 25,
+        priceTiers: [
+            { id: 'pause',   label: '暂停定投', color: 'red',    priceMin: 1.90, priceMax: null, monthlyAmount: 0,    note: '价格处于历史高位，PE>50%分位' },
+            { id: 'watch',   label: '观望',     color: 'yellow', priceMin: 1.50, priceMax: 1.90, monthlyAmount: 500,  note: 'PE 20-50%分位，轻仓观察' },
+            { id: 'normal',  label: '正常定投', color: 'green',  priceMin: 1.20, priceMax: 1.50, monthlyAmount: 1500, note: 'PE<20%分位，低估区定投' },
+            { id: 'double',  label: '加倍定投', color: 'orange', priceMin: 1.00, priceMax: 1.20, monthlyAmount: 3000, note: '极度低估，双倍入场' },
+            { id: 'extreme', label: '极限加仓', color: 'purple', priceMin: null, priceMax: 1.00, monthlyAmount: 9000, note: '史诗级低估，打6个月额度' },
+        ],
+        takeProfitTiers: [
+            { id: 'tp1', label: '第一批止盈', sellPct: 33.3, triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 45 }],
+                displayHint: 'PE>50%分位（约>1.90）' },
+            { id: 'tp2', label: '第二批止盈', sellPct: 33.3, triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 90 }],
+                displayHint: 'PE>70%分位（约>2.40）' },
+            { id: 'tp3', label: '清仓',       sellPct: 100,  triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 130 }],
+                displayHint: 'PE>80%分位 或价格翻倍' },
+        ],
+        crashTiers: [
+            { id: 'lv1', label: '一级·加倍', threshold: -12, multiplier: 3, executionHint: '次日开盘' },
+            { id: 'lv2', label: '二级·极限', threshold: -20, multiplier: 6, executionHint: '次日开盘' },
+            { id: 'lv3', label: '三级·史诗', threshold: -30, multiplier: null, executionHint: '当日尾盘', note: '全部可用资金' },
+        ],
+    },
+    {
+        fundCode: '512400',
+        fundName: '有色金属 ETF',
+        shortName: '有色金属',
+        secid: '1.512400',
+        allocationPct: 20,
+        priceTiers: [
+            { id: 'pause',   label: '暂停定投', color: 'red',    priceMin: 2.30, priceMax: null, monthlyAmount: 0,    note: '周期顶部"低PE陷阱"' },
+            { id: 'watch',   label: '观望',     color: 'yellow', priceMin: 1.80, priceMax: 2.30, monthlyAmount: 500,  note: '高位回调中' },
+            { id: 'normal',  label: '正常定投', color: 'green',  priceMin: 1.40, priceMax: 1.80, monthlyAmount: 1200, note: '回调至合理区间' },
+            { id: 'double',  label: '加倍定投', color: 'orange', priceMin: 1.10, priceMax: 1.40, monthlyAmount: 2400, note: '深度回调，双倍入场' },
+            { id: 'extreme', label: '极限加仓', color: 'purple', priceMin: null, priceMax: 1.10, monthlyAmount: 7200, note: '极度恐慌，打6个月额度' },
+        ],
+        takeProfitTiers: [
+            { id: 'tp1', label: '第一批止盈', sellPct: 33.3, triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 25 }],
+                displayHint: '价格>2.40' },
+            { id: 'tp2', label: '第二批止盈', sellPct: 33.3, triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 50 }],
+                displayHint: '价格>2.67（前高）' },
+            { id: 'tp3', label: '清仓',       sellPct: 100,  triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 80 }],
+                displayHint: '价格>3.00 或PB>90%分位（周期股看PB）' },
+        ],
+        crashTiers: [
+            { id: 'lv1', label: '一级·加倍', threshold: -12, multiplier: 3, executionHint: '次日开盘' },
+            { id: 'lv2', label: '二级·极限', threshold: -20, multiplier: 6, executionHint: '次日开盘' },
+            { id: 'lv3', label: '三级·史诗', threshold: -30, multiplier: null, executionHint: '当日尾盘', note: '全部可用资金' },
+        ],
+    },
+    {
+        fundCode: '513180',
+        fundName: '恒生科技 ETF',
+        shortName: '恒生科技',
+        secid: '1.513180',
+        allocationPct: 20,
+        priceTiers: [
+            { id: 'pause',   label: '暂停定投', color: 'red',    priceMin: 0.80, priceMax: null, monthlyAmount: 0,     note: 'PE>60%分位' },
+            { id: 'watch',   label: '正常定投', color: 'green',  priceMin: 0.63, priceMax: 0.80, monthlyAmount: 1200,  note: 'PE 20-40%分位，低估修复中' },
+            { id: 'normal',  label: '加倍定投', color: 'orange', priceMin: 0.50, priceMax: 0.63, monthlyAmount: 2400,  note: 'PE<20%分位，深度低估区' },
+            { id: 'double',  label: '三倍定投', color: 'red',    priceMin: 0.40, priceMax: 0.50, monthlyAmount: 3600,  note: 'PE<15%分位，极度恐慌' },
+            { id: 'extreme', label: '极限加仓', color: 'purple', priceMin: null, priceMax: 0.40, monthlyAmount: 14400, note: '史诗级低估，打6个月额度' },
+        ],
+        takeProfitTiers: [
+            { id: 'tp1', label: '第一批止盈', sellPct: 33.3, triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 30 }],
+                displayHint: 'PE>40%分位（约>0.80）' },
+            { id: 'tp2', label: '第二批止盈', sellPct: 33.3, triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 60 }],
+                displayHint: 'PE>60%分位（约>1.00）' },
+            { id: 'tp3', label: '清仓',       sellPct: 100,  triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: 100 }],
+                displayHint: 'PE>80%分位 或价格翻倍' },
+        ],
+        crashTiers: [
+            { id: 'lv1', label: '一级·加倍', threshold: -12, multiplier: 3, executionHint: '次日开盘' },
+            { id: 'lv2', label: '二级·极限', threshold: -20, multiplier: 6, executionHint: '次日开盘' },
+            { id: 'lv3', label: '三级·史诗', threshold: -30, multiplier: null, executionHint: '当日尾盘', note: '全部可用资金' },
+        ],
+    },
+];
+
+function readEtfStrategies() {
+    try {
+        ensureDataDir();
+        if (fs.existsSync(ETF_STRATEGY_FILE)) {
+            const raw = fs.readFileSync(ETF_STRATEGY_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data.strategies)) return data.strategies;
+        }
+    } catch (err) {
+        console.warn('[ETF策略] 读取配置失败:', err.message);
+    }
+    return [];
+}
+
+function writeEtfStrategies(strategies) {
+    ensureDataDir();
+    fs.writeFileSync(ETF_STRATEGY_FILE, JSON.stringify({ strategies }, null, 2), 'utf8');
+}
+
+function readEtfHoldings() {
+    try {
+        ensureDataDir();
+        if (fs.existsSync(ETF_HOLDINGS_FILE)) {
+            const raw = fs.readFileSync(ETF_HOLDINGS_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data.records)) return data.records;
+        }
+    } catch (err) {
+        console.warn('[ETF策略] 读取持仓记录失败:', err.message);
+    }
+    return [];
+}
+
+function writeEtfHoldings(records) {
+    ensureDataDir();
+    fs.writeFileSync(ETF_HOLDINGS_FILE, JSON.stringify({ records }, null, 2), 'utf8');
+}
+
+/** 首次启动自检：写入默认策略 + 创建空持仓表 */
+function ensureDefaultEtfStrategies() {
+    try {
+        ensureDataDir();
+        if (!fs.existsSync(ETF_STRATEGY_FILE)) {
+            const initial = DEFAULT_ETF_STRATEGIES.map(s => ({
+                ...s,
+                updatedAt: new Date().toISOString(),
+            }));
+            writeEtfStrategies(initial);
+            console.log('[ETF策略] 首次启动，已写入默认策略（共', initial.length, '只）');
+        }
+        if (!fs.existsSync(ETF_HOLDINGS_FILE)) {
+            writeEtfHoldings([]);
+            console.log('[ETF策略] 首次启动，已创建空持仓记录文件');
+        }
+    } catch (err) {
+        console.warn('[ETF策略] 默认配置初始化失败:', err.message);
+    }
+}
+ensureDefaultEtfStrategies();
+
+/** 清空 ETF 推荐缓存（写后即时失效） */
+function clearEtfRecommendationCache() {
+    try {
+        const cacheFile = path.join(CACHE_DIR, 'etf-recommendations.json');
+        if (fs.existsSync(cacheFile)) fs.unlinkSync(cacheFile);
+    } catch (e) { /* ignore */ }
+    if (_smartCache && _smartCache['etf-recommendations']) {
+        delete _smartCache['etf-recommendations'];
+    }
+}
+
+/** 校验 ETF 策略对象 */
+function validateEtfStrategy(input) {
+    if (!input || typeof input !== 'object') {
+        return { ok: false, error: '请求体不合法' };
+    }
+    const { fundCode, fundName, shortName, secid, allocationPct,
+        priceTiers, takeProfitTiers, crashTiers } = input;
+
+    if (!fundCode || typeof fundCode !== 'string') {
+        return { ok: false, error: '缺少基金代码 fundCode' };
+    }
+    if (!fundName || typeof fundName !== 'string') {
+        return { ok: false, error: '缺少基金名称 fundName' };
+    }
+
+    // 校验 priceTiers：非空 + 区间不交叉
+    if (!Array.isArray(priceTiers) || priceTiers.length === 0) {
+        return { ok: false, error: '至少需要一档价格区间 priceTiers' };
+    }
+    const processedTiers = [];
+    for (let i = 0; i < priceTiers.length; i++) {
+        const t = priceTiers[i];
+        if (!t || !t.id || !t.label) {
+            return { ok: false, error: `价格档 #${i + 1} 缺少 id 或 label` };
+        }
+        const min = t.priceMin == null ? null : Number(t.priceMin);
+        const max = t.priceMax == null ? null : Number(t.priceMax);
+        if (min != null && isNaN(min)) return { ok: false, error: `价格档 ${t.id} 的 priceMin 非法` };
+        if (max != null && isNaN(max)) return { ok: false, error: `价格档 ${t.id} 的 priceMax 非法` };
+        if (min != null && max != null && min >= max) {
+            return { ok: false, error: `价格档 ${t.id} 的 priceMin 必须 < priceMax` };
+        }
+        const monthlyAmount = Number(t.monthlyAmount);
+        if (isNaN(monthlyAmount) || monthlyAmount < 0) {
+            return { ok: false, error: `价格档 ${t.id} 的 monthlyAmount 必须 ≥ 0` };
+        }
+        processedTiers.push({
+            id: String(t.id).trim(),
+            label: String(t.label).trim(),
+            color: (t.color || 'green').trim(),
+            priceMin: min,
+            priceMax: max,
+            monthlyAmount,
+            note: typeof t.note === 'string' ? t.note.trim() : null,
+        });
+    }
+    // 检查区间交叉：构造每档的"有效区间"，两两比较
+    for (let i = 0; i < processedTiers.length; i++) {
+        for (let j = i + 1; j < processedTiers.length; j++) {
+            const a = processedTiers[i], b = processedTiers[j];
+            const aMin = a.priceMin == null ? -Infinity : a.priceMin;
+            const aMax = a.priceMax == null ? Infinity  : a.priceMax;
+            const bMin = b.priceMin == null ? -Infinity : b.priceMin;
+            const bMax = b.priceMax == null ? Infinity  : b.priceMax;
+            // 区间 [aMin, aMax) 与 [bMin, bMax) 是否重叠
+            if (aMin < bMax && bMin < aMax) {
+                return { ok: false, error: `价格区间不能交叉：${a.id} [${a.priceMin}, ${a.priceMax}) 与 ${b.id} [${b.priceMin}, ${b.priceMax})` };
+            }
+        }
+    }
+
+    // 校验 takeProfitTiers
+    if (!Array.isArray(takeProfitTiers) || takeProfitTiers.length === 0) {
+        return { ok: false, error: '至少需要一个止盈档 takeProfitTiers' };
+    }
+    const processedTpTiers = [];
+    const ALLOWED_TP_FIELDS = ['fundReturnPct'];
+    const ALLOWED_OPS = ['>=', '>', '<=', '<', '=='];
+    for (let i = 0; i < takeProfitTiers.length; i++) {
+        const t = takeProfitTiers[i];
+        if (!t || !t.id || !t.label) {
+            return { ok: false, error: `止盈档 #${i + 1} 缺少 id 或 label` };
+        }
+        const sellPct = Number(t.sellPct);
+        if (isNaN(sellPct) || sellPct <= 0 || sellPct > 100) {
+            return { ok: false, error: `止盈档 ${t.id} 的 sellPct 必须在 (0, 100] 之间` };
+        }
+        const conds = Array.isArray(t.triggerConditions) ? t.triggerConditions : [];
+        const processedConds = [];
+        for (let j = 0; j < conds.length; j++) {
+            const c = conds[j];
+            if (!ALLOWED_TP_FIELDS.includes(c.field)) {
+                return { ok: false, error: `止盈档 ${t.id} 第 ${j + 1} 个条件 field 必须是 ${ALLOWED_TP_FIELDS.join('/')}` };
+            }
+            if (!ALLOWED_OPS.includes(c.op)) {
+                return { ok: false, error: `止盈档 ${t.id} 条件 op 非法` };
+            }
+            if (c.value == null || isNaN(Number(c.value))) {
+                return { ok: false, error: `止盈档 ${t.id} 条件 value 必须是数字` };
+            }
+            processedConds.push({ field: c.field, op: c.op, value: Number(c.value) });
+        }
+        processedTpTiers.push({
+            id: String(t.id).trim(),
+            label: String(t.label).trim(),
+            sellPct,
+            triggeredAt: t.triggeredAt || null,
+            triggerConditions: processedConds,
+            displayHint: typeof t.displayHint === 'string' ? t.displayHint.trim() : null,
+        });
+    }
+
+    // 校验 crashTiers（可选）
+    const processedCrashTiers = [];
+    if (Array.isArray(crashTiers)) {
+        for (let i = 0; i < crashTiers.length; i++) {
+            const t = crashTiers[i];
+            if (!t || !t.id || !t.label) {
+                return { ok: false, error: `暴跌档 #${i + 1} 缺少 id 或 label` };
+            }
+            const threshold = Number(t.threshold);
+            if (isNaN(threshold) || threshold > 0) {
+                return { ok: false, error: `暴跌档 ${t.id} 的 threshold 必须 ≤ 0` };
+            }
+            const multiplier = t.multiplier == null ? null : Number(t.multiplier);
+            if (multiplier != null && (isNaN(multiplier) || multiplier <= 0)) {
+                return { ok: false, error: `暴跌档 ${t.id} 的 multiplier 必须 > 0 或 null` };
+            }
+            processedCrashTiers.push({
+                id: String(t.id).trim(),
+                label: String(t.label).trim(),
+                threshold,
+                multiplier,
+                executionHint: t.executionHint || null,
+                note: t.note || null,
+            });
+        }
+    }
+
+    const processed = {
+        fundCode: fundCode.trim(),
+        fundName: fundName.trim(),
+        shortName: typeof shortName === 'string' ? shortName.trim() : null,
+        secid: typeof secid === 'string' ? secid.trim() : null,
+        allocationPct: allocationPct != null && !isNaN(Number(allocationPct))
+            ? Number(allocationPct) : null,
+        priceTiers: processedTiers,
+        takeProfitTiers: processedTpTiers,
+        crashTiers: processedCrashTiers,
+        updatedAt: new Date().toISOString(),
+    };
+    return { ok: true, processed };
+}
+
+// === GET /api/strategy/etf-plans（公开）===
+app.get('/api/strategy/etf-plans', (req, res) => {
+    const strategies = readEtfStrategies();
+    res.json({ success: true, data: { strategies } });
+});
+
+// === POST /api/strategy/etf-plans（管理员，upsert）===
+app.post('/api/strategy/etf-plans', requireAdmin, (req, res) => {
+    try {
+        const v = validateEtfStrategy(req.body);
+        if (!v.ok) return res.status(400).json({ success: false, error: v.error });
+        const entry = v.processed;
+        const strategies = readEtfStrategies();
+        const idx = strategies.findIndex(s => s.fundCode === entry.fundCode);
+        if (idx >= 0) {
+            // 保留旧 triggeredAt（避免覆盖已止盈状态）
+            const existing = strategies[idx];
+            entry.takeProfitTiers = entry.takeProfitTiers.map(t => {
+                const old = (existing.takeProfitTiers || []).find(x => x.id === t.id);
+                return old && old.triggeredAt ? { ...t, triggeredAt: old.triggeredAt } : t;
+            });
+            strategies[idx] = entry;
+        } else {
+            if (strategies.length >= 20) {
+                return res.status(400).json({ success: false, error: '最多支持 20 个 ETF 策略' });
+            }
+            strategies.push(entry);
+        }
+        writeEtfStrategies(strategies);
+        clearEtfRecommendationCache();
+        console.log(`[ETF策略] 配置更新: ${entry.fundName} (${entry.fundCode})`);
+        res.json({ success: true, data: { strategies } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-plans POST 错误:', err.message);
+        res.status(500).json({ success: false, error: '保存策略失败: ' + err.message });
+    }
+});
+
+// === POST /api/strategy/etf-plans/delete（管理员）===
+app.post('/api/strategy/etf-plans/delete', requireAdmin, (req, res) => {
+    try {
+        const { fundCode } = req.body || {};
+        if (!fundCode) return res.status(400).json({ success: false, error: '缺少 fundCode' });
+        let strategies = readEtfStrategies();
+        const before = strategies.length;
+        strategies = strategies.filter(s => s.fundCode !== fundCode);
+        if (strategies.length === before) {
+            return res.status(404).json({ success: false, error: '该策略不存在' });
+        }
+        writeEtfStrategies(strategies);
+        clearEtfRecommendationCache();
+        console.log(`[ETF策略] 配置删除: ${fundCode}`);
+        res.json({ success: true, data: { strategies } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-plans/delete 错误:', err.message);
+        res.status(500).json({ success: false, error: '删除策略失败: ' + err.message });
+    }
+});
+
+// === GET /api/strategy/etf-recommendations（公开，带缓存）===
+app.get('/api/strategy/etf-recommendations', async (req, res) => {
+    try {
+        const forceRefresh = req.query.refresh === '1';
+        const result = await smartCacheGet(
+            'etf-recommendations',
+            async () => {
+                const strategies = readEtfStrategies();
+                const holdings = readEtfHoldings();
+
+                // 拉取 ETF 实时行情：直接按策略中的 secid 调用 fetchETFQuotes，
+                // 不依赖 ETF watchlist（4 只策略 ETF 不一定在用户关注列表里）
+                const etfsForQuote = strategies
+                    .filter(s => s.secid)
+                    .map(s => ({
+                        secid: s.secid,
+                        code: s.fundCode,
+                        market: s.secid.startsWith('1.') ? 'SH' : (s.secid.startsWith('0.') ? 'SZ' : 'SH'),
+                    }));
+                let quotesByCode = {};
+                if (etfsForQuote.length > 0) {
+                    try {
+                        const qr = await etfFetchQuotes(etfsForQuote);
+                        const rawQuotes = (qr && qr.quotes) || {};
+                        // fetchETFQuotes 返回的 key 是 ETF code（如 "588080"）
+                        for (const code of Object.keys(rawQuotes)) {
+                            const q = rawQuotes[code];
+                            quotesByCode[code] = {
+                                latestPrice: q.price || null,
+                                tradeDate: null, // 实时行情未必带日期
+                            };
+                        }
+                    } catch (e) {
+                        console.warn('[ETF策略] 拉取实时行情失败:', e.message);
+                    }
+                }
+
+                // 并行拉取每只策略 ETF 的近 60 日 K 线（用于月度涨跌幅）
+                const klinesByCode = {};
+                await Promise.all(strategies.map(async (s) => {
+                    if (!s.secid) return;
+                    try {
+                        const code = s.fundCode;
+                        const market = s.secid.startsWith('1.') ? 'SH' : 'SZ';
+                        const kr = await etfFetchKlines(s.secid, code, market, '1y');
+                        // fetchETFKlinesForRange 返回结构: { klines: [{date, close, ...}] }
+                        const list = (kr && (kr.klines || kr.data || (Array.isArray(kr) ? kr : null))) || [];
+                        if (Array.isArray(list) && list.length > 0) {
+                            klinesByCode[s.fundCode] = list
+                                .filter(k => k && k.close != null)
+                                .map(k => ({ date: k.date || k.time || null, close: Number(k.close) }))
+                                .filter(k => !isNaN(k.close));
+                        }
+                    } catch (e) {
+                        console.warn(`[ETF策略] ${s.fundCode} K线拉取失败:`, e.message);
+                    }
+                }));
+
+                return await etfComputeRecommendations(strategies, holdings, quotesByCode, klinesByCode);
+            },
+            forceRefresh
+        );
+        if (!result) {
+            return res.status(503).json({ success: false, error: 'ETF 推荐计算中，请稍后重试' });
+        }
+        res.json({ success: true, data: result });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-recommendations 错误:', err.message);
+        res.status(500).json({ success: false, error: '推荐计算失败: ' + err.message });
+    }
+});
+
+// === GET /api/strategy/etf-holdings（公开）===
+app.get('/api/strategy/etf-holdings', (req, res) => {
+    const records = readEtfHoldings();
+    const sorted = [...records].sort((a, b) => {
+        if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+    res.json({ success: true, data: { records: sorted } });
+});
+
+// === POST /api/strategy/etf-holdings（管理员）===
+app.post('/api/strategy/etf-holdings', requireAdmin, (req, res) => {
+    try {
+        const { fundCode, type, date, amount, shares, nav, tierId, note } = req.body || {};
+        if (!fundCode) return res.status(400).json({ success: false, error: '缺少 fundCode' });
+        if (!['buy', 'sell'].includes(type)) {
+            return res.status(400).json({ success: false, error: 'type 必须是 buy 或 sell' });
+        }
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ success: false, error: 'date 必须是 YYYY-MM-DD' });
+        }
+        const amt = Number(amount), sh = Number(shares), nv = Number(nav);
+        if (isNaN(amt) || amt <= 0) return res.status(400).json({ success: false, error: 'amount 必须为正数' });
+        if (isNaN(sh) || sh <= 0)   return res.status(400).json({ success: false, error: 'shares 必须为正数' });
+        if (isNaN(nv) || nv <= 0)   return res.status(400).json({ success: false, error: 'nav 必须为正数' });
+
+        // 若 sell + tierId：校验 tier 存在且未触发
+        let strategies = null;
+        if (type === 'sell' && tierId) {
+            strategies = readEtfStrategies();
+            const strat = strategies.find(s => s.fundCode === fundCode);
+            if (!strat) {
+                return res.status(400).json({ success: false, error: '指定 ETF 的策略不存在，无法关联止盈档' });
+            }
+            const tier = (strat.takeProfitTiers || []).find(t => t.id === tierId);
+            if (!tier) {
+                return res.status(400).json({ success: false, error: `止盈档 ${tierId} 不存在` });
+            }
+            if (tier.triggeredAt) {
+                return res.status(400).json({ success: false, error: '该止盈档已触发，请先删除关联的卖出记录' });
+            }
+        }
+
+        const records = readEtfHoldings();
+        const record = {
+            id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            fundCode: fundCode.trim(),
+            type,
+            date,
+            amount: amt,
+            shares: sh,
+            nav: nv,
+            tierId: (type === 'sell' && tierId) ? tierId : null,
+            note: typeof note === 'string' ? note.trim() : '',
+            createdAt: new Date().toISOString(),
+        };
+        records.push(record);
+        writeEtfHoldings(records);
+
+        // 联动：sell + tierId → 标记 triggeredAt
+        if (type === 'sell' && tierId && strategies) {
+            const strat = strategies.find(s => s.fundCode === fundCode);
+            const tier = strat.takeProfitTiers.find(t => t.id === tierId);
+            tier.triggeredAt = new Date(date + 'T00:00:00.000Z').toISOString();
+            strat.updatedAt = new Date().toISOString();
+            writeEtfStrategies(strategies);
+        }
+
+        clearEtfRecommendationCache();
+        console.log(`[ETF策略] 持仓记录新增: ${fundCode} ${type} ${amt}元/${sh}份 @${date}`);
+        res.json({ success: true, data: { record } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-holdings POST 错误:', err.message);
+        res.status(500).json({ success: false, error: '新增记录失败: ' + err.message });
+    }
+});
+
+// === POST /api/strategy/etf-holdings/delete（管理员）===
+app.post('/api/strategy/etf-holdings/delete', requireAdmin, (req, res) => {
+    try {
+        const { id } = req.body || {};
+        if (!id) return res.status(400).json({ success: false, error: '缺少 id' });
+        const records = readEtfHoldings();
+        const idx = records.findIndex(r => r.id === id);
+        if (idx < 0) return res.status(404).json({ success: false, error: '该记录不存在' });
+        const removed = records[idx];
+        records.splice(idx, 1);
+        writeEtfHoldings(records);
+
+        // 联动：sell 类型 + 关联 tier → 重置 triggeredAt
+        if (removed.type === 'sell' && removed.tierId) {
+            const strategies = readEtfStrategies();
+            const strat = strategies.find(s => s.fundCode === removed.fundCode);
+            if (strat) {
+                const tier = (strat.takeProfitTiers || []).find(t => t.id === removed.tierId);
+                if (tier) {
+                    tier.triggeredAt = null;
+                    strat.updatedAt = new Date().toISOString();
+                    writeEtfStrategies(strategies);
+                }
+            }
+        }
+
+        clearEtfRecommendationCache();
+        console.log(`[ETF策略] 持仓记录删除: ${id}`);
+        res.json({ success: true, data: { removed } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-holdings/delete 错误:', err.message);
         res.status(500).json({ success: false, error: '删除记录失败: ' + err.message });
     }
 });

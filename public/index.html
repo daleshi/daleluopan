@@ -1389,7 +1389,7 @@
             .afund-ctx-date { margin-left: 0; flex-basis: 100%; }
         }
 
-        /* GOLD DCA (黄金定投策略) — 复用 afund-* 的徽章配色，新增止盈与持仓样式 */
+        /* GOLD DCA (黄金投资策略) — 复用 afund-* 的徽章配色，新增止盈与持仓样式 */
         .gold-cards { display: flex; flex-direction: column; gap: 18px; }
         .gold-card {
             background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
@@ -1502,6 +1502,227 @@
             .gold-holdings-toggle { padding: 10px 16px; }
             .gold-holdings-section { padding: 0 16px 14px; }
             .gold-holdings-table th, .gold-holdings-table td { padding: 6px 8px; font-size: 11px; }
+        }
+
+        /* ETF DCA (ETF 投资策略) */
+        /* 投资策略子 tab 导航 */
+        .strategy-subtabs {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            padding: 14px 0;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky; top: 64px; z-index: 5;
+            background: var(--bg-primary);
+        }
+        .strategy-subtab {
+            padding: 9px 18px; border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-card); color: var(--text-secondary);
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all .25s; font-family: var(--font-sans);
+        }
+        .strategy-subtab:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+        .strategy-subtab.active {
+            background: linear-gradient(135deg, var(--accent-blue), #2b6cb0);
+            color: #fff; border-color: var(--accent-blue);
+            font-weight: 600;
+        }
+        /* 默认隐藏所有子板块（由 JS 控制显隐） */
+        #tab-strategy > .section[data-substrat] { display: none; }
+        #tab-strategy > .section[data-substrat].active { display: block; }
+        @media (max-width: 768px) {
+            .strategy-subtabs { padding: 10px 0; gap: 6px; top: 56px; }
+            .strategy-subtab { padding: 7px 12px; font-size: 12px; }
+        }
+
+        .etf-cards { display: flex; flex-direction: column; gap: 18px; }
+        .etf-card {
+            background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            overflow: hidden; transition: border-color .25s;
+        }
+        .etf-card:hover { border-color: var(--accent-blue); }
+        .etf-card-header {
+            display: flex; align-items: center; gap: 14px; padding: 18px 22px;
+            border-bottom: 1px solid var(--border-subtle); background: var(--overlay-02);
+        }
+        .etf-card-icon {
+            width: 42px; height: 42px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700; flex-shrink: 0;
+            background: linear-gradient(135deg, #4299e1, #2b6cb0); color: #fff;
+        }
+        .etf-card-info { flex: 1; min-width: 0; }
+        .etf-card-name { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+        .etf-card-sub {
+            font-size: 12px; color: var(--text-muted); margin-top: 2px;
+            display: flex; gap: 12px; flex-wrap: wrap;
+        }
+        .etf-allocation-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            background: var(--accent-blue-dim); color: var(--accent-blue);
+            font-size: 11px; font-weight: 600;
+        }
+        .etf-card-actions { display: flex; gap: 8px; }
+
+        /* ETF 5 档徽章配色（区别于 afund 的 4 档，多了 orange） */
+        .etf-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 8px;
+            font-size: 14px; font-weight: 700; min-width: 110px; justify-content: center;
+        }
+        .etf-badge.color-red    { color: #fff; background: linear-gradient(135deg, #e53e3e, #9b2c2c); }
+        .etf-badge.color-yellow { color: #fff; background: linear-gradient(135deg, #ed8936, #c05621); }
+        .etf-badge.color-green  { color: #fff; background: linear-gradient(135deg, #48bb78, #2f855a); }
+        .etf-badge.color-orange { color: #fff; background: linear-gradient(135deg, #f6ad55, #dd6b20); }
+        .etf-badge.color-purple { color: #fff; background: linear-gradient(135deg, #b794f4, #6b46c1); }
+
+        /* 5 档进度表 */
+        .etf-tier-toggle {
+            padding: 10px 22px; cursor: pointer; user-select: none;
+            font-size: 12px; color: var(--text-muted);
+            display: flex; align-items: center; gap: 6px;
+            transition: color .2s, background .2s;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .etf-tier-toggle:hover { color: var(--accent-blue); background: var(--overlay-02); }
+        .etf-tier-toggle .toggle-icon { transition: transform .25s; }
+        .etf-tier-toggle.open .toggle-icon { transform: rotate(90deg); }
+        .etf-tier-table {
+            width: 100%; border-collapse: collapse; display: none;
+        }
+        .etf-tier-table.open { display: table; }
+        .etf-tier-table th {
+            padding: 8px 22px; font-size: 11px; font-weight: 600; color: var(--text-muted);
+            text-align: left; border-bottom: 1px solid var(--border-subtle); background: var(--overlay-03);
+        }
+        .etf-tier-table td {
+            padding: 10px 22px; font-size: 12px; color: var(--text-primary);
+            border-bottom: 1px dashed var(--border-subtle);
+        }
+        .etf-tier-table tr.hit-row td { background: rgba(72, 187, 120, 0.08); font-weight: 600; }
+        .etf-tier-table .col-amount { font-family: var(--font-mono); color: var(--accent-gold); }
+
+        /* 暴跌信号横条 */
+        .etf-crash-banner {
+            padding: 12px 22px; margin: 0;
+            display: flex; align-items: center; gap: 12px;
+            font-size: 13px; color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .etf-crash-banner.has-signal {
+            background: linear-gradient(135deg, rgba(229, 62, 62, 0.18), rgba(155, 44, 44, 0.12));
+            color: var(--text-primary);
+            animation: etfCrashPulse 2s infinite;
+        }
+        .etf-crash-banner.has-signal .etf-crash-icon { font-size: 18px; }
+        .etf-crash-banner .etf-crash-icon { font-size: 14px; }
+        @keyframes etfCrashPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
+            50% { box-shadow: inset 0 0 12px rgba(229, 62, 62, 0.4); }
+        }
+
+        /* ETF 持仓汇总（复用 gold-summary 视觉） */
+        .etf-summary {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 14px; padding: 16px 22px; border-bottom: 1px solid var(--border-subtle);
+            background: var(--overlay-02);
+        }
+        .etf-summary-item { display: flex; flex-direction: column; gap: 3px; }
+        .etf-summary-label { font-size: 11px; color: var(--text-muted); }
+        .etf-summary-value {
+            font-size: 15px; font-weight: 700; font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+        .etf-summary-value.gain-pos { color: #48bb78; }
+        .etf-summary-value.gain-neg { color: #e53e3e; }
+        .etf-summary-value.na { color: var(--text-muted); font-weight: 400; }
+
+        /* ETF 止盈进度（复用 gold-tp-* 视觉） */
+        .etf-tp-block { padding: 16px 22px; border-bottom: 1px solid var(--border-subtle); }
+        .etf-tp-title {
+            font-size: 13px; font-weight: 600; color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .etf-tp-list { display: flex; flex-direction: column; gap: 8px; }
+        .etf-tp-row {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 10px 14px; border-radius: 8px;
+            background: var(--overlay-02); border: 1px solid var(--border-subtle);
+            font-size: 12px;
+        }
+        .etf-tp-row.actionable {
+            background: linear-gradient(135deg, rgba(246,195,67,0.12), rgba(214,158,46,0.08));
+            border-color: var(--accent-gold);
+        }
+        .etf-tp-row.triggered { opacity: 0.65; }
+        .etf-tp-icon { font-size: 16px; width: 22px; text-align: center; }
+        .etf-tp-label { font-weight: 600; color: var(--text-primary); min-width: 80px; }
+        .etf-tp-desc { color: var(--text-secondary); flex: 1; }
+        .etf-tp-desc strong { color: var(--text-primary); }
+        .etf-tp-btn {
+            padding: 6px 14px; border-radius: 6px; border: 1px solid var(--accent-gold);
+            background: var(--accent-gold); color: #fff;
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: opacity .2s; font-family: var(--font-sans);
+        }
+        .etf-tp-btn:hover { opacity: 0.85; }
+
+        /* ETF 持仓记录表（复用 gold-holdings 视觉） */
+        .etf-holdings-toggle {
+            padding: 10px 22px; cursor: pointer; user-select: none;
+            font-size: 12px; color: var(--text-muted);
+            display: flex; align-items: center; gap: 6px;
+            transition: color .2s, background .2s;
+        }
+        .etf-holdings-toggle:hover { color: var(--accent-blue); background: var(--overlay-02); }
+        .etf-holdings-toggle .toggle-icon { transition: transform .25s; }
+        .etf-holdings-toggle.open .toggle-icon { transform: rotate(90deg); }
+        .etf-holdings-section { padding: 0 22px 16px; display: none; }
+        .etf-holdings-section.open { display: block; }
+        .etf-holdings-actions { padding: 10px 0; display: flex; justify-content: flex-end; }
+        .etf-holdings-table { width: 100%; border-collapse: collapse; }
+        .etf-holdings-table th {
+            padding: 8px 10px; font-size: 11px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px; text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .etf-holdings-table td {
+            padding: 8px 10px; font-size: 12px; color: var(--text-primary);
+            border-bottom: 1px dashed var(--border-subtle);
+            font-family: var(--font-mono);
+        }
+        .etf-holdings-table td.type-buy  { color: #48bb78; font-weight: 600; }
+        .etf-holdings-table td.type-sell { color: #e53e3e; font-weight: 600; }
+        .etf-holdings-empty {
+            padding: 16px 0; text-align: center; color: var(--text-muted); font-size: 12px;
+        }
+
+        /* ETF 编辑表单中的 5 档编辑器 */
+        .etf-tier-editor { display: flex; flex-direction: column; gap: 8px; }
+        .etf-tier-edit-row {
+            display: grid; grid-template-columns: 80px 90px 90px 100px 80px 1fr;
+            gap: 6px; align-items: center;
+            padding: 8px; border: 1px solid var(--border-subtle); border-radius: 6px;
+            background: var(--overlay-02);
+        }
+        .etf-tier-edit-row .pos-input { padding: 5px 8px; font-size: 12px; }
+        .etf-tier-edit-row .tier-label { font-size: 12px; font-weight: 600; }
+
+        @media (max-width: 768px) {
+            .etf-card-header { flex-wrap: wrap; padding: 14px 16px; gap: 10px; }
+            .etf-summary { padding: 12px 16px; grid-template-columns: repeat(2, 1fr); }
+            .etf-tp-block { padding: 12px 16px; }
+            .etf-tp-row { gap: 8px; padding: 10px 12px; }
+            .etf-holdings-toggle { padding: 10px 16px; }
+            .etf-holdings-section { padding: 0 16px 14px; }
+            .etf-holdings-table th, .etf-holdings-table td { padding: 6px 8px; font-size: 11px; }
+            .etf-tier-table th, .etf-tier-table td { padding: 6px 12px; font-size: 11px; }
+            .etf-crash-banner { padding: 10px 16px; font-size: 12px; }
+            .etf-tier-edit-row { grid-template-columns: 1fr 1fr; }
         }
 
         @media (max-width: 768px) {
@@ -4019,13 +4240,21 @@
             </div>
         </div>
 
-        <!-- TAB: STRATEGY (投资策略 — 温度计定投) -->
+        <!-- TAB: STRATEGY (投资策略 — 含 5 个子 tab) -->
         <div class="tab-content" id="tab-strategy">
-            <!-- 黄金定投策略 -->
+            <!-- 子 tab 导航 -->
+            <div class="strategy-subtabs" id="strategySubtabs">
+                <button class="strategy-subtab active" data-substrat="etf">💰 ETF 投资</button>
+                <button class="strategy-subtab" data-substrat="gold">🥇 黄金投资</button>
+                <button class="strategy-subtab" data-substrat="active-fund">💼 主动基金</button>
+                <button class="strategy-subtab" data-substrat="thermometer">🌡️ 温度计定投</button>
+                <button class="strategy-subtab" data-substrat="benchmark">📊 投资基准</button>
+            </div>
+            <!-- 黄金投资策略 -->
             <div class="section" style="margin-top:36px">
                 <div class="section-header">
                     <div class="section-line"></div>
-                    <div class="section-title">黄金定投策略</div>
+                    <div class="section-title">黄金投资策略</div>
                     <div class="section-badge">Gold DCA</div>
                     <button class="dca-add-btn" onclick="openGoldForm()">＋ 添加策略</button>
                 </div>
@@ -4036,7 +4265,7 @@
                 <!-- 策略编辑表单（隐藏） -->
                 <div id="goldFormWrap" class="pos-form-wrap" style="display:none">
                     <div class="pos-form">
-                        <div class="pos-form-title" id="goldFormTitle">添加黄金定投策略</div>
+                        <div class="pos-form-title" id="goldFormTitle">添加黄金投资策略</div>
                         <div class="pos-form-row">
                             <label>基金代码</label>
                             <input type="text" id="goldFundCode" class="pos-input" placeholder="如 000216" maxlength="10">
@@ -4131,6 +4360,132 @@
                         <div class="pos-form-actions">
                             <button class="pos-btn pos-btn-primary" onclick="saveGoldHolding()">保存</button>
                             <button class="pos-btn pos-btn-ghost" onclick="closeGoldHoldingForm()">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ETF 投资策略 -->
+            <div class="section" style="margin-top:36px">
+                <div class="section-header">
+                    <div class="section-line"></div>
+                    <div class="section-title">ETF 投资策略</div>
+                    <div class="section-badge">ETF DCA</div>
+                    <button class="dca-add-btn" onclick="openEtfForm()">＋ 添加策略</button>
+                </div>
+                <p class="chart-desc" style="margin-bottom:16px;font-size:12px;color:var(--text-muted)">
+                    康波周期回升期 ETF 策略（2026-2035），4 只精选 ETF 各自独立的 5 档价格区间 + 3 档止盈 + 3 级暴跌信号。纪律执行，目标年化 20%+。
+                </p>
+                <div id="etfCards" class="etf-cards"></div>
+                <!-- 策略编辑表单（隐藏） -->
+                <div id="etfFormWrap" class="pos-form-wrap" style="display:none">
+                    <div class="pos-form">
+                        <div class="pos-form-title" id="etfFormTitle">添加 ETF 策略</div>
+                        <div class="pos-form-row">
+                            <label>基金代码</label>
+                            <input type="text" id="etfFundCode" class="pos-input" placeholder="如 588080" maxlength="10">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>基金名称</label>
+                            <input type="text" id="etfFundName" class="pos-input" placeholder="如 科创50 ETF">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>简称</label>
+                            <input type="text" id="etfShortName" class="pos-input" placeholder="如 科创50">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>secid (用于K线)</label>
+                            <input type="text" id="etfSecid" class="pos-input" placeholder="沪市 1.XXX / 深市 0.XXX">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>配置比例（%）</label>
+                            <input type="number" id="etfAllocation" class="pos-input" step="1" min="0" max="100">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>5 档价格区间</label>
+                            <div class="etf-tier-editor" id="etfTierEditor">
+                                <!-- 由 JS 动态生成 5 行 -->
+                            </div>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>3 档止盈（按收益率%）</label>
+                            <div class="etf-tp-editor">
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>💰 一档：收益 ≥</label><input type="number" id="etf_tp1_th" class="pos-input" value="50" step="5"> % → 卖
+                                        <input type="number" id="etf_tp1_pct" class="pos-input" value="33.3" step="1"> %</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>💰 二档：收益 ≥</label><input type="number" id="etf_tp2_th" class="pos-input" value="100" step="5"> % → 卖
+                                        <input type="number" id="etf_tp2_pct" class="pos-input" value="33.3" step="1"> %</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>💰 三档：收益 ≥</label><input type="number" id="etf_tp3_th" class="pos-input" value="150" step="5"> % → 卖
+                                        <input type="number" id="etf_tp3_pct" class="pos-input" value="100" step="1"> %（清仓）</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>3 级暴跌信号</label>
+                            <div class="etf-crash-editor">
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>🟠 一级·加倍：单月跌 ≤</label><input type="number" id="etf_crash1_th" class="pos-input" value="-12" step="1"> % → 倍数
+                                        <input type="number" id="etf_crash1_mul" class="pos-input" value="3" step="1"></div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>🔴 二级·极限：单月跌 ≤</label><input type="number" id="etf_crash2_th" class="pos-input" value="-20" step="1"> % → 倍数
+                                        <input type="number" id="etf_crash2_mul" class="pos-input" value="6" step="1"></div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field"><label>💀 三级·史诗：单月跌 ≤</label><input type="number" id="etf_crash3_th" class="pos-input" value="-30" step="1"> %（全部可用资金）</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-form-actions">
+                            <button class="pos-btn pos-btn-primary" onclick="saveEtfStrategy()">保存策略</button>
+                            <button class="pos-btn pos-btn-ghost" onclick="closeEtfForm()">取消</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- 持仓记录表单（隐藏） -->
+                <div id="etfHoldingFormWrap" class="pos-form-wrap" style="display:none">
+                    <div class="pos-form">
+                        <div class="pos-form-title" id="etfHoldingFormTitle">添加持仓记录</div>
+                        <input type="hidden" id="etfHoldingFundCode">
+                        <input type="hidden" id="etfHoldingTierId">
+                        <div class="pos-form-row">
+                            <label>ETF</label>
+                            <input type="text" id="etfHoldingFundName" class="pos-input" readonly>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>操作类型</label>
+                            <select id="etfHoldingType" class="pos-select">
+                                <option value="buy">买入（定投）</option>
+                                <option value="sell">卖出（止盈）</option>
+                            </select>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>日期</label>
+                            <input type="date" id="etfHoldingDate" class="pos-input">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>金额（元）</label>
+                            <input type="number" id="etfHoldingAmount" class="pos-input" step="0.01" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>份额</label>
+                            <input type="number" id="etfHoldingShares" class="pos-input" step="0.0001" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>当日单位净值</label>
+                            <input type="number" id="etfHoldingNav" class="pos-input" step="0.0001" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>备注</label>
+                            <input type="text" id="etfHoldingNote" class="pos-input" placeholder="可选">
+                        </div>
+                        <div class="pos-form-actions">
+                            <button class="pos-btn pos-btn-primary" onclick="saveEtfHolding()">保存</button>
+                            <button class="pos-btn pos-btn-ghost" onclick="closeEtfHoldingForm()">取消</button>
                         </div>
                     </div>
                 </div>
@@ -6438,7 +6793,590 @@
     }
 
     // ================================================================
-    // GOLD DCA — 黄金定投策略
+    // STRATEGY SUBTABS — 投资策略子 tab 导航
+    // ================================================================
+
+    // section-title 文本 → data-substrat 映射
+    const STRATEGY_SUBTAB_MAP = {
+        '黄金投资策略': 'gold',
+        'ETF 投资策略': 'etf',
+        '主动基金定投策略': 'active-fund',
+        '温度计定投策略': 'thermometer',
+        '投资基准': 'benchmark',
+    };
+
+    /** 自动给 #tab-strategy 下的每个 .section 打上 data-substrat 属性 */
+    function tagStrategySubsections() {
+        const sections = document.querySelectorAll('#tab-strategy > .section');
+        sections.forEach(sec => {
+            const title = (sec.querySelector('.section-title')?.textContent || '').trim();
+            if (STRATEGY_SUBTAB_MAP[title]) {
+                sec.setAttribute('data-substrat', STRATEGY_SUBTAB_MAP[title]);
+            }
+        });
+        // 默认激活 ETF 子 tab
+        switchStrategySubtab('etf');
+    }
+
+    /** 切换到指定子 tab */
+    function switchStrategySubtab(name) {
+        // 更新子 tab 按钮高亮
+        document.querySelectorAll('.strategy-subtab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.substrat === name);
+        });
+        // 更新 section 显隐
+        document.querySelectorAll('#tab-strategy > .section[data-substrat]').forEach(sec => {
+            sec.classList.toggle('active', sec.dataset.substrat === name);
+        });
+        // 滚动到顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // DOM 加载后自动初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        tagStrategySubsections();
+        // 绑定子 tab 按钮点击
+        document.querySelectorAll('.strategy-subtab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchStrategySubtab(btn.dataset.substrat);
+            });
+        });
+    });
+
+    // ================================================================
+    // ETF DCA — ETF 投资策略
+    // ================================================================
+    let etfStrategies = [];
+    let etfRecommendations = null;
+    let etfHoldings = [];
+    let etfLoading = false;
+    let etfEditingCode = null;
+
+    async function loadEtfData(forceRefresh) {
+        if (etfLoading) return;
+        etfLoading = true;
+        try {
+            const recUrl = '/api/strategy/etf-recommendations' + (forceRefresh ? '?refresh=1' : '');
+            const [recRes, planRes, holdRes] = await Promise.all([
+                fetch(recUrl).then(r => r.json()).catch(() => ({ success: false })),
+                fetch('/api/strategy/etf-plans').then(r => r.json()).catch(() => ({ success: false })),
+                fetch('/api/strategy/etf-holdings').then(r => r.json()).catch(() => ({ success: false })),
+            ]);
+            if (planRes.success) etfStrategies = planRes.data.strategies || [];
+            if (recRes.success) etfRecommendations = recRes.data;
+            if (holdRes.success) etfHoldings = holdRes.data.records || [];
+            renderEtfCards();
+        } catch (err) {
+            console.error('[ETF策略] 加载失败:', err);
+        } finally {
+            etfLoading = false;
+        }
+    }
+
+    function renderEtfCards() {
+        const container = document.getElementById('etfCards');
+        if (!container) return;
+        const isAdmin = !!(authUser && authUser.role === 'admin');
+        const recs = etfRecommendations?.recommendations || [];
+        if (recs.length === 0) {
+            container.innerHTML = '<div class="afund-empty">暂无 ETF 策略' + (isAdmin ? '，点击右上角"＋ 添加策略"开始配置' : '') + '</div>';
+            return;
+        }
+        container.innerHTML = recs.map(rec => renderEtfCard(rec, isAdmin)).join('');
+    }
+
+    function renderEtfCard(rec, isAdmin) {
+        const hit = rec.hitTier || { id: 'none', label: '未匹配', color: 'green', monthlyAmount: 0 };
+        const colorCls = `color-${hit.color || 'green'}`;
+        const amountZero = rec.monthlyAmount === 0;
+        const staleTag = rec.stale ? '<span class="afund-stale-tag">⚠ 行情陈旧</span>' : '';
+
+        // header
+        const allocBadge = rec.allocationPct != null
+            ? `<span class="etf-allocation-badge">${rec.allocationPct}% 配置</span>`
+            : '';
+
+        // 5 档进度表
+        const tierTableId = `etf-tiers-${rec.fundCode}`;
+        const tierRows = (rec.tierScans || []).map(t => `
+            <tr class="${t.hit ? 'hit-row' : ''}">
+                <td><span class="etf-badge ${'color-' + (t.color || 'green')}" style="min-width:80px;font-size:11px;padding:3px 8px">${escapeHtml(t.label)}</span></td>
+                <td>${formatPriceRange(t)}</td>
+                <td class="col-amount">¥${Number(t.monthlyAmount || 0).toLocaleString()}</td>
+                <td>${t.hit ? '⚠ 当前' : '未触发'}</td>
+            </tr>
+        `).join('');
+
+        // 暴跌信号横条
+        const crashBanner = renderEtfCrashBanner(rec.crashSignal, rec.crashSignalText, rec.monthChangePct);
+
+        // 持仓汇总
+        const h = rec.holdings || {};
+        const returnPct = h.totalReturnPct;
+        const returnCls = returnPct == null ? 'na' : (returnPct >= 0 ? 'gain-pos' : 'gain-neg');
+        const returnText = returnPct == null
+            ? 'N/A'
+            : (returnPct >= 0 ? '+' : '') + Number(returnPct).toFixed(2) + '%';
+
+        // 止盈进度
+        const tpHtml = renderEtfTakeProfitTiers(rec.takeProfitStatus, rec.fundCode, isAdmin);
+
+        // 持仓记录折叠
+        const holdingsId = `etf-holdings-${rec.fundCode}`;
+        const holdingsHtml = renderEtfHoldingsTable(rec.fundCode, isAdmin);
+
+        const adminBtns = isAdmin
+            ? `<button class="dca-plan-action-btn" onclick="editEtfStrategy('${escapeAttr(rec.fundCode)}')">编辑</button>
+               <button class="dca-plan-action-btn danger" onclick="deleteEtfStrategy('${escapeAttr(rec.fundCode)}')">删除</button>`
+            : '';
+
+        return `
+            <div class="etf-card">
+                <div class="etf-card-header">
+                    <div class="etf-card-icon">ETF</div>
+                    <div class="etf-card-info">
+                        <div class="etf-card-name">${escapeHtml(rec.fundName)}</div>
+                        <div class="etf-card-sub">
+                            <span>${escapeHtml(rec.fundCode)}</span>
+                            ${allocBadge}
+                            ${rec.navDate ? `<span>· ${escapeHtml(rec.navDate)}</span>` : ''}
+                            ${staleTag}
+                        </div>
+                    </div>
+                    <div class="etf-card-actions">${adminBtns}</div>
+                </div>
+                <div class="afund-decision">
+                    <span class="etf-badge ${colorCls}">${escapeHtml(hit.label)}</span>
+                    <div class="afund-amount-block">
+                        <span class="afund-amount-label">本月定投</span>
+                        <span class="afund-amount-value${amountZero ? ' zero' : ''}">${rec.monthlyAmount} <span style="font-size:13px;color:var(--text-muted)">元</span></span>
+                        <span class="afund-amount-meta">当前价 ${rec.currentPrice != null ? Number(rec.currentPrice).toFixed(3) : 'N/A'}</span>
+                    </div>
+                    <div class="afund-trigger"><strong>触发依据：</strong>${escapeHtml(rec.triggerReason || '—')}</div>
+                </div>
+                ${crashBanner}
+                <div class="etf-tier-toggle" onclick="toggleEtfTiers('${tierTableId}', this)">
+                    <span class="toggle-icon">▶</span>
+                    <span>5 档进度（${rec.tierScans?.length || 0} 档）</span>
+                </div>
+                <table class="etf-tier-table" id="${tierTableId}">
+                    <thead><tr><th>档位</th><th>价格区间</th><th>月投入</th><th>状态</th></tr></thead>
+                    <tbody>${tierRows}</tbody>
+                </table>
+                <div class="etf-summary">
+                    <div class="etf-summary-item">
+                        <span class="etf-summary-label">累计成本</span>
+                        <span class="etf-summary-value">${(h.totalCost || 0).toLocaleString()} 元</span>
+                    </div>
+                    <div class="etf-summary-item">
+                        <span class="etf-summary-label">累计份额</span>
+                        <span class="etf-summary-value">${(h.totalShares || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</span>
+                    </div>
+                    <div class="etf-summary-item">
+                        <span class="etf-summary-label">当前市值</span>
+                        <span class="etf-summary-value">${h.marketValue == null ? 'N/A' : Number(h.marketValue).toLocaleString() + ' 元'}</span>
+                    </div>
+                    <div class="etf-summary-item">
+                        <span class="etf-summary-label">累计收益率</span>
+                        <span class="etf-summary-value ${returnCls}">${returnText}</span>
+                    </div>
+                </div>
+                <div class="etf-tp-block">
+                    <div class="etf-tp-title">💰 止盈进度（${rec.takeProfitStatus?.length || 0} 档）</div>
+                    <div class="etf-tp-list">${tpHtml}</div>
+                </div>
+                <div class="etf-holdings-toggle" onclick="toggleEtfHoldings('${holdingsId}', this)">
+                    <span class="toggle-icon">▶</span>
+                    <span>持仓记录（${(h.buyCount || 0) + (h.sellCount || 0)} 笔：${h.buyCount || 0} 买 / ${h.sellCount || 0} 卖）</span>
+                </div>
+                <div class="etf-holdings-section" id="${holdingsId}">${holdingsHtml}</div>
+            </div>
+        `;
+    }
+
+    function formatPriceRange(tier) {
+        const fmt = v => v == null ? null : Number(v).toFixed(3);
+        if (tier.priceMin == null && tier.priceMax != null) return `< ${fmt(tier.priceMax)}`;
+        if (tier.priceMin != null && tier.priceMax == null) return `≥ ${fmt(tier.priceMin)}`;
+        if (tier.priceMin != null && tier.priceMax != null) return `[${fmt(tier.priceMin)}, ${fmt(tier.priceMax)})`;
+        return '—';
+    }
+
+    function renderEtfCrashBanner(crashSignal, text, monthChangePct) {
+        if (!crashSignal) {
+            const sign = monthChangePct != null ? (monthChangePct >= 0 ? '+' : '') + monthChangePct.toFixed(2) : 'N/A';
+            return `<div class="etf-crash-banner">
+                <span class="etf-crash-icon">📊</span>
+                <span>近 1 月涨跌：<strong>${sign}${monthChangePct != null ? '%' : ''}</strong></span>
+                <span style="color:var(--text-muted)">${escapeHtml(text || '')}</span>
+            </div>`;
+        }
+        const mult = crashSignal.multiplier != null ? `${crashSignal.multiplier} 倍月投` : '全部可用资金';
+        return `<div class="etf-crash-banner has-signal">
+            <span class="etf-crash-icon">🚨</span>
+            <span><strong>${escapeHtml(crashSignal.label)}</strong>（阈值 ${crashSignal.threshold}%）</span>
+            <span>→ 投入 <strong>${mult}</strong>${crashSignal.executionHint ? ' · ' + escapeHtml(crashSignal.executionHint) : ''}</span>
+            <span style="margin-left:auto;color:var(--text-secondary);font-size:12px">${escapeHtml(text)}</span>
+        </div>`;
+    }
+
+    function renderEtfTakeProfitTiers(tiers, fundCode, isAdmin) {
+        if (!Array.isArray(tiers) || tiers.length === 0) {
+            return '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px">未配置止盈档</div>';
+        }
+        return tiers.map(t => {
+            let icon, desc, actionBtn = '';
+            const rowCls = t.state === 'actionable' ? 'actionable' : (t.state === 'triggered' ? 'triggered' : '');
+            const hint = t.displayHint ? ` <span style="color:var(--text-muted);font-size:11px">(${escapeHtml(t.displayHint)})</span>` : '';
+            if (t.state === 'triggered') {
+                icon = '✅';
+                const dateStr = t.triggeredAt ? new Date(t.triggeredAt).toISOString().split('T')[0] : '';
+                desc = `已止盈（${dateStr}）→ 已卖出 <strong>${t.sellPct}%</strong> 持仓${hint}`;
+            } else if (t.state === 'actionable') {
+                icon = '⚠';
+                const s = t.suggestion || {};
+                desc = `已达触发条件，建议卖出 <strong>${(s.shares || 0).toLocaleString('en-US', {maximumFractionDigits: 2})}</strong> 份 ≈ <strong>${s.amountApprox != null ? Number(s.amountApprox).toLocaleString() : 'N/A'}</strong> 元${hint}`;
+                if (isAdmin) {
+                    actionBtn = `<button class="etf-tp-btn" onclick="openEtfTakeProfitConfirm('${escapeAttr(fundCode)}', '${escapeAttr(t.id)}', ${(s.shares || 0)}, ${(s.amountApprox || 0)})">已止盈</button>`;
+                }
+            } else {
+                icon = '⏳';
+                desc = `未触发${hint}`;
+            }
+            return `
+                <div class="etf-tp-row ${rowCls}">
+                    <span class="etf-tp-icon">${icon}</span>
+                    <span class="etf-tp-label">${escapeHtml(t.label)}</span>
+                    <span class="etf-tp-desc">${desc}</span>
+                    ${actionBtn}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderEtfHoldingsTable(fundCode, isAdmin) {
+        const records = etfHoldings.filter(r => r.fundCode === fundCode);
+        const adminAddBtn = isAdmin
+            ? `<button class="dca-plan-action-btn" onclick="openEtfHoldingForm('${escapeAttr(fundCode)}', 'buy')">＋ 添加持仓记录</button>`
+            : '';
+        const actionsHtml = `<div class="etf-holdings-actions">${adminAddBtn}</div>`;
+        if (records.length === 0) {
+            return actionsHtml + '<div class="etf-holdings-empty">暂无持仓记录' + (isAdmin ? '，点击上方按钮录入' : '') + '</div>';
+        }
+        const rows = records.map(r => {
+            const typeCls = r.type === 'buy' ? 'type-buy' : 'type-sell';
+            const typeText = r.type === 'buy' ? '买入' : '卖出';
+            const delBtn = isAdmin
+                ? `<button class="dca-plan-action-btn danger" style="padding:3px 8px;font-size:11px" onclick="deleteEtfHolding('${escapeAttr(r.id)}')">删除</button>`
+                : '';
+            return `
+                <tr>
+                    <td>${escapeHtml(r.date)}</td>
+                    <td class="${typeCls}">${typeText}</td>
+                    <td>${Number(r.amount).toLocaleString()} 元</td>
+                    <td>${Number(r.shares).toLocaleString('en-US', {maximumFractionDigits: 4})}</td>
+                    <td>${Number(r.nav).toFixed(4)}</td>
+                    <td>${escapeHtml(r.note || '')}</td>
+                    <td>${delBtn}</td>
+                </tr>
+            `;
+        }).join('');
+        return actionsHtml + `
+            <table class="etf-holdings-table">
+                <thead><tr><th>日期</th><th>类型</th><th>金额</th><th>份额</th><th>净值</th><th>备注</th><th></th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    }
+
+    function toggleEtfTiers(id, el) {
+        const t = document.getElementById(id);
+        if (!t) return;
+        const open = t.classList.toggle('open');
+        if (el) el.classList.toggle('open', open);
+    }
+
+    function toggleEtfHoldings(id, el) {
+        const sec = document.getElementById(id);
+        if (!sec) return;
+        const open = sec.classList.toggle('open');
+        if (el) el.classList.toggle('open', open);
+    }
+
+    // ---------------- 策略配置表单 ----------------
+
+    function openEtfForm(fundCode) {
+        if (!authUser || authUser.role !== 'admin') {
+            alert('仅管理员可编辑策略');
+            return;
+        }
+        etfEditingCode = fundCode || null;
+        const wrap = document.getElementById('etfFormWrap');
+        const title = document.getElementById('etfFormTitle');
+
+        // 默认 5 档（用户可在 editor 内修改）
+        let defaultTiers = [
+            { id: 'pause',   label: '暂停定投', color: 'red',    priceMin: 1.60, priceMax: null, monthlyAmount: 0 },
+            { id: 'watch',   label: '观望',     color: 'yellow', priceMin: 1.22, priceMax: 1.60, monthlyAmount: 700 },
+            { id: 'normal',  label: '正常定投', color: 'green',  priceMin: 0.92, priceMax: 1.22, monthlyAmount: 2100 },
+            { id: 'double',  label: '加倍定投', color: 'orange', priceMin: 0.72, priceMax: 0.92, monthlyAmount: 4200 },
+            { id: 'extreme', label: '极限加仓', color: 'purple', priceMin: null, priceMax: 0.72, monthlyAmount: 12600 },
+        ];
+
+        if (fundCode) {
+            const existing = etfStrategies.find(s => s.fundCode === fundCode);
+            if (existing) {
+                title.textContent = '编辑 ETF 策略：' + (existing.fundName || fundCode);
+                document.getElementById('etfFundCode').value = existing.fundCode;
+                document.getElementById('etfFundCode').disabled = true;
+                document.getElementById('etfFundName').value = existing.fundName || '';
+                document.getElementById('etfShortName').value = existing.shortName || '';
+                document.getElementById('etfSecid').value = existing.secid || '';
+                document.getElementById('etfAllocation').value = existing.allocationPct || '';
+                if (Array.isArray(existing.priceTiers) && existing.priceTiers.length > 0) {
+                    defaultTiers = existing.priceTiers;
+                }
+                fillEtfTpFromTiers(existing.takeProfitTiers);
+                fillEtfCrashFromTiers(existing.crashTiers);
+            }
+        } else {
+            title.textContent = '添加 ETF 策略';
+            document.getElementById('etfFundCode').value = '';
+            document.getElementById('etfFundCode').disabled = false;
+            document.getElementById('etfFundName').value = '';
+            document.getElementById('etfShortName').value = '';
+            document.getElementById('etfSecid').value = '';
+            document.getElementById('etfAllocation').value = '';
+        }
+        renderEtfTierEditor(defaultTiers);
+        wrap.style.display = 'block';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeEtfForm() {
+        document.getElementById('etfFormWrap').style.display = 'none';
+        etfEditingCode = null;
+    }
+
+    function renderEtfTierEditor(tiers) {
+        const editor = document.getElementById('etfTierEditor');
+        editor.innerHTML = tiers.map((t, i) => `
+            <div class="etf-tier-edit-row">
+                <input type="text" class="pos-input tier-label" data-field="label" data-idx="${i}" value="${escapeAttr(t.label || '')}" placeholder="档位名">
+                <input type="number" class="pos-input" data-field="priceMin" data-idx="${i}" value="${t.priceMin == null ? '' : t.priceMin}" step="0.01" placeholder="下限">
+                <input type="number" class="pos-input" data-field="priceMax" data-idx="${i}" value="${t.priceMax == null ? '' : t.priceMax}" step="0.01" placeholder="上限">
+                <input type="number" class="pos-input" data-field="monthlyAmount" data-idx="${i}" value="${t.monthlyAmount || 0}" step="100" placeholder="月投">
+                <select class="pos-input" data-field="color" data-idx="${i}">
+                    ${['red','yellow','green','orange','purple'].map(c => `<option value="${c}" ${t.color === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+                <input type="text" class="pos-input" data-field="id" data-idx="${i}" value="${escapeAttr(t.id || '')}" placeholder="id">
+            </div>
+        `).join('');
+    }
+
+    function fillEtfTpFromTiers(tpTiers) {
+        if (!Array.isArray(tpTiers)) return;
+        const ids = ['etf_tp1', 'etf_tp2', 'etf_tp3'];
+        tpTiers.slice(0, 3).forEach((t, i) => {
+            const th = document.getElementById(ids[i] + '_th');
+            const pct = document.getElementById(ids[i] + '_pct');
+            const cond = (t.triggerConditions || []).find(c => c.field === 'fundReturnPct');
+            if (th && cond) th.value = cond.value;
+            if (pct) pct.value = t.sellPct;
+        });
+    }
+
+    function fillEtfCrashFromTiers(crashTiers) {
+        if (!Array.isArray(crashTiers)) return;
+        const map = ['etf_crash1', 'etf_crash2', 'etf_crash3'];
+        crashTiers.slice(0, 3).forEach((t, i) => {
+            const th = document.getElementById(map[i] + '_th');
+            const mul = document.getElementById(map[i] + '_mul');
+            if (th) th.value = t.threshold;
+            if (mul && t.multiplier != null) mul.value = t.multiplier;
+        });
+    }
+
+    function etfFormToTiers() {
+        const rows = document.querySelectorAll('#etfTierEditor .etf-tier-edit-row');
+        const tiers = [];
+        rows.forEach(row => {
+            const inputs = row.querySelectorAll('input, select');
+            const tier = {};
+            inputs.forEach(inp => {
+                const field = inp.dataset.field;
+                let val = inp.value;
+                if (field === 'priceMin' || field === 'priceMax' || field === 'monthlyAmount') {
+                    val = val === '' ? null : Number(val);
+                }
+                tier[field] = val;
+            });
+            tiers.push(tier);
+        });
+        return tiers;
+    }
+
+    function etfFormToTpTiers() {
+        const num = id => Number(document.getElementById(id).value);
+        return [
+            { id: 'tp1', label: '第一批止盈', sellPct: num('etf_tp1_pct'), triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: num('etf_tp1_th') }] },
+            { id: 'tp2', label: '第二批止盈', sellPct: num('etf_tp2_pct'), triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: num('etf_tp2_th') }] },
+            { id: 'tp3', label: '清仓',       sellPct: num('etf_tp3_pct'), triggeredAt: null,
+                triggerConditions: [{ field: 'fundReturnPct', op: '>=', value: num('etf_tp3_th') }] },
+        ];
+    }
+
+    function etfFormToCrashTiers() {
+        const num = id => Number(document.getElementById(id).value);
+        return [
+            { id: 'lv1', label: '一级·加倍', threshold: num('etf_crash1_th'), multiplier: num('etf_crash1_mul'), executionHint: '次日开盘' },
+            { id: 'lv2', label: '二级·极限', threshold: num('etf_crash2_th'), multiplier: num('etf_crash2_mul'), executionHint: '次日开盘' },
+            { id: 'lv3', label: '三级·史诗', threshold: num('etf_crash3_th'), multiplier: null, executionHint: '当日尾盘', note: '全部可用资金' },
+        ];
+    }
+
+    async function saveEtfStrategy() {
+        if (!authUser || authUser.role !== 'admin') return;
+        const fundCode = document.getElementById('etfFundCode').value.trim();
+        const fundName = document.getElementById('etfFundName').value.trim();
+        if (!fundCode) { alert('请输入基金代码'); return; }
+        if (!fundName) { alert('请输入基金名称'); return; }
+        const body = {
+            fundCode,
+            fundName,
+            shortName: document.getElementById('etfShortName').value.trim(),
+            secid: document.getElementById('etfSecid').value.trim(),
+            allocationPct: Number(document.getElementById('etfAllocation').value) || null,
+            priceTiers: etfFormToTiers(),
+            takeProfitTiers: etfFormToTpTiers(),
+            crashTiers: etfFormToCrashTiers(),
+        };
+        try {
+            const res = await fetch('/api/strategy/etf-plans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) { alert('保存失败：' + (res.error || '未知错误')); return; }
+            closeEtfForm();
+            await loadEtfData(true);
+        } catch (err) {
+            alert('保存失败：' + err.message);
+        }
+    }
+
+    function editEtfStrategy(fundCode) {
+        openEtfForm(fundCode);
+    }
+
+    async function deleteEtfStrategy(fundCode) {
+        if (!authUser || authUser.role !== 'admin') return;
+        if (!confirm('确定删除该 ETF 策略？（持仓记录不会被删除）')) return;
+        try {
+            const res = await fetch('/api/strategy/etf-plans/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fundCode }),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) { alert('删除失败：' + (res.error || '未知错误')); return; }
+            await loadEtfData(true);
+        } catch (err) {
+            alert('删除失败：' + err.message);
+        }
+    }
+
+    // ---------------- 持仓记录表单 ----------------
+
+    function openEtfHoldingForm(fundCode, defaultType, prefilled) {
+        if (!authUser || authUser.role !== 'admin') return;
+        const strat = etfStrategies.find(s => s.fundCode === fundCode);
+        const fundName = strat ? strat.fundName : fundCode;
+        document.getElementById('etfHoldingFundCode').value = fundCode;
+        document.getElementById('etfHoldingFundName').value = fundName + ' (' + fundCode + ')';
+        document.getElementById('etfHoldingType').value = defaultType || 'buy';
+        document.getElementById('etfHoldingDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('etfHoldingAmount').value = prefilled?.amount || '';
+        document.getElementById('etfHoldingShares').value = prefilled?.shares || '';
+        const rec = (etfRecommendations?.recommendations || []).find(r => r.fundCode === fundCode);
+        document.getElementById('etfHoldingNav').value = prefilled?.nav || (rec?.currentPrice || '');
+        document.getElementById('etfHoldingNote').value = prefilled?.note || '';
+        document.getElementById('etfHoldingTierId').value = prefilled?.tierId || '';
+        const title = document.getElementById('etfHoldingFormTitle');
+        title.textContent = prefilled?.tierId ? '确认止盈：' + prefilled.tierId : '添加持仓记录';
+        const wrap = document.getElementById('etfHoldingFormWrap');
+        wrap.style.display = 'block';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeEtfHoldingForm() {
+        document.getElementById('etfHoldingFormWrap').style.display = 'none';
+    }
+
+    async function saveEtfHolding() {
+        if (!authUser || authUser.role !== 'admin') return;
+        const body = {
+            fundCode: document.getElementById('etfHoldingFundCode').value,
+            type: document.getElementById('etfHoldingType').value,
+            date: document.getElementById('etfHoldingDate').value,
+            amount: Number(document.getElementById('etfHoldingAmount').value),
+            shares: Number(document.getElementById('etfHoldingShares').value),
+            nav: Number(document.getElementById('etfHoldingNav').value),
+            note: document.getElementById('etfHoldingNote').value.trim(),
+        };
+        const tierId = document.getElementById('etfHoldingTierId').value;
+        if (tierId) body.tierId = tierId;
+        if (!body.date) { alert('请选择日期'); return; }
+        if (!body.amount || body.amount <= 0) { alert('请填写金额'); return; }
+        if (!body.shares || body.shares <= 0) { alert('请填写份额'); return; }
+        if (!body.nav || body.nav <= 0) { alert('请填写当日净值'); return; }
+        try {
+            const res = await fetch('/api/strategy/etf-holdings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) { alert('保存失败：' + (res.error || '未知错误')); return; }
+            closeEtfHoldingForm();
+            await loadEtfData(true);
+        } catch (err) {
+            alert('保存失败：' + err.message);
+        }
+    }
+
+    async function deleteEtfHolding(id) {
+        if (!authUser || authUser.role !== 'admin') return;
+        if (!confirm('确定删除该持仓记录？\n（如果是关联止盈档的卖出记录，对应止盈档状态会自动重置）')) return;
+        try {
+            const res = await fetch('/api/strategy/etf-holdings/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) { alert('删除失败：' + (res.error || '未知错误')); return; }
+            await loadEtfData(true);
+        } catch (err) {
+            alert('删除失败：' + err.message);
+        }
+    }
+
+    function openEtfTakeProfitConfirm(fundCode, tierId, suggestShares, suggestAmount) {
+        if (!authUser || authUser.role !== 'admin') return;
+        openEtfHoldingForm(fundCode, 'sell', {
+            amount: suggestAmount,
+            shares: suggestShares,
+            tierId,
+            note: '止盈卖出 - ' + tierId,
+        });
+    }
+
+    // ================================================================
+    // GOLD DCA — 黄金投资策略
     // ================================================================
     let goldStrategies = [];
     let goldRecommendations = null;
@@ -6473,7 +7411,7 @@
         const isAdmin = !!(authUser && authUser.role === 'admin');
         const recs = goldRecommendations?.recommendations || [];
         if (recs.length === 0) {
-            container.innerHTML = '<div class="afund-empty">暂无黄金定投策略' + (isAdmin ? '，点击右上角"＋ 添加策略"开始配置' : '') + '</div>';
+            container.innerHTML = '<div class="afund-empty">暂无黄金投资策略' + (isAdmin ? '，点击右上角"＋ 添加策略"开始配置' : '') + '</div>';
             return;
         }
         container.innerHTML = recs.map(rec => renderGoldCard(rec, isAdmin)).join('');
@@ -6681,7 +7619,7 @@
         if (fundCode) {
             const existing = goldStrategies.find(s => s.fundCode === fundCode);
             if (existing) {
-                title.textContent = '编辑黄金定投策略：' + (existing.fundName || fundCode);
+                title.textContent = '编辑黄金投资策略：' + (existing.fundName || fundCode);
                 document.getElementById('goldFundCode').value = existing.fundCode;
                 document.getElementById('goldFundCode').disabled = true;
                 document.getElementById('goldFundName').value = existing.fundName || '';
@@ -6690,7 +7628,7 @@
                 fillGoldFormFromTiers(existing.takeProfitTiers);
             }
         } else {
-            title.textContent = '添加黄金定投策略';
+            title.textContent = '添加黄金投资策略';
             document.getElementById('goldFundCode').value = '';
             document.getElementById('goldFundCode').disabled = false;
             document.getElementById('goldFundName').value = '';
@@ -6816,7 +7754,7 @@
 
     async function deleteGoldStrategy(fundCode) {
         if (!authUser || authUser.role !== 'admin') return;
-        if (!confirm('确定删除该黄金定投策略？（持仓记录不会被删除）')) return;
+        if (!confirm('确定删除该黄金投资策略？（持仓记录不会被删除）')) return;
         try {
             const res = await fetch('/api/strategy/gold-plans/delete', {
                 method: 'POST',
@@ -8091,6 +9029,7 @@
                 renderThermometer();
             }
             if (tab.dataset.tab === 'strategy') {
+                loadEtfData();
                 loadGoldData();
                 loadActiveFundRecommendations();
                 loadDcaPlans();
