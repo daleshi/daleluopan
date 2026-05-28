@@ -10,7 +10,7 @@
       "drawdownBaseline": "history",
       "rules": [
         {
-          "id": "pause",
+          "id": "pause-extreme",
           "label": "暂停定投",
           "color": "purple",
           "multiplier": 0,
@@ -20,6 +20,30 @@
               "field": "indexPePercentile",
               "op": ">=",
               "value": 90
+            },
+            {
+              "field": "fundDistanceToYearHighPct",
+              "op": "<=",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "pause-overheat",
+          "label": "暂停定投",
+          "color": "purple",
+          "multiplier": 0,
+          "logic": "OR",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": ">=",
+              "value": 80
+            },
+            {
+              "field": "fundGain1Y",
+              "op": ">",
+              "value": 50
             }
           ]
         },
@@ -28,22 +52,17 @@
           "label": "减半定投",
           "color": "yellow",
           "multiplier": 50,
-          "logic": "AND",
+          "logic": "OR",
           "conditions": [
             {
               "field": "indexPePercentile",
               "op": ">=",
-              "value": 80
+              "value": 60
             },
             {
-              "field": "indexPePercentile",
-              "op": "<",
-              "value": 90
-            },
-            {
-              "field": "fundGain3M",
-              "op": ">=",
-              "value": 15
+              "field": "fundGain1Y",
+              "op": ">",
+              "value": 40
             }
           ]
         },
@@ -67,6 +86,54 @@
           ]
         },
         {
+          "id": "boost",
+          "label": "加强定投",
+          "color": "blue",
+          "multiplier": 150,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": "<=",
+              "value": 20
+            },
+            {
+              "field": "fundDrawdownAbs",
+              "op": ">=",
+              "value": 10
+            },
+            {
+              "field": "fundDrawdownAbs",
+              "op": "<",
+              "value": 20
+            }
+          ]
+        },
+        {
+          "id": "boost-mid",
+          "label": "加强定投",
+          "color": "blue",
+          "multiplier": 150,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": ">=",
+              "value": 20
+            },
+            {
+              "field": "indexPePercentile",
+              "op": "<",
+              "value": 60
+            },
+            {
+              "field": "fundDrawdownAbs",
+              "op": ">=",
+              "value": 15
+            }
+          ]
+        },
+        {
           "id": "normal",
           "label": "正常定投",
           "color": "green",
@@ -75,7 +142,7 @@
           "conditions": []
         }
       ],
-      "updatedAt": "2026-05-27T01:35:41.313Z"
+      "updatedAt": "2026-05-28T02:04:00.930Z"
     },
     {
       "fundCode": "008269",
@@ -91,12 +158,17 @@
           "label": "暂停定投",
           "color": "purple",
           "multiplier": 0,
-          "logic": "AND",
+          "logic": "OR",
           "conditions": [
             {
               "field": "indexPePercentile",
               "op": ">=",
-              "value": 95
+              "value": 90
+            },
+            {
+              "field": "fundGain3M",
+              "op": ">=",
+              "value": 15
             }
           ]
         },
@@ -105,7 +177,7 @@
           "label": "减半定投",
           "color": "yellow",
           "multiplier": 50,
-          "logic": "AND",
+          "logic": "OR",
           "conditions": [
             {
               "field": "indexPePercentile",
@@ -113,9 +185,9 @@
               "value": 80
             },
             {
-              "field": "indexPePercentile",
-              "op": "<",
-              "value": 95
+              "field": "fundGain3M",
+              "op": ">=",
+              "value": 10
             }
           ]
         },
@@ -139,6 +211,30 @@
           ]
         },
         {
+          "id": "boost",
+          "label": "加强定投",
+          "color": "blue",
+          "multiplier": 150,
+          "logic": "AND",
+          "conditions": [
+            {
+              "field": "indexPePercentile",
+              "op": "<=",
+              "value": 20
+            },
+            {
+              "field": "fundDrawdownAbs",
+              "op": ">=",
+              "value": 5
+            },
+            {
+              "field": "fundDrawdownAbs",
+              "op": "<",
+              "value": 15
+            }
+          ]
+        },
+        {
           "id": "normal",
           "label": "正常定投",
           "color": "green",
@@ -147,7 +243,7 @@
           "conditions": []
         }
       ],
-      "updatedAt": "2026-05-25T14:42:16.515Z"
+      "updatedAt": "2026-05-28T02:02:49.098Z"
     }
   ]
 }

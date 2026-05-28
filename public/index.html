@@ -1314,6 +1314,27 @@
         .afund-badge.color-yellow { color: #fff; background: linear-gradient(135deg, #ed8936, #c05621); }
         .afund-badge.color-green  { color: #fff; background: linear-gradient(135deg, #48bb78, #2f855a); }
         .afund-badge.color-purple { color: #fff; background: linear-gradient(135deg, #b794f4, #6b46c1); }
+        .afund-badge.color-blue   { color: #fff; background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        /* 经理变更警示横条（v2 新增） */
+        .afund-manager-banner {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 22px;
+            background: linear-gradient(135deg, rgba(229, 62, 62, 0.18), rgba(155, 44, 44, 0.12));
+            border-bottom: 1px solid rgba(229, 62, 62, 0.5);
+            color: #fed7d7;
+            font-size: 13px; font-weight: 600;
+        }
+        [data-theme="light"] .afund-manager-banner {
+            background: linear-gradient(135deg, #fff5f5, #fed7d7);
+            color: #9b2c2c;
+            border-bottom-color: #fc8181;
+        }
+        .afund-manager-banner-icon { font-size: 16px; }
+        /* 近1年高点小提示（v2 新增） */
+        .afund-peak1y-hint {
+            padding: 6px 22px 10px; font-size: 11px; color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
         .afund-amount-block { display: flex; flex-direction: column; gap: 2px; }
         .afund-amount-label { font-size: 11px; color: var(--text-muted); }
         .afund-amount-value {
@@ -4500,7 +4521,10 @@
                     <button class="dca-add-btn" onclick="openActiveFundForm()">＋ 添加策略</button>
                 </div>
                 <p class="chart-desc" style="margin-bottom:16px;font-size:12px;color:var(--text-muted)">
-                    根据沪深300 PE 分位与基金自身回撤/涨幅，自动判定每只主动基金当前应执行的定投档位（加倍 / 正常 / 减半 / 暂停）。规则按"防御优先，命中即停"的顺序匹配。
+                    根据沪深300 PE 分位与基金自身回撤/涨幅/近1年表现，自动判定每只主动基金当前应执行的定投档位（加倍 / 加强 / 正常 / 减半 / 暂停）。规则按"防御优先，命中即停"匹配；
+                    <strong>加仓类</strong>采用 AND（市场便宜 AND 基金便宜，缺一不可）；
+                    <strong>减仓类</strong>采用 OR（市场过热 OR 基金过热，任一即触发）。
+                    系统会自动检测基金经理变更并优先暂停新增。
                 </p>
                 <div id="activeFundContext" class="active-fund-context"></div>
                 <div id="activeFundCards" class="active-fund-cards"></div>
@@ -4525,9 +4549,12 @@
                         <div class="pos-form-row">
                             <label>策略模板</label>
                             <select id="activeFundTemplate" class="pos-select" onchange="renderActiveFundTemplateForm()">
-                                <option value="single">单因子 PE 模板（徐彦风格）</option>
-                                <option value="dual">双因子 PE+基金 模板（乔迁风格）</option>
+                                <option value="single">单因子 PE 模板（徐彦风格 — 4 档基础）</option>
+                                <option value="dual">双因子 PE+基金 模板（乔迁风格 — 4 档基础）</option>
                             </select>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5">
+                                💡 该表单提供的是 4 档基础模板。若需 v2 完整能力（加强档 boost / OR 减仓 / 近1年涨幅 / 距新高 / 经理自动变更检测），系统已内置默认 v2 规则，可直接编辑 <code style="font-family:var(--font-mono)">data/active-fund-strategy.json</code> 或调用 POST API 配置。
+                            </div>
                         </div>
                         <div id="activeFundTemplateFields"></div>
                         <div class="pos-form-actions">
@@ -7947,10 +7974,20 @@
         const amountZero = rec.actualAmount === 0;
         const staleTag = rec.stale ? '<span class="afund-stale-tag">⚠ 数据陈旧</span>' : '';
 
+        // v2: 经理变更警示横条
+        const managerBannerHtml = rec.managerChanged
+            ? `<div class="afund-manager-banner">
+                   <span class="afund-manager-banner-icon">⚠</span>
+                   <span>基金经理已由 <strong>${escapeHtml(rec.managerName || '—')}</strong> 变更为 <strong>${escapeHtml(rec.currentManager || '—')}</strong>，建议重新评估</span>
+               </div>`
+            : '';
+
         const indCells = [
             { label: '基金回撤', val: rec.indicators.fundDrawdownAbs, fmt: v => v.toFixed(2) + '%', sign: '-' },
             { label: '近3月涨幅', val: rec.indicators.fundGain3M, fmt: v => (v > 0 ? '+' : '') + v.toFixed(2) + '%' },
             { label: '近6月涨幅', val: rec.indicators.fundGain6M, fmt: v => (v > 0 ? '+' : '') + v.toFixed(2) + '%' },
+            { label: '近1年涨幅', val: rec.indicators.fundGain1Y, fmt: v => (v > 0 ? '+' : '') + v.toFixed(2) + '%' },
+            { label: '距近1年新高', val: rec.indicators.fundDistanceToYearHighPct, fmt: v => '-' + v.toFixed(2) + '%' },
             { label: '最新净值', val: rec.latestNav, fmt: v => Number(v).toFixed(4) },
         ];
         const indHtml = indCells.map(c => {
@@ -7964,8 +8001,13 @@
                 </div>`;
         }).join('');
 
+        // v2: 近1年高点小提示
+        const peak1yHtml = (rec.peakNav1Y != null && rec.peakDate1Y)
+            ? `<div class="afund-peak1y-hint">近1年高点 ${Number(rec.peakNav1Y).toFixed(4)} (${escapeHtml(rec.peakDate1Y)})</div>`
+            : '';
+
         const ruleId = `afund-rule-${rec.fundCode}`;
-        const ruleListHtml = renderRuleScanList(rec.ruleScans);
+        const ruleListHtml = renderRuleScanList(rec.ruleScans, !!rec.managerChanged);
 
         const adminBtns = isAdmin
             ? `<button class="dca-plan-action-btn" onclick="editActiveFundStrategy('${escapeAttr(rec.fundCode)}')">编辑</button>
@@ -7987,6 +8029,7 @@
                     </div>
                     <div class="afund-card-actions">${adminBtns}</div>
                 </div>
+                ${managerBannerHtml}
                 <div class="afund-decision">
                     <span class="afund-badge ${colorCls}">${escapeHtml(hit.label)}</span>
                     <div class="afund-amount-block">
@@ -7997,23 +8040,25 @@
                     <div class="afund-trigger"><strong>触发依据：</strong>${escapeHtml(rec.triggerReason || '—')}</div>
                 </div>
                 <div class="afund-indicators">${indHtml}</div>
+                ${peak1yHtml}
                 <div class="afund-rule-toggle" onclick="toggleActiveFundRules('${ruleId}', this)">
                     <span class="toggle-icon">▶</span>
-                    <span>规则一览（${rec.ruleScans.length} 条）</span>
+                    <span>规则一览（${rec.ruleScans.length} 条）${rec.managerChanged ? ' · <span style="color:#fc8181">经理变更短路</span>' : ''}</span>
                 </div>
                 <ul class="afund-rule-scan-list" id="${ruleId}">${ruleListHtml}</ul>
             </div>
         `;
     }
 
-    function renderRuleScanList(ruleScans) {
+    function renderRuleScanList(ruleScans, managerChanged) {
         if (!Array.isArray(ruleScans) || ruleScans.length === 0) return '';
         return ruleScans.map(s => {
             const cls = s.hit ? 'hit' : 'miss';
             const text = s.hit ? '⚠ 当前' : '未触发';
             const colorCls = `color-${s.color || 'green'}`;
+            const liStyle = managerChanged ? ' style="opacity:.55"' : '';
             return `
-                <li class="afund-rule-scan-item">
+                <li class="afund-rule-scan-item"${liStyle}>
                     <span class="afund-rule-scan-status ${cls}">${text}</span>
                     <span class="afund-badge ${colorCls}" style="min-width:80px;font-size:11px;padding:3px 8px">${escapeHtml(s.label || s.id)}</span>
                     <span class="afund-rule-scan-summary">${escapeHtml(s.summary || '')}</span>
@@ -8052,7 +8097,15 @@
                     document.getElementById('activeFundManager').value = existing.managerName || '';
                     document.getElementById('activeFundMonthly').value = existing.monthlyAmount || 1000;
                     const tmpl = detectTemplateFromRules(existing.rules) || 'single';
-                    document.getElementById('activeFundTemplate').value = tmpl;
+                    // 当检测到 v2 时，临时往下拉中插入只读占位项以便选中
+                    const tmplSelect = document.getElementById('activeFundTemplate');
+                    if (tmpl === 'v2' && !tmplSelect.querySelector('option[value="v2"]')) {
+                        const opt = document.createElement('option');
+                        opt.value = 'v2';
+                        opt.textContent = 'v2 高级配置（只读）';
+                        tmplSelect.appendChild(opt);
+                    }
+                    tmplSelect.value = tmpl;
                     renderActiveFundTemplateForm();
                     fillTemplateFromRules(tmpl, existing.rules);
                     return;
@@ -8092,6 +8145,21 @@
     function renderActiveFundTemplateForm() {
         const tmpl = document.getElementById('activeFundTemplate').value;
         const target = document.getElementById('activeFundTemplateFields');
+        if (tmpl === 'v2') {
+            // v2 只读视图，复用 fillTemplateFromRules 中的提示
+            target.innerHTML = `
+                <div class="pos-form-row">
+                    <label>当前策略已使用 v2 高级配置</label>
+                    <div style="font-size:12px;color:var(--text-muted);line-height:1.7;background:var(--overlay-02);padding:12px 14px;border-radius:8px;border:1px dashed var(--border-subtle)">
+                        该基金的策略包含加强档（boost）、多档暂停（pause-*）或 OR 减仓逻辑等 v2 特性，超出本表单模板可视化编辑范围。<br>
+                        如需修改：<br>
+                        • 直接编辑 <code style="font-family:var(--font-mono)">data/active-fund-strategy.json</code> 后重启服务<br>
+                        • 或通过 POST <code style="font-family:var(--font-mono)">/api/strategy/active-fund-plans</code> 提交完整 rules 数组
+                    </div>
+                </div>
+            `;
+            return;
+        }
         if (tmpl === 'single') {
             target.innerHTML = `
                 <div class="pos-form-row">
@@ -8143,6 +8211,11 @@
 
     function detectTemplateFromRules(rules) {
         if (!Array.isArray(rules)) return null;
+        // v2 规则特征：含 boost 档 / 多个 pause-* / 减仓使用 OR 逻辑 → 超出模板可表达范围
+        const hasBoost = rules.some(r => r && (r.id === 'boost' || /^boost/.test(r.id || '')));
+        const hasMultiPause = rules.filter(r => r && /^pause/.test(r.id || '')).length > 1;
+        const hasOrReduce = rules.some(r => r && /^(pause|half)/.test(r.id || '') && (r.logic || '').toUpperCase() === 'OR' && (r.conditions || []).length > 1);
+        if (hasBoost || hasMultiPause || hasOrReduce) return 'v2';
         const half = rules.find(r => r.id === 'half');
         if (!half) return 'single';
         const hasFundCondition = (half.conditions || []).some(c => c.field === 'fundGain3M' || c.field === 'fundDrawdownAbs');
@@ -8151,6 +8224,25 @@
 
     function fillTemplateFromRules(tmpl, rules) {
         if (!Array.isArray(rules)) return;
+        // v2 高级配置无法用模板表达，提示管理员
+        if (tmpl === 'v2') {
+            const target = document.getElementById('activeFundTemplateFields');
+            if (target) {
+                target.innerHTML = `
+                    <div class="pos-form-row">
+                        <label>当前策略已使用 v2 高级配置</label>
+                        <div style="font-size:12px;color:var(--text-muted);line-height:1.7;background:var(--overlay-02);padding:12px 14px;border-radius:8px;border:1px dashed var(--border-subtle)">
+                            该基金的策略包含加强档（boost）、多档暂停（pause-*）或 OR 减仓逻辑等 v2 特性，超出本表单模板可视化编辑范围。<br>
+                            如需修改：<br>
+                            • 直接编辑 <code style="font-family:var(--font-mono)">data/active-fund-strategy.json</code> 后重启服务<br>
+                            • 或通过 POST <code style="font-family:var(--font-mono)">/api/strategy/active-fund-plans</code> 提交完整 rules 数组<br>
+                            • 或保存任何模板会将策略覆盖为 4 档基础结构（v2 加强档丢失），请慎重
+                        </div>
+                    </div>
+                `;
+            }
+            return;
+        }
         const findCond = (id, field, op) => {
             const r = rules.find(x => x.id === id);
             if (!r) return null;
@@ -8234,6 +8326,30 @@
         const monthlyAmount = Number(document.getElementById('activeFundMonthly').value);
         if (!monthlyAmount || monthlyAmount <= 0) { alert('请输入正确的月定投金额'); return; }
         const tmpl = document.getElementById('activeFundTemplate').value;
+        if (tmpl === 'v2') {
+            // 仅允许更新 monthlyAmount / managerName，rules 保留原 v2 配置
+            const existing = activeFundStrategies.find(s => s.fundCode === fundCode);
+            if (!existing) { alert('未找到原策略'); return; }
+            if (!confirm('当前策略使用 v2 高级配置（rules 不会被覆盖）。\n本次仅更新「基金经理名」和「每月定投基准金额」，其它字段保留。继续？')) return;
+            try {
+                const res = await fetch('/api/strategy/active-fund-plans', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...existing,
+                        managerName,
+                        monthlyAmount,
+                    }),
+                    credentials: 'include',
+                }).then(r => r.json());
+                if (!res.success) { alert('保存失败：' + (res.error || '未知错误')); return; }
+                closeActiveFundForm();
+                await loadActiveFundRecommendations(true);
+            } catch (err) {
+                alert('保存失败：' + err.message);
+            }
+            return;
+        }
         const rules = templateToRules(tmpl);
 
         const body = {

@@ -1,5 +1,5 @@
 {
-  "totalPV": 9478,
+  "totalPV": 9499,
   "totalUV": 7,
   "daily": {
     "2026-03-27": {
@@ -84,18 +84,25 @@
         "73195f3ba113": true,
         "3a10bb599dc2": true
       }
+    },
+    "2026-05-28": {
+      "pv": 21,
+      "uv": 1,
+      "visitors": {
+        "73195f3ba113": true
+      }
     }
   },
   "pages": {
-    "/": 139,
+    "/": 140,
     "/admin": 76,
     "/.well-known/appspecific/com.chrome.devtools.json": 10
   },
   "devices": {
-    "desktop": 9478
+    "desktop": 9499
   },
   "hours": {
-    "10": 4423,
+    "10": 4444,
     "11": 2571,
     "12": 7,
     "13": 83,

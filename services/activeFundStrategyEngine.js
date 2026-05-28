@@ -24,6 +24,8 @@ const ALLOWED_FIELDS = [
     'fundDrawdownAbs',   // 基金当前回撤绝对值（%, 正数；从历史最高净值起算）
     'fundGain3M',        // 基金近3月涨幅（%, 可正可负）
     'fundGain6M',        // 基金近6月涨幅（%, 可正可负）
+    'fundGain1Y',        // 基金近1年涨幅（%, 可正可负；v2 新增）
+    'fundDistanceToYearHighPct', // 基金当前净值距近1年最高净值的回撤绝对值（%, 正数；v2 新增）
     'fundPricePercentile5Y', // 基金净值的近5年价格分位（%, 0~100；黄金策略专用）
     'fundDrawdown1Y',        // 基金从近1年最高净值的回撤绝对值（%, 正数；黄金策略专用）
 ];
@@ -38,6 +40,8 @@ const FIELD_LABELS = {
     fundDrawdownAbs:   '基金回撤',
     fundGain3M:        '近3月涨幅',
     fundGain6M:        '近6月涨幅',
+    fundGain1Y:        '近1年涨幅',
+    fundDistanceToYearHighPct: '距近1年新高',
     fundPricePercentile5Y: '近5年价格分位',
     fundDrawdown1Y:        '近1年回撤',
 };
@@ -49,6 +53,8 @@ const FIELD_UNITS = {
     fundDrawdownAbs:   '%',
     fundGain3M:        '%',
     fundGain6M:        '%',
+    fundGain1Y:        '%',
+    fundDistanceToYearHighPct: '%',
     fundPricePercentile5Y: '%',
     fundDrawdown1Y:        '%',
 };
@@ -66,6 +72,10 @@ const FIELD_UNITS = {
  *   drawdownAbs: number|null,  // 当前回撤的绝对值，正数；从历史最高净值起算
  *   gain3m: number|null,       // 近3月涨幅
  *   gain6m: number|null,       // 近6月涨幅
+ *   gain1y: number|null,       // 近1年涨幅（v2 新增）
+ *   distanceToYearHighPct: number|null, // 距近1年最高净值的回撤绝对值（v2 新增）
+ *   peakNav1Y: number|null,    // 近1年最高净值（v2 新增）
+ *   peakDate1Y: string|null,   // 近1年最高净值日期（v2 新增）
  *   latestNavDate: string|null,
  *   latestNav: number|null,
  *   peakNav: number|null,
@@ -77,6 +87,10 @@ function computeFundIndicators(navTrend) {
         drawdownAbs: null,
         gain3m: null,
         gain6m: null,
+        gain1y: null,
+        distanceToYearHighPct: null,
+        peakNav1Y: null,
+        peakDate1Y: null,
         latestNavDate: null,
         latestNav: null,
         peakNav: null,
@@ -117,12 +131,39 @@ function computeFundIndicators(navTrend) {
 
     const nav3m = navAtDaysAgo(90);
     const nav6m = navAtDaysAgo(180);
+    const nav1y = navAtDaysAgo(365);
     const gain3m = nav3m && nav3m > 0
         ? parseFloat(((latestNav - nav3m) / nav3m * 100).toFixed(2))
         : null;
     const gain6m = nav6m && nav6m > 0
         ? parseFloat(((latestNav - nav6m) / nav6m * 100).toFixed(2))
         : null;
+    const gain1y = nav1y && nav1y > 0
+        ? parseFloat(((latestNav - nav1y) / nav1y * 100).toFixed(2))
+        : null;
+
+    // 近1年最高净值与距高点回撤（窗口数据不足 60 天则降级为 null）
+    const oneYearAgo = latestTs - 365 * 24 * 3600 * 1000;
+    const lastYearPoints = points.filter(p => p.date >= oneYearAgo);
+    let peakNav1Y = null;
+    let peakDate1Y = null;
+    let distanceToYearHighPct = null;
+    if (lastYearPoints.length >= 60) {
+        let peak1y = lastYearPoints[0];
+        for (const p of lastYearPoints) {
+            if (p.nav > peak1y.nav) peak1y = p;
+        }
+        peakNav1Y = parseFloat(peak1y.nav.toFixed(4));
+        peakDate1Y = (() => {
+            try { return new Date(peak1y.date).toISOString().split('T')[0]; }
+            catch (e) { return null; }
+        })();
+        if (peak1y.nav > 0) {
+            distanceToYearHighPct = parseFloat(((peak1y.nav - latestNav) / peak1y.nav * 100).toFixed(2));
+            // 当前即新高时给 0 而非负数
+            if (distanceToYearHighPct < 0) distanceToYearHighPct = 0;
+        }
+    }
 
     const fmt = (ts) => {
         try { return new Date(ts).toISOString().split('T')[0]; }
@@ -133,6 +174,10 @@ function computeFundIndicators(navTrend) {
         drawdownAbs,
         gain3m,
         gain6m,
+        gain1y,
+        distanceToYearHighPct,
+        peakNav1Y,
+        peakDate1Y,
         latestNavDate: fmt(latestTs),
         latestNav: parseFloat(latestNav.toFixed(4)),
         peakNav: parseFloat(peak.nav.toFixed(4)),
@@ -315,25 +360,31 @@ function buildTriggerReason(hitRule, indicators, benchmarkName) {
 // ============================================================
 
 /**
- * 从基金数据源拉取净值序列（先东方财富、失败则天天基金）。
- * 返回的形态: [{ date: ms, nav: number }, ...]，按时间升序。
+ * 从基金数据源拉取净值序列与基金经理信息（先东方财富、失败则天天基金）。
+ * @returns {Promise<{ navTrend: Array<{date,nav}>, currentManager: string|null }>}
+ *          navTrend 形态: [{ date: ms, nav: number }, ...] 按时间升序；获取失败为 []
+ *          currentManager: 实时基金经理姓名；缺失为 null
  */
 async function fetchFundNavTrend(code) {
-    // 主源: 东方财富（含完整净值序列）
+    // 主源: 东方财富（含完整净值序列 + 基金经理）
     try {
         const data = await fetchEastmoneyFundData(code);
-        if (data && data.netWorthTrend) {
-            // fundFetcher 返回 { '1y': [], '3y': [], '5y': [], 'all': [] }
-            const all = data.netWorthTrend.all || [];
-            if (all.length > 0) {
-                return all.map(p => ({ date: Number(p.date), nav: Number(p.nav) }));
-            }
+        if (data) {
+            const all = (data.netWorthTrend && data.netWorthTrend.all) || [];
+            const navTrend = all.length > 0
+                ? all.map(p => ({ date: Number(p.date), nav: Number(p.nav) }))
+                : [];
+            const mgr = (Array.isArray(data.managers) && data.managers.length > 0)
+                ? (data.managers[0]?.name || null)
+                : null;
+            const currentManager = (typeof mgr === 'string' && mgr.trim()) ? mgr.trim() : null;
+            return { navTrend, currentManager };
         }
     } catch (err) {
         console.warn(`  [策略引擎] ${code} 东方财富净值拉取失败:`, err.message);
     }
-    // 备用源: 天天基金（无完整序列，无法计算回撤/涨幅）
-    return [];
+    // 备用源: 天天基金（无完整序列，无法计算回撤/涨幅；也无法可靠拿到经理）
+    return { navTrend: [], currentManager: null };
 }
 
 /**
@@ -403,7 +454,7 @@ async function computeRecommendations(strategies) {
         }
     }
 
-    // 3) 并行拉取每只基金净值序列
+    // 3) 并行拉取每只基金净值序列与实时经理
     const navResults = await Promise.allSettled(
         strategies.map(s => fetchFundNavTrend(s.fundCode))
     );
@@ -411,7 +462,9 @@ async function computeRecommendations(strategies) {
     // 4) 逐个匹配规则
     const recommendations = strategies.map((strategy, i) => {
         const eva = pickBenchmarkEvaluation(evaMap, strategy.benchmarkIndex) || {};
-        const navTrend = navResults[i].status === 'fulfilled' ? navResults[i].value : [];
+        const fundFetched = navResults[i].status === 'fulfilled' ? navResults[i].value : { navTrend: [], currentManager: null };
+        const navTrend = fundFetched.navTrend || [];
+        const currentManager = fundFetched.currentManager || null;
         const fundIndicators = computeFundIndicators(navTrend);
 
         const indicators = {
@@ -420,39 +473,79 @@ async function computeRecommendations(strategies) {
             fundDrawdownAbs:   fundIndicators.drawdownAbs,
             fundGain3M:        fundIndicators.gain3m,
             fundGain6M:        fundIndicators.gain6m,
+            fundGain1Y:        fundIndicators.gain1y,
+            fundDistanceToYearHighPct: fundIndicators.distanceToYearHighPct,
         };
 
         const indexAvailable = indicators.indexPePercentile != null;
         const fundAvailable = navTrend.length > 0;
         const stale = !indexAvailable || !fundAvailable;
 
-        const { hitRule, ruleScans } = matchStrategy(strategy, indicators);
+        const benchmarkName = eva.name || strategy.benchmarkName || '基准指数';
+
+        // 经理变更短路（最高优先级）：configManager 与 currentManager 均非空且不一致 → 暂停新增
+        const configManager = (typeof strategy.managerName === 'string' && strategy.managerName.trim())
+            ? strategy.managerName.trim() : null;
+        const managerChanged = !!(configManager && currentManager && configManager !== currentManager);
+
+        let hitRule = null;
+        let ruleScans = [];
+        let triggerReason;
+
+        if (managerChanged) {
+            // 短路：跳过 matchStrategy，构造合成档位
+            hitRule = {
+                id: 'managerChanged',
+                label: '暂停新增',
+                color: 'purple',
+                multiplier: 0,
+                logic: 'AND',
+            };
+            // 把原始规则数组生成"已被经理变更短路"的扫描记录，便于前端折叠区展示
+            const rules = Array.isArray(strategy.rules) ? strategy.rules : [];
+            ruleScans = rules.map(r => ({
+                id: r.id,
+                label: r.label,
+                color: r.color,
+                multiplier: r.multiplier,
+                hit: false,
+                summary: '已被经理变更短路',
+            }));
+            triggerReason = `基金经理已由 ${configManager} 变更为 ${currentManager}，请重新评估`;
+        } else {
+            const matchResult = matchStrategy(strategy, indicators);
+            hitRule = matchResult.hitRule;
+            ruleScans = matchResult.ruleScans;
+            triggerReason = !indexAvailable
+                ? `${benchmarkName} 数据不可用，建议手动判断`
+                : buildTriggerReason(hitRule, indicators, benchmarkName);
+        }
 
         const monthlyAmount = Number(strategy.monthlyAmount) || 0;
         const multiplier = hitRule ? Number(hitRule.multiplier) : 100;
         const actualAmount = Math.round(monthlyAmount * multiplier / 100);
 
-        const benchmarkName = eva.name || strategy.benchmarkName || '基准指数';
-        const triggerReason = !indexAvailable
-            ? `${benchmarkName} 数据不可用，建议手动判断`
-            : buildTriggerReason(hitRule, indicators, benchmarkName);
-
         return {
             fundCode: strategy.fundCode,
             fundName: strategy.fundName,
             managerName: strategy.managerName || null,
+            currentManager,
+            managerChanged,
             benchmarkIndex: strategy.benchmarkIndex,
             benchmarkName,
             navDate: fundIndicators.latestNavDate,
             latestNav: fundIndicators.latestNav,
             peakNav: fundIndicators.peakNav,
             peakDate: fundIndicators.peakDate,
+            peakNav1Y: fundIndicators.peakNav1Y,
+            peakDate1Y: fundIndicators.peakDate1Y,
             indicators,
             hitRule: hitRule ? {
                 id: hitRule.id,
                 label: hitRule.label,
                 color: hitRule.color,
                 multiplier: hitRule.multiplier,
+                logic: hitRule.logic || 'AND',
             } : null,
             monthlyAmount,
             actualAmount,

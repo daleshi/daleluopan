@@ -1782,7 +1782,7 @@ const {
 
 const { readFundWatchlist: afReadFundWatchlist } = require('./services/fundFetcher');
 
-// 默认策略（首次启动自动写入），与 design.md 数据结构小节保持一致
+// 默认策略 v2（首次启动自动写入；含 AND/OR 不对称语义 + boost 加强档 + v2 衍生指标）
 const DEFAULT_ACTIVE_FUND_STRATEGIES = [
     {
         fundCode: '163415',
@@ -1793,28 +1793,43 @@ const DEFAULT_ACTIVE_FUND_STRATEGIES = [
         monthlyAmount: 1000,
         drawdownBaseline: 'history',
         rules: [
+            // ① 极贵防御：市场极贵 OR 距近1年新高 ≤ 2%（任一即暂停）
             {
-                id: 'pause',
+                id: 'pause-extreme',
                 label: '暂停定投',
                 color: 'purple',
                 multiplier: 0,
                 logic: 'OR',
                 conditions: [
                     { field: 'indexPePercentile', op: '>=', value: 90 },
+                    { field: 'fundDistanceToYearHighPct', op: '<=', value: 2 },
                 ],
             },
+            // ② 偏贵防御：市场偏贵 OR 近1年涨幅 > 50%（任一即暂停）
+            {
+                id: 'pause-overheat',
+                label: '暂停定投',
+                color: 'purple',
+                multiplier: 0,
+                logic: 'OR',
+                conditions: [
+                    { field: 'indexPePercentile', op: '>=', value: 80 },
+                    { field: 'fundGain1Y', op: '>', value: 50 },
+                ],
+            },
+            // ③ 减半档：PE ≥ 60% OR 近1年涨幅 > 40%
             {
                 id: 'half',
                 label: '减半定投',
                 color: 'yellow',
                 multiplier: 50,
-                logic: 'AND',
+                logic: 'OR',
                 conditions: [
-                    { field: 'indexPePercentile', op: '>=', value: 80 },
-                    { field: 'indexPePercentile', op: '<',  value: 90 },
-                    { field: 'fundGain3M',        op: '>=', value: 15 },
+                    { field: 'indexPePercentile', op: '>=', value: 60 },
+                    { field: 'fundGain1Y', op: '>', value: 40 },
                 ],
             },
+            // ④ 加倍档：市场低估 AND 基金深度回撤
             {
                 id: 'double',
                 label: '加倍定投',
@@ -1823,9 +1838,36 @@ const DEFAULT_ACTIVE_FUND_STRATEGIES = [
                 logic: 'AND',
                 conditions: [
                     { field: 'indexPePercentile', op: '<=', value: 20 },
-                    { field: 'fundDrawdownAbs',   op: '>=', value: 20 },
+                    { field: 'fundDrawdownAbs', op: '>=', value: 20 },
                 ],
             },
+            // ⑤ 加强档：市场低估 AND 基金明显回撤（10-20% 区间）
+            {
+                id: 'boost',
+                label: '加强定投',
+                color: 'blue',
+                multiplier: 150,
+                logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '<=', value: 20 },
+                    { field: 'fundDrawdownAbs', op: '>=', value: 10 },
+                    { field: 'fundDrawdownAbs', op: '<', value: 20 },
+                ],
+            },
+            // ⑥ 中性区加强：市场不贵 AND 基金回撤 ≥15%
+            {
+                id: 'boost-mid',
+                label: '加强定投',
+                color: 'blue',
+                multiplier: 150,
+                logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '>=', value: 20 },
+                    { field: 'indexPePercentile', op: '<', value: 60 },
+                    { field: 'fundDrawdownAbs', op: '>=', value: 15 },
+                ],
+            },
+            // ⑦ 兜底正常档
             {
                 id: 'normal',
                 label: '正常定投',
@@ -1845,27 +1887,31 @@ const DEFAULT_ACTIVE_FUND_STRATEGIES = [
         monthlyAmount: 1000,
         drawdownBaseline: 'history',
         rules: [
+            // ① 暂停档：市场极贵 OR 近3月涨幅过热（任一即暂停）
             {
                 id: 'pause',
                 label: '暂停定投',
                 color: 'purple',
                 multiplier: 0,
-                logic: 'AND',
+                logic: 'OR',
                 conditions: [
-                    { field: 'indexPePercentile', op: '>=', value: 95 },
+                    { field: 'indexPePercentile', op: '>=', value: 90 },
+                    { field: 'fundGain3M', op: '>=', value: 15 },
                 ],
             },
+            // ② 减半档：市场偏贵 OR 近3月涨幅 ≥10%
             {
                 id: 'half',
                 label: '减半定投',
                 color: 'yellow',
                 multiplier: 50,
-                logic: 'AND',
+                logic: 'OR',
                 conditions: [
                     { field: 'indexPePercentile', op: '>=', value: 80 },
-                    { field: 'indexPePercentile', op: '<',  value: 95 },
+                    { field: 'fundGain3M', op: '>=', value: 10 },
                 ],
             },
+            // ③ 加倍档：市场低估 AND 基金深度回撤 ≥15%
             {
                 id: 'double',
                 label: '加倍定投',
@@ -1874,9 +1920,23 @@ const DEFAULT_ACTIVE_FUND_STRATEGIES = [
                 logic: 'AND',
                 conditions: [
                     { field: 'indexPePercentile', op: '<=', value: 20 },
-                    { field: 'fundDrawdownAbs',   op: '>=', value: 15 },
+                    { field: 'fundDrawdownAbs', op: '>=', value: 15 },
                 ],
             },
+            // ④ 加强档：市场低估 AND 基金明显回撤（5-15% 区间）
+            {
+                id: 'boost',
+                label: '加强定投',
+                color: 'blue',
+                multiplier: 150,
+                logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '<=', value: 20 },
+                    { field: 'fundDrawdownAbs', op: '>=', value: 5 },
+                    { field: 'fundDrawdownAbs', op: '<', value: 15 },
+                ],
+            },
+            // ⑤ 兜底正常档
             {
                 id: 'normal',
                 label: '正常定投',
@@ -1888,6 +1948,74 @@ const DEFAULT_ACTIVE_FUND_STRATEGIES = [
         ],
     },
 ];
+
+/**
+ * v1 默认 rules 签名快照（按 id 排序后 JSON.stringify 取 SHA-1 hex）。
+ * 仅当现网配置文件中某 fundCode 的 rules 与该签名匹配时，才认定其"未被管理员修改"，可安全升级到 v2。
+ *
+ * 来源：active-fund-strategy-v2 propose 时点的 v1 配置（即上线 v2 前 server.js 中的 DEFAULT_ACTIVE_FUND_STRATEGIES）。
+ *  - 163415: 4 条规则（pause OR / half AND / double AND / normal）
+ *  - 008269: 4 条规则（pause AND PE>=95 / half AND PE 80-95 / double AND / normal）
+ */
+const V1_DEFAULT_RULES = {
+    '163415': [
+        { id: 'pause', label: '暂停定投', color: 'purple', multiplier: 0, logic: 'OR',
+            conditions: [{ field: 'indexPePercentile', op: '>=', value: 90 }] },
+        { id: 'half', label: '减半定投', color: 'yellow', multiplier: 50, logic: 'AND',
+            conditions: [
+                { field: 'indexPePercentile', op: '>=', value: 80 },
+                { field: 'indexPePercentile', op: '<',  value: 90 },
+                { field: 'fundGain3M',        op: '>=', value: 15 },
+            ] },
+        { id: 'double', label: '加倍定投', color: 'red', multiplier: 200, logic: 'AND',
+            conditions: [
+                { field: 'indexPePercentile', op: '<=', value: 20 },
+                { field: 'fundDrawdownAbs',   op: '>=', value: 20 },
+            ] },
+        { id: 'normal', label: '正常定投', color: 'green', multiplier: 100, logic: 'AND', conditions: [] },
+    ],
+    '008269': [
+        { id: 'pause', label: '暂停定投', color: 'purple', multiplier: 0, logic: 'AND',
+            conditions: [{ field: 'indexPePercentile', op: '>=', value: 95 }] },
+        { id: 'half', label: '减半定投', color: 'yellow', multiplier: 50, logic: 'AND',
+            conditions: [
+                { field: 'indexPePercentile', op: '>=', value: 80 },
+                { field: 'indexPePercentile', op: '<',  value: 95 },
+            ] },
+        { id: 'double', label: '加倍定投', color: 'red', multiplier: 200, logic: 'AND',
+            conditions: [
+                { field: 'indexPePercentile', op: '<=', value: 20 },
+                { field: 'fundDrawdownAbs',   op: '>=', value: 15 },
+            ] },
+        { id: 'normal', label: '正常定投', color: 'green', multiplier: 100, logic: 'AND', conditions: [] },
+    ],
+};
+
+/**
+ * 生成 rules 数组的稳定签名：先按 id 排序（条件列表按 field/op/value 三元组排序），
+ * 再 JSON.stringify 后取 SHA-1 hex。
+ * 用于检测某基金的 rules 是否仍是 v1 默认快照（未被管理员修改）。
+ */
+function signRules(rules) {
+    if (!Array.isArray(rules)) return '';
+    const normalized = rules
+        .map(r => ({
+            id: r.id || '',
+            label: r.label || '',
+            color: r.color || '',
+            multiplier: Number(r.multiplier) || 0,
+            logic: (r.logic || 'AND').toUpperCase(),
+            conditions: (Array.isArray(r.conditions) ? r.conditions : [])
+                .map(c => ({ field: c.field, op: c.op, value: Number(c.value) }))
+                .sort((a, b) => {
+                    if (a.field !== b.field) return a.field.localeCompare(b.field);
+                    if (a.op !== b.op) return a.op.localeCompare(b.op);
+                    return (a.value || 0) - (b.value || 0);
+                }),
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id));
+    return crypto.createHash('sha1').update(JSON.stringify(normalized)).digest('hex');
+}
 
 function readActiveFundStrategies() {
     try {
@@ -1913,22 +2041,66 @@ function writeActiveFundStrategies(strategies) {
 }
 
 /**
- * 首次启动自检：若配置文件不存在，写入默认两只基金的预设规则。
- * 已存在的文件不会被覆盖。
+ * 首次启动自检 + v1 → v2 智能升级。
+ * - 配置文件不存在 → 用 v2 默认全量初始化
+ * - 配置文件存在 → 对 fundCode='163415' / '008269'：若当前 rules 签名与 v1 默认签名匹配
+ *   则**仅替换 rules + 刷新 updatedAt**，保留其他字段；签名不匹配视为管理员已自定义，跳过覆盖
+ * - 其他 fundCode 与字段一律保留
  */
 function ensureDefaultActiveFundStrategies() {
     try {
         ensureDataDir();
+        // 场景 A：文件不存在 → v2 全量初始化
         if (!fs.existsSync(ACTIVE_FUND_STRATEGY_FILE)) {
             const initial = DEFAULT_ACTIVE_FUND_STRATEGIES.map(s => ({
                 ...s,
                 updatedAt: new Date().toISOString(),
             }));
             writeActiveFundStrategies(initial);
-            console.log('[主动基金策略] 首次启动，已写入默认策略配置（共', initial.length, '只）');
+            console.log('[主动基金策略] 首次启动，已写入默认策略配置 v2（共', initial.length, '只）');
+            return;
+        }
+
+        // 场景 B：文件存在 → 对默认两只基金做 v1 → v2 升级检测
+        const strategies = readActiveFundStrategies();
+        if (!Array.isArray(strategies) || strategies.length === 0) {
+            // 文件存在但内容空：按场景 A 处理
+            const initial = DEFAULT_ACTIVE_FUND_STRATEGIES.map(s => ({
+                ...s,
+                updatedAt: new Date().toISOString(),
+            }));
+            writeActiveFundStrategies(initial);
+            console.log('[主动基金策略] 配置文件为空，已重新初始化 v2 默认策略');
+            return;
+        }
+
+        let upgraded = 0;
+        for (const targetCode of Object.keys(V1_DEFAULT_RULES)) {
+            const idx = strategies.findIndex(s => s.fundCode === targetCode);
+            if (idx < 0) continue;
+            const cur = strategies[idx];
+            if (!cur || !Array.isArray(cur.rules)) continue;
+            const v1Sig = signRules(V1_DEFAULT_RULES[targetCode]);
+            const curSig = signRules(cur.rules);
+            if (curSig === v1Sig) {
+                // 仅替换 rules + 更新 updatedAt，其他字段保留（fundName/managerName/benchmarkIndex/monthlyAmount/drawdownBaseline）
+                const v2Default = DEFAULT_ACTIVE_FUND_STRATEGIES.find(s => s.fundCode === targetCode);
+                if (v2Default) {
+                    strategies[idx] = {
+                        ...cur,
+                        rules: JSON.parse(JSON.stringify(v2Default.rules)),
+                        updatedAt: new Date().toISOString(),
+                    };
+                    upgraded += 1;
+                    console.log(`[主动基金策略] 检测到 v1 默认规则，已升级 fundCode=${targetCode} 到 v2`);
+                }
+            }
+        }
+        if (upgraded > 0) {
+            writeActiveFundStrategies(strategies);
         }
     } catch (err) {
-        console.warn('[主动基金策略] 默认配置初始化失败:', err.message);
+        console.warn('[主动基金策略] 默认配置初始化/升级失败:', err.message);
     }
 }
 

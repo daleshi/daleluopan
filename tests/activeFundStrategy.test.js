@@ -163,6 +163,45 @@ describe('Active Fund Strategy — /api/strategy/active-fund-*', () => {
             expect(res.status).toBe(400);
             expect(res.body.error).toMatch(/multiplier/);
         });
+
+        // ── v2 新增字段 / boost 档接受 ───────────────────
+        it('v2: 接受 boost 档（multiplier=150 / color=blue）', async () => {
+            const payload = validStrategy();
+            payload.rules.splice(payload.rules.length - 1, 0, {
+                id: 'boost', label: '加强定投', color: 'blue', multiplier: 150, logic: 'AND',
+                conditions: [
+                    { field: 'indexPePercentile', op: '<=', value: 20 },
+                    { field: 'fundDrawdownAbs',   op: '>=', value: 5 },
+                    { field: 'fundDrawdownAbs',   op: '<',  value: 15 },
+                ],
+            });
+            const res = await adminAgent.post('/api/strategy/active-fund-plans').send(payload);
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            const found = res.body.data.strategies.find(s => s.fundCode === TEST_FUND_CODE);
+            expect(found.rules.some(r => r.id === 'boost' && r.color === 'blue' && r.multiplier === 150)).toBe(true);
+        });
+
+        it('v2: 接受 fundGain1Y 字段', async () => {
+            const payload = validStrategy();
+            // 在 pause 规则中追加 fundGain1Y > 50 OR 条件
+            payload.rules[0].logic = 'OR';
+            payload.rules[0].conditions.push({ field: 'fundGain1Y', op: '>', value: 50 });
+            const res = await adminAgent.post('/api/strategy/active-fund-plans').send(payload);
+            expect(res.status).toBe(200);
+            const found = res.body.data.strategies.find(s => s.fundCode === TEST_FUND_CODE);
+            expect(found.rules[0].conditions.some(c => c.field === 'fundGain1Y')).toBe(true);
+        });
+
+        it('v2: 接受 fundDistanceToYearHighPct 字段', async () => {
+            const payload = validStrategy();
+            payload.rules[0].logic = 'OR';
+            payload.rules[0].conditions.push({ field: 'fundDistanceToYearHighPct', op: '<=', value: 2 });
+            const res = await adminAgent.post('/api/strategy/active-fund-plans').send(payload);
+            expect(res.status).toBe(200);
+            const found = res.body.data.strategies.find(s => s.fundCode === TEST_FUND_CODE);
+            expect(found.rules[0].conditions.some(c => c.field === 'fundDistanceToYearHighPct')).toBe(true);
+        });
     });
 
     // ── POST /api/strategy/active-fund-plans/delete ────────────
@@ -218,5 +257,24 @@ describe('Active Fund Strategy — /api/strategy/active-fund-*', () => {
             expect(res.body.data.marketContext).toBeDefined();
             expect(res.body.data.marketContext.benchmarks).toBeDefined();
         }, 30000);
+
+        // ── v2: 响应包含 v2 新字段 ──────────────────────
+        it('v2: 推荐响应包含 currentManager / managerChanged / 新衍生字段', async () => {
+            const res = await createAgent()
+                .get('/api/strategy/active-fund-recommendations');
+            const recs = res.body.data.recommendations || [];
+            if (recs.length === 0) return; // 配置为空时跳过
+            const r = recs[0];
+            // v2 新增的顶层字段
+            expect(r).toHaveProperty('currentManager');
+            expect(r).toHaveProperty('managerChanged');
+            expect(typeof r.managerChanged).toBe('boolean');
+            // v2 衍生指标字段（可能为 null，但 key 必须存在）
+            expect(r.indicators).toHaveProperty('fundGain1Y');
+            expect(r.indicators).toHaveProperty('fundDistanceToYearHighPct');
+            // 近1年高点字段
+            expect(r).toHaveProperty('peakNav1Y');
+            expect(r).toHaveProperty('peakDate1Y');
+        }, 60000);
     });
 });
