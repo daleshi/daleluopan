@@ -2298,6 +2298,7 @@ module.exports = {
     buildDashboardOnlyConfig,
     fetchRealtimeQuotes,
     fetchHistoryKlines,
+    fetchIndexHistory,
     fetchDanjuanEvaluation,
     fetchYZYXThermometer,
     fetchYZYXIndexDetail,

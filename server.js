@@ -251,6 +251,7 @@ function getCacheTTL(key) {
     if (key === 'active-fund-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
     if (key === 'gold-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
     if (key === 'etf-recommendations') return trading ? 30 * 1000 : 30 * 60 * 1000;
+    if (key === 'sp500-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
     return trading ? CACHE_TTL_TRADING : CACHE_TTL_CLOSED;
 }
 
@@ -3381,6 +3382,272 @@ app.post('/api/strategy/etf-holdings/delete', requireAdmin, (req, res) => {
     } catch (err) {
         console.error('[API] /api/strategy/etf-holdings/delete 错误:', err.message);
         res.status(500).json({ success: false, error: '删除记录失败: ' + err.message });
+    }
+});
+
+// ============================================================
+// 标普 500 投资策略 API（sp500-dca-strategy）
+// 场外定投 + 场内加仓 双形态，共享"距 5Y 高点回撤"指标
+// ============================================================
+const SP500_STRATEGY_FILE = path.join(__dirname, 'data', 'sp500-strategy.json');
+
+const {
+    computeRecommendation: sp500ComputeRecommendation,
+} = require('./services/sp500StrategyEngine');
+
+// 默认策略配置（首次启动自动注入）— 详见 design.md "Decisions §1"
+const DEFAULT_SP500_STRATEGY = {
+    name: '标普500投资策略',
+    indexCode: 'SPX',
+    indexSecid: '100.SPX',
+    offsite: {
+        fundCode: '017641',
+        fundName: '摩根标普500指数(QDII)人民币A',
+        monthlyAmount: 1000,
+        tiers: [
+            { id: 'pause',  label: '暂停定投', color: 'purple', multiplier: 0,   drawdownLt: 3 },
+            { id: 'half',   label: '减半定投', color: 'yellow', multiplier: 50,  drawdownLt: 10 },
+            { id: 'normal', label: '正常定投', color: 'green',  multiplier: 100, drawdownLt: 20 },
+            { id: 'double', label: '加倍定投', color: 'red',    multiplier: 200, drawdownLt: null }, // 兜底无上界
+        ],
+    },
+    onsite: {
+        etfCode: '513500',
+        etfName: '博时标普500 ETF',
+        etfSecid: '1.513500',
+        signals: [
+            { id: 'idle',   label: '未到时机',   color: 'gray',   amount: 0,     drawdownLt: 3 },
+            { id: 'watch',  label: '可关注',     color: 'yellow', amount: 5000,  drawdownLt: 10 },
+            { id: 'buy',    label: '可加仓',     color: 'orange', amount: 10000, drawdownLt: 20 },
+            { id: 'strong', label: '强烈加仓',   color: 'red',    amount: 15000, drawdownLt: null }, // 兜底无上界
+        ],
+        premiumGate: {
+            fullPassMaxPct: 0.5,
+            halfPassMaxPct: 1.5,
+        },
+    },
+};
+
+function readSp500Strategy() {
+    try {
+        ensureDataDir();
+        if (fs.existsSync(SP500_STRATEGY_FILE)) {
+            const raw = fs.readFileSync(SP500_STRATEGY_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            // 文件可能是 { strategy: {...} } 或直接 {...}（兼容）
+            return data.strategy || data || null;
+        }
+    } catch (err) {
+        console.warn('[SP500策略] 读取配置失败:', err.message);
+    }
+    return null;
+}
+
+function writeSp500Strategy(strategy) {
+    ensureDataDir();
+    fs.writeFileSync(
+        SP500_STRATEGY_FILE,
+        JSON.stringify({ strategy }, null, 2),
+        'utf8'
+    );
+}
+
+/**
+ * 首次启动自检：若配置文件不存在，写入默认策略；存在则不动。
+ */
+function ensureDefaultSp500Strategy() {
+    try {
+        ensureDataDir();
+        if (!fs.existsSync(SP500_STRATEGY_FILE)) {
+            const initial = { ...DEFAULT_SP500_STRATEGY, updatedAt: new Date().toISOString() };
+            writeSp500Strategy(initial);
+            console.log('[SP500策略] 首次启动，已写入默认策略配置');
+        }
+    } catch (err) {
+        console.warn('[SP500策略] 默认配置初始化失败:', err.message);
+    }
+}
+
+ensureDefaultSp500Strategy();
+
+/**
+ * 校验策略对象。返回 { ok, error, processed }。
+ */
+function validateSp500Strategy(input) {
+    if (!input || typeof input !== 'object') {
+        return { ok: false, error: '请求体不合法' };
+    }
+    const { name, indexCode, indexSecid, offsite, onsite } = input;
+
+    // 顶层必填
+    if (!indexCode || typeof indexCode !== 'string') {
+        return { ok: false, error: '缺少 indexCode' };
+    }
+    if (!indexSecid || typeof indexSecid !== 'string') {
+        return { ok: false, error: '缺少 indexSecid' };
+    }
+
+    // offsite
+    if (!offsite || typeof offsite !== 'object') {
+        return { ok: false, error: '缺少 offsite 子配置' };
+    }
+    if (!offsite.fundCode || typeof offsite.fundCode !== 'string') {
+        return { ok: false, error: 'offsite.fundCode 必填' };
+    }
+    if (offsite.monthlyAmount == null || isNaN(Number(offsite.monthlyAmount)) || Number(offsite.monthlyAmount) <= 0) {
+        return { ok: false, error: 'offsite.monthlyAmount 必须为正数' };
+    }
+    if (!Array.isArray(offsite.tiers) || offsite.tiers.length === 0) {
+        return { ok: false, error: 'offsite.tiers 必须是非空数组' };
+    }
+    // tiers 必须有兜底档（drawdownLt: null 或 id == 'double' / 'normal'）
+    if (!offsite.tiers.some(t => t && (t.drawdownLt == null || t.id === 'double' || t.id === 'normal'))) {
+        return { ok: false, error: 'offsite.tiers 必须包含兜底档（drawdownLt: null）' };
+    }
+    for (let i = 0; i < offsite.tiers.length; i++) {
+        const t = offsite.tiers[i];
+        if (!t || !t.id || !t.label) {
+            return { ok: false, error: `offsite.tiers[${i}] 缺少 id/label` };
+        }
+        const m = Number(t.multiplier);
+        if (isNaN(m) || m < 0 || m > 500) {
+            return { ok: false, error: `offsite.tiers[${i}].multiplier 必须在 0-500 之间` };
+        }
+    }
+
+    // onsite
+    if (!onsite || typeof onsite !== 'object') {
+        return { ok: false, error: '缺少 onsite 子配置' };
+    }
+    if (!onsite.etfCode || typeof onsite.etfCode !== 'string') {
+        return { ok: false, error: 'onsite.etfCode 必填' };
+    }
+    if (!onsite.etfSecid || typeof onsite.etfSecid !== 'string') {
+        return { ok: false, error: 'onsite.etfSecid 必填' };
+    }
+    if (!Array.isArray(onsite.signals) || onsite.signals.length === 0) {
+        return { ok: false, error: 'onsite.signals 必须是非空数组' };
+    }
+    if (!onsite.signals.some(s => s && (s.drawdownLt == null || s.id === 'strong'))) {
+        return { ok: false, error: 'onsite.signals 必须包含兜底档（drawdownLt: null）' };
+    }
+    for (let i = 0; i < onsite.signals.length; i++) {
+        const s = onsite.signals[i];
+        if (!s || !s.id || !s.label) {
+            return { ok: false, error: `onsite.signals[${i}] 缺少 id/label` };
+        }
+        const a = Number(s.amount);
+        if (isNaN(a) || a < 0) {
+            return { ok: false, error: `onsite.signals[${i}].amount 必须 ≥ 0` };
+        }
+    }
+    // 溢价闸门
+    const gate = onsite.premiumGate;
+    if (!gate || typeof gate !== 'object') {
+        return { ok: false, error: '缺少 onsite.premiumGate' };
+    }
+    const fullMax = Number(gate.fullPassMaxPct);
+    const halfMax = Number(gate.halfPassMaxPct);
+    if (isNaN(fullMax) || isNaN(halfMax) || fullMax < 0 || halfMax < 0 || fullMax >= halfMax) {
+        return { ok: false, error: 'fullPassMaxPct 必须 < halfPassMaxPct 且均为非负数字' };
+    }
+
+    // 净化输出
+    const processed = {
+        name: typeof name === 'string' && name.trim() ? name.trim() : '标普500投资策略',
+        indexCode: indexCode.trim(),
+        indexSecid: indexSecid.trim(),
+        offsite: {
+            fundCode: offsite.fundCode.trim(),
+            fundName: typeof offsite.fundName === 'string' ? offsite.fundName.trim() : '',
+            monthlyAmount: Number(offsite.monthlyAmount),
+            tiers: offsite.tiers.map(t => ({
+                id: String(t.id),
+                label: String(t.label),
+                color: String(t.color || 'green'),
+                multiplier: Number(t.multiplier),
+                drawdownLt: t.drawdownLt == null ? null : Number(t.drawdownLt),
+            })),
+        },
+        onsite: {
+            etfCode: onsite.etfCode.trim(),
+            etfName: typeof onsite.etfName === 'string' ? onsite.etfName.trim() : '',
+            etfSecid: onsite.etfSecid.trim(),
+            signals: onsite.signals.map(s => ({
+                id: String(s.id),
+                label: String(s.label),
+                color: String(s.color || 'gray'),
+                amount: Number(s.amount),
+                drawdownLt: s.drawdownLt == null ? null : Number(s.drawdownLt),
+            })),
+            premiumGate: {
+                fullPassMaxPct: fullMax,
+                halfPassMaxPct: halfMax,
+            },
+        },
+        updatedAt: new Date().toISOString(),
+    };
+    return { ok: true, processed };
+}
+
+// === GET /api/strategy/sp500-plans（公开） ===
+app.get('/api/strategy/sp500-plans', (req, res) => {
+    const strategy = readSp500Strategy();
+    res.json({ success: true, data: { strategy } });
+});
+
+// === POST /api/strategy/sp500-plans（管理员，整体替换） ===
+app.post('/api/strategy/sp500-plans', requireAdmin, (req, res) => {
+    try {
+        const validation = validateSp500Strategy(req.body);
+        if (!validation.ok) {
+            return res.status(400).json({ success: false, error: validation.error });
+        }
+        writeSp500Strategy(validation.processed);
+        console.log(`[SP500策略] 配置更新: ${validation.processed.name}`);
+        clearSp500RecommendationCache();
+        res.json({ success: true, data: { strategy: validation.processed } });
+    } catch (err) {
+        console.error('[API] /api/strategy/sp500-plans POST 错误:', err.message);
+        res.status(500).json({ success: false, error: '保存策略失败: ' + err.message });
+    }
+});
+
+function clearSp500RecommendationCache() {
+    try {
+        const cacheFile = path.join(CACHE_DIR, 'sp500-recommendations.json');
+        if (fs.existsSync(cacheFile)) fs.unlinkSync(cacheFile);
+    } catch (e) { /* ignore */ }
+    if (_smartCache && _smartCache['sp500-recommendations']) {
+        delete _smartCache['sp500-recommendations'];
+    }
+}
+
+// === GET /api/strategy/sp500-recommendations（公开，带缓存） ===
+app.get('/api/strategy/sp500-recommendations', async (req, res) => {
+    try {
+        const forceRefresh = req.query.refresh === '1';
+        const result = await smartCacheGet(
+            'sp500-recommendations',
+            async () => {
+                const strategy = readSp500Strategy();
+                return await sp500ComputeRecommendation(strategy);
+            },
+            forceRefresh
+        );
+        if (!result) {
+            return res.status(503).json({
+                success: false,
+                error: '标普500推荐计算中，请稍后重试',
+            });
+        }
+        res.json({ success: true, data: result });
+    } catch (err) {
+        console.error('[API] /api/strategy/sp500-recommendations 错误:', err.message);
+        res.status(500).json({
+            success: false,
+            error: '推荐计算失败: ' + err.message,
+        });
     }
 });
 

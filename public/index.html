@@ -1410,6 +1410,150 @@
             .afund-ctx-date { margin-left: 0; flex-basis: 100%; }
         }
 
+        /* SP500 DCA (标普500投资策略) — 双卡片：场外定投 + 场内加仓，含溢价闸门 */
+        .sp500-market-context {
+            display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+            padding: 12px 18px; margin-bottom: 16px;
+            background: var(--overlay-02); border: 1px solid var(--border-subtle); border-radius: 10px;
+            font-size: 12px;
+        }
+        .sp500-ctx-label { color: var(--text-muted); }
+        .sp500-ctx-value { color: var(--text-primary); font-weight: 600; font-family: var(--font-mono); }
+        .sp500-ctx-value.dwn-deep { color: #fc8181; }
+        .sp500-ctx-value.dwn-mid  { color: #f6ad55; }
+        .sp500-ctx-value.dwn-low  { color: #68d391; }
+        .sp500-ctx-date { color: var(--text-muted); margin-left: auto; }
+
+        .sp500-cards { display: flex; flex-direction: column; gap: 18px; }
+        .sp500-card {
+            background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+            overflow: hidden; transition: border-color .25s;
+        }
+        .sp500-card:hover { border-color: var(--accent-blue); }
+        .sp500-card-title-bar {
+            display: flex; align-items: center; gap: 10px; padding: 14px 22px;
+            border-bottom: 1px solid var(--border-subtle); background: var(--overlay-02);
+        }
+        .sp500-card-title-icon { font-size: 18px; }
+        .sp500-card-title-text { font-size: 15px; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; }
+        .sp500-card-title-sub { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+
+        /* 溢价状态条 */
+        .sp500-premium-bar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 22px; font-size: 12px; font-weight: 600;
+        }
+        .sp500-premium-bar.fullPass {
+            background: linear-gradient(135deg, rgba(72, 187, 120, 0.15), rgba(47, 133, 90, 0.10));
+            color: #68d391; border-bottom: 1px solid rgba(72, 187, 120, 0.4);
+        }
+        .sp500-premium-bar.halfPass {
+            background: linear-gradient(135deg, rgba(237, 137, 54, 0.15), rgba(192, 86, 33, 0.10));
+            color: #f6ad55; border-bottom: 1px solid rgba(237, 137, 54, 0.4);
+        }
+        .sp500-premium-bar.blocked {
+            background: linear-gradient(135deg, rgba(229, 62, 62, 0.20), rgba(155, 44, 44, 0.12));
+            color: #fc8181; border-bottom: 1px solid rgba(229, 62, 62, 0.5);
+        }
+        .sp500-premium-bar.iopvUnavailable {
+            background: var(--overlay-03);
+            color: var(--text-muted); border-bottom: 1px solid var(--border-subtle);
+        }
+        [data-theme="light"] .sp500-premium-bar.fullPass {
+            background: #f0fff4; color: #2f855a; border-bottom-color: #9ae6b4;
+        }
+        [data-theme="light"] .sp500-premium-bar.halfPass {
+            background: #fffaf0; color: #c05621; border-bottom-color: #fbd38d;
+        }
+        [data-theme="light"] .sp500-premium-bar.blocked {
+            background: #fff5f5; color: #9b2c2c; border-bottom-color: #fc8181;
+        }
+        [data-theme="light"] .sp500-premium-bar.iopvUnavailable {
+            background: #f7fafc; color: #718096; border-bottom-color: #e2e8f0;
+        }
+        .sp500-premium-icon { font-size: 14px; }
+
+        /* 决策条（信号灯徽章 + 金额） */
+        .sp500-decision {
+            padding: 16px 22px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .sp500-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 8px;
+            font-size: 14px; font-weight: 700; min-width: 110px; justify-content: center;
+        }
+        .sp500-badge.color-red    { color: #fff; background: linear-gradient(135deg, #e53e3e, #9b2c2c); }
+        .sp500-badge.color-orange { color: #fff; background: linear-gradient(135deg, #ed8936, #c05621); }
+        .sp500-badge.color-yellow { color: #fff; background: linear-gradient(135deg, #ecc94b, #b7791f); }
+        .sp500-badge.color-green  { color: #fff; background: linear-gradient(135deg, #48bb78, #2f855a); }
+        .sp500-badge.color-purple { color: #fff; background: linear-gradient(135deg, #b794f4, #6b46c1); }
+        .sp500-badge.color-gray   { color: #fff; background: linear-gradient(135deg, #a0aec0, #718096); }
+        .sp500-amount-block { display: flex; flex-direction: column; gap: 2px; }
+        .sp500-amount-label { font-size: 11px; color: var(--text-muted); }
+        .sp500-amount-value {
+            font-size: 22px; font-weight: 700; font-family: var(--font-mono);
+            color: var(--accent-gold);
+        }
+        .sp500-amount-value.zero { color: var(--text-muted); }
+        .sp500-amount-meta { font-size: 11px; color: var(--text-muted); }
+        .sp500-trigger {
+            margin-left: auto; flex: 1 1 320px; min-width: 220px;
+            font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+        }
+        .sp500-trigger strong { color: var(--text-primary); }
+
+        .sp500-stale-tag {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            background: var(--overlay-03); color: var(--text-muted); font-size: 11px; margin-left: 8px;
+        }
+
+        /* 信号扫描列表 */
+        .sp500-scan-toggle {
+            padding: 10px 22px; cursor: pointer; user-select: none;
+            font-size: 12px; color: var(--text-muted);
+            display: flex; align-items: center; gap: 6px;
+            transition: color .2s, background .2s;
+        }
+        .sp500-scan-toggle:hover { color: var(--accent-blue); background: var(--overlay-02); }
+        .sp500-scan-toggle .toggle-icon { transition: transform .25s; }
+        .sp500-scan-toggle.open .toggle-icon { transform: rotate(90deg); }
+        .sp500-scan-list {
+            list-style: none; margin: 0; padding: 0 22px 18px;
+            display: none;
+        }
+        .sp500-scan-list.open { display: block; }
+        .sp500-scan-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 0;
+            border-top: 1px dashed var(--border-subtle);
+            font-size: 12px;
+        }
+        .sp500-scan-item:first-child { border-top: none; }
+        .sp500-scan-status {
+            min-width: 64px; padding: 3px 8px; border-radius: 4px;
+            text-align: center; font-size: 11px; font-weight: 600;
+        }
+        .sp500-scan-status.hit {
+            color: #fff; background: linear-gradient(135deg, #e53e3e, #c53030);
+        }
+        .sp500-scan-status.miss {
+            color: var(--text-muted); background: var(--overlay-03);
+        }
+        .sp500-scan-summary { color: var(--text-secondary); flex: 1; }
+
+        @media (max-width: 768px) {
+            .sp500-card-title-bar { flex-wrap: wrap; padding: 12px 16px; gap: 8px; }
+            .sp500-decision { padding: 14px 16px; gap: 12px; }
+            .sp500-trigger { margin-left: 0; flex-basis: 100%; }
+            .sp500-scan-toggle { padding: 10px 16px; }
+            .sp500-scan-list { padding: 0 16px 14px; }
+            .sp500-scan-item { flex-wrap: wrap; gap: 6px; }
+            .sp500-premium-bar { padding: 10px 16px; }
+            .sp500-market-context { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 14px; }
+            .sp500-market-context .sp500-ctx-date { margin-left: 0; }
+        }
+
         /* GOLD DCA (黄金投资策略) — 复用 afund-* 的徽章配色，新增止盈与持仓样式 */
         .gold-cards { display: flex; flex-direction: column; gap: 18px; }
         .gold-card {
@@ -4268,6 +4412,7 @@
                 <button class="strategy-subtab active" data-substrat="etf">💰 ETF 投资</button>
                 <button class="strategy-subtab" data-substrat="gold">🥇 黄金投资</button>
                 <button class="strategy-subtab" data-substrat="active-fund">💼 主动基金</button>
+                <button class="strategy-subtab" data-substrat="sp500">📈 标普500</button>
                 <button class="strategy-subtab" data-substrat="thermometer">🌡️ 温度计定投</button>
                 <button class="strategy-subtab" data-substrat="benchmark">📊 投资基准</button>
             </div>
@@ -4560,6 +4705,107 @@
                         <div class="pos-form-actions">
                             <button class="pos-btn pos-btn-primary" onclick="saveActiveFundStrategy()">保存策略</button>
                             <button class="pos-btn pos-btn-ghost" onclick="closeActiveFundForm()">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 标普500投资策略（场外定投 + 场内加仓 双卡片） -->
+            <div class="section" style="margin-top:36px">
+                <div class="section-header">
+                    <div class="section-line"></div>
+                    <div class="section-title">标普500投资策略</div>
+                    <div class="section-badge">SP500 DCA</div>
+                    <button class="dca-add-btn" id="sp500EditBtn" onclick="openSp500Form()" style="display:none">编辑策略</button>
+                </div>
+                <p class="chart-desc" style="margin-bottom:16px;font-size:12px;color:var(--text-muted)">
+                    场外摩根标普500 (017641) 按月定投 + 场内博时标普500 ETF (513500) 下跌择机加仓。
+                    共享指标：<strong>距 5 年高点回撤</strong>；场内加仓自动叠加<strong>溢价闸门</strong>（QDII 溢价 &gt; 1.5% 时建议改买场外）。
+                </p>
+                <div id="sp500MarketContext" class="sp500-market-context"></div>
+                <div id="sp500Cards" class="sp500-cards"></div>
+                <!-- 编辑表单（隐藏） -->
+                <div id="sp500FormWrap" class="pos-form-wrap" style="display:none">
+                    <div class="pos-form">
+                        <div class="pos-form-title">编辑标普500投资策略</div>
+                        <div class="pos-form-row">
+                            <label>场外基金代码</label>
+                            <input type="text" id="sp500OffsiteFundCode" class="pos-input">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>场外基金名称</label>
+                            <input type="text" id="sp500OffsiteFundName" class="pos-input">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>每月定投基准金额（元）</label>
+                            <input type="number" id="sp500OffsiteMonthly" class="pos-input" step="100" min="0">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>场外档位（回撤 % 阈值，命中"&lt;"该值的档位，最后一档为兜底无上界）</label>
+                            <div class="dca-levels-editor">
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field">🟣 暂停：drawdown &lt;
+                                        <input type="number" id="sp500_off_pause_lt" class="pos-input" step="0.5" value="3"> %</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field">🟡 减半：drawdown &lt;
+                                        <input type="number" id="sp500_off_half_lt" class="pos-input" step="0.5" value="10"> %</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field">🟢 正常：drawdown &lt;
+                                        <input type="number" id="sp500_off_normal_lt" class="pos-input" step="0.5" value="20"> %</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <span style="font-size:12px;color:var(--text-muted)">🔴 加倍：兜底（无上界）</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>场内 ETF 代码</label>
+                            <input type="text" id="sp500OnsiteEtfCode" class="pos-input">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>场内 ETF secid</label>
+                            <input type="text" id="sp500OnsiteSecid" class="pos-input">
+                        </div>
+                        <div class="pos-form-row">
+                            <label>场内信号金额（元）</label>
+                            <div class="dca-levels-editor">
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field">⚪ 未到时机：drawdown &lt;
+                                        <input type="number" id="sp500_on_idle_lt" class="pos-input" step="0.5" value="3"> %，金额
+                                        <input type="number" id="sp500_on_idle_amt" class="pos-input" step="500" value="0"> 元</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field">🟡 可关注：drawdown &lt;
+                                        <input type="number" id="sp500_on_watch_lt" class="pos-input" step="0.5" value="10"> %，金额
+                                        <input type="number" id="sp500_on_watch_amt" class="pos-input" step="500" value="5000"> 元</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field">🟠 可加仓：drawdown &lt;
+                                        <input type="number" id="sp500_on_buy_lt" class="pos-input" step="0.5" value="20"> %，金额
+                                        <input type="number" id="sp500_on_buy_amt" class="pos-input" step="500" value="10000"> 元</div>
+                                </div>
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field">🔴 强烈加仓：兜底，金额
+                                        <input type="number" id="sp500_on_strong_amt" class="pos-input" step="500" value="15000"> 元</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-form-row">
+                            <label>溢价闸门</label>
+                            <div class="dca-levels-editor">
+                                <div class="dca-level-row">
+                                    <div class="dca-level-field">✓ 全额放行：溢价 &lt;
+                                        <input type="number" id="sp500_gate_full" class="pos-input" step="0.1" value="0.5"> %</div>
+                                    <div class="dca-level-field">⚠ 半额放行：&lt;
+                                        <input type="number" id="sp500_gate_half" class="pos-input" step="0.1" value="1.5"> %（≥ 该值则拦截）</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-form-actions">
+                            <button class="pos-btn pos-btn-primary" onclick="saveSp500Strategy()">保存策略</button>
+                            <button class="pos-btn pos-btn-ghost" onclick="closeSp500Form()">取消</button>
                         </div>
                     </div>
                 </div>
@@ -6828,6 +7074,7 @@
         '黄金投资策略': 'gold',
         'ETF 投资策略': 'etf',
         '主动基金定投策略': 'active-fund',
+        '标普500投资策略': 'sp500',
         '温度计定投策略': 'thermometer',
         '投资基准': 'benchmark',
     };
@@ -8401,6 +8648,292 @@
         }
     }
 
+    // ================================================================
+    // SP500 DCA — 标普500投资策略（场外定投 + 场内加仓 双卡片）
+    // ================================================================
+    let sp500Strategy = null;
+    let sp500Recommendation = null;
+    let sp500Loading = false;
+
+    async function loadSp500Strategy(forceRefresh = false) {
+        if (sp500Loading) return;
+        sp500Loading = true;
+        try {
+            const recUrl = '/api/strategy/sp500-recommendations' + (forceRefresh ? '?refresh=1' : '');
+            const [planRes, recRes] = await Promise.all([
+                fetch('/api/strategy/sp500-plans').then(r => r.json()).catch(() => ({ success: false })),
+                fetch(recUrl).then(r => r.json()).catch(() => ({ success: false })),
+            ]);
+            if (planRes.success) sp500Strategy = planRes.data.strategy || null;
+            if (recRes.success) sp500Recommendation = recRes.data;
+            renderSp500MarketContext();
+            renderSp500Cards();
+            // 管理员才显示"编辑策略"按钮
+            const editBtn = document.getElementById('sp500EditBtn');
+            if (editBtn) editBtn.style.display = (authUser && authUser.role === 'admin') ? 'inline-flex' : 'none';
+        } catch (err) {
+            console.error('[标普500策略] 加载失败:', err);
+        } finally {
+            sp500Loading = false;
+        }
+    }
+
+    function renderSp500MarketContext() {
+        const ctx = document.getElementById('sp500MarketContext');
+        if (!ctx) return;
+        const r = sp500Recommendation;
+        if (!r) {
+            ctx.innerHTML = '<span class="sp500-ctx-label">数据加载中...</span>';
+            return;
+        }
+        if (r.drawdownFromPeak5Y == null) {
+            ctx.innerHTML = '<span class="sp500-ctx-label">⚠ 标普500 指数 K 线数据不可用，建议手动判断</span>';
+            return;
+        }
+        const dwn = Number(r.drawdownFromPeak5Y);
+        const dwnCls = dwn >= 20 ? 'dwn-deep' : dwn >= 10 ? 'dwn-mid' : 'dwn-low';
+        const peakStr = r.peakClose5Y != null ? Number(r.peakClose5Y).toFixed(2) : '—';
+        const latestStr = r.latestClose != null ? Number(r.latestClose).toFixed(2) : '—';
+        const peakDate = r.peakDate5Y || '—';
+        const latestDate = r.latestDate || '—';
+        ctx.innerHTML = `
+            <span class="sp500-ctx-label">标普500 当前</span>
+            <span class="sp500-ctx-value">${escapeHtml(latestStr)}</span>
+            <span class="sp500-ctx-label">5Y 高点</span>
+            <span class="sp500-ctx-value">${escapeHtml(peakStr)}</span>
+            <span class="sp500-ctx-label">(${escapeHtml(peakDate)})</span>
+            <span class="sp500-ctx-label">距高点回撤</span>
+            <span class="sp500-ctx-value ${dwnCls}">${dwn.toFixed(2)}%</span>
+            <span class="sp500-ctx-date">数据日期：${escapeHtml(latestDate)}</span>
+        `;
+    }
+
+    function renderSp500Cards() {
+        const container = document.getElementById('sp500Cards');
+        if (!container) return;
+        const r = sp500Recommendation;
+        if (!r) {
+            container.innerHTML = '<div class="afund-empty">数据加载中...</div>';
+            return;
+        }
+        if (r.error) {
+            container.innerHTML = `<div class="afund-empty">⚠ ${escapeHtml(r.error)}</div>`;
+            return;
+        }
+        const offsiteHtml = r.offsite ? renderSp500OffsiteCard(r.offsite) : '';
+        const onsiteHtml = r.onsite ? renderSp500OnsiteCard(r.onsite) : '';
+        container.innerHTML = offsiteHtml + onsiteHtml;
+    }
+
+    function renderSp500OffsiteCard(off) {
+        const hit = off.hitTier || { id: 'normal', label: '正常定投', color: 'green', multiplier: 100 };
+        const colorCls = `color-${hit.color || 'green'}`;
+        const amountZero = off.actualAmount === 0;
+        const staleTag = off.stale ? '<span class="sp500-stale-tag">⚠ 净值数据陈旧</span>' : '';
+        const navInfo = (off.latestNav != null && off.navDate)
+            ? `<span class="sp500-card-title-sub">净值 ${Number(off.latestNav).toFixed(4)} (${escapeHtml(off.navDate)})</span>`
+            : '';
+        const scanId = `sp500-off-scan-${off.fundCode || 'x'}`;
+        return `
+            <div class="sp500-card">
+                <div class="sp500-card-title-bar">
+                    <span class="sp500-card-title-icon">📅</span>
+                    <span class="sp500-card-title-text">场外定投 · ${escapeHtml(off.fundName || '摩根标普500')}
+                        <span class="sp500-card-title-sub" style="margin-left:8px">${escapeHtml(off.fundCode || '')}</span>
+                        ${staleTag}
+                    </span>
+                    ${navInfo}
+                </div>
+                <div class="sp500-decision">
+                    <span class="sp500-badge ${colorCls}">${escapeHtml(hit.label)}</span>
+                    <div class="sp500-amount-block">
+                        <span class="sp500-amount-label">本月定投</span>
+                        <span class="sp500-amount-value${amountZero ? ' zero' : ''}">${off.actualAmount} <span style="font-size:13px;color:var(--text-muted)">元</span></span>
+                        <span class="sp500-amount-meta">基准 ${off.monthlyAmount} 元 × ${hit.multiplier}%</span>
+                    </div>
+                    <div class="sp500-trigger"><strong>触发依据：</strong>${escapeHtml(off.triggerReason || '—')}</div>
+                </div>
+                <div class="sp500-scan-toggle" onclick="toggleSp500Scan('${scanId}', this)">
+                    <span class="toggle-icon">▶</span>
+                    <span>档位扫描（${(off.tierScans || []).length} 档）</span>
+                </div>
+                <ul class="sp500-scan-list" id="${scanId}">${renderSp500ScanList(off.tierScans, 'tier')}</ul>
+            </div>
+        `;
+    }
+
+    function renderSp500OnsiteCard(on) {
+        const hit = on.hitSignal || { id: 'idle', label: '未到时机', color: 'gray', amount: 0 };
+        const colorCls = `color-${hit.color || 'gray'}`;
+        const premium = on.premium || { value: null, status: 'iopvUnavailable', message: '' };
+        const premIcon = {
+            fullPass: '✓',
+            halfPass: '⚠',
+            blocked: '🚫',
+            iopvUnavailable: '⚠',
+        }[premium.status] || '·';
+        const premStr = premium.value != null
+            ? `溢价 ${Number(premium.value).toFixed(2)}% · ${premium.message}`
+            : (premium.message || 'IOPV 数据不可用');
+        const amountZero = on.suggestedAmount === 0;
+        const staleTag = on.stale ? '<span class="sp500-stale-tag">⚠ 行情陈旧</span>' : '';
+        const etfPriceInfo = on.etfPrice != null
+            ? `<span class="sp500-card-title-sub">现价 ${Number(on.etfPrice).toFixed(3)}${on.iopv != null ? ' / IOPV ' + Number(on.iopv).toFixed(3) : ''}</span>`
+            : '';
+        const scanId = `sp500-on-scan-${on.etfCode || 'x'}`;
+        return `
+            <div class="sp500-card">
+                <div class="sp500-card-title-bar">
+                    <span class="sp500-card-title-icon">⚡</span>
+                    <span class="sp500-card-title-text">场内加仓 · ${escapeHtml(on.etfName || '博时标普500 ETF')}
+                        <span class="sp500-card-title-sub" style="margin-left:8px">${escapeHtml(on.etfCode || '')}</span>
+                        ${staleTag}
+                    </span>
+                    ${etfPriceInfo}
+                </div>
+                <div class="sp500-premium-bar ${premium.status}">
+                    <span class="sp500-premium-icon">${premIcon}</span>
+                    <span>${escapeHtml(premStr)}</span>
+                </div>
+                <div class="sp500-decision">
+                    <span class="sp500-badge ${colorCls}">${escapeHtml(hit.label)}</span>
+                    <div class="sp500-amount-block">
+                        <span class="sp500-amount-label">建议金额</span>
+                        <span class="sp500-amount-value${amountZero ? ' zero' : ''}">${on.suggestedAmount} <span style="font-size:13px;color:var(--text-muted)">元</span></span>
+                        <span class="sp500-amount-meta">基础 ${on.baseAmount} 元 × 闸门系数 ${(premium.factor != null ? premium.factor : 1.0).toFixed(2)}</span>
+                    </div>
+                    <div class="sp500-trigger"><strong>触发依据：</strong>${escapeHtml(on.triggerReason || '—')}</div>
+                </div>
+                <div class="sp500-scan-toggle" onclick="toggleSp500Scan('${scanId}', this)">
+                    <span class="toggle-icon">▶</span>
+                    <span>信号扫描（${(on.signalScans || []).length} 档）</span>
+                </div>
+                <ul class="sp500-scan-list" id="${scanId}">${renderSp500ScanList(on.signalScans, 'signal')}</ul>
+            </div>
+        `;
+    }
+
+    function renderSp500ScanList(scans, type) {
+        if (!Array.isArray(scans) || scans.length === 0) return '';
+        return scans.map(s => {
+            const cls = s.hit ? 'hit' : 'miss';
+            const text = s.hit ? '⚠ 当前' : '未触发';
+            const colorCls = `color-${s.color || 'gray'}`;
+            const valLabel = type === 'tier'
+                ? `× ${s.multiplier}%`
+                : `${s.amount} 元`;
+            return `
+                <li class="sp500-scan-item">
+                    <span class="sp500-scan-status ${cls}">${text}</span>
+                    <span class="sp500-badge ${colorCls}" style="min-width:80px;font-size:11px;padding:3px 8px">${escapeHtml(s.label || s.id)}</span>
+                    <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${escapeHtml(valLabel)}</span>
+                    <span class="sp500-scan-summary">${escapeHtml(s.summary || '')}</span>
+                </li>
+            `;
+        }).join('');
+    }
+
+    function toggleSp500Scan(id, toggleEl) {
+        const list = document.getElementById(id);
+        if (!list) return;
+        const open = list.classList.toggle('open');
+        if (toggleEl) toggleEl.classList.toggle('open', open);
+    }
+
+    function openSp500Form() {
+        if (!authUser || authUser.role !== 'admin') return;
+        const wrap = document.getElementById('sp500FormWrap');
+        if (!wrap) return;
+        // 用当前 sp500Strategy 预填，否则用默认值
+        const s = sp500Strategy || {};
+        const off = s.offsite || {};
+        const on = s.onsite || {};
+        document.getElementById('sp500OffsiteFundCode').value = off.fundCode || '017641';
+        document.getElementById('sp500OffsiteFundName').value = off.fundName || '摩根标普500指数(QDII)人民币A';
+        document.getElementById('sp500OffsiteMonthly').value = off.monthlyAmount || 1000;
+        const findTier = (id) => (off.tiers || []).find(t => t.id === id) || {};
+        document.getElementById('sp500_off_pause_lt').value = findTier('pause').drawdownLt ?? 3;
+        document.getElementById('sp500_off_half_lt').value = findTier('half').drawdownLt ?? 10;
+        document.getElementById('sp500_off_normal_lt').value = findTier('normal').drawdownLt ?? 20;
+        document.getElementById('sp500OnsiteEtfCode').value = on.etfCode || '513500';
+        document.getElementById('sp500OnsiteSecid').value = on.etfSecid || '1.513500';
+        const findSig = (id) => (on.signals || []).find(t => t.id === id) || {};
+        document.getElementById('sp500_on_idle_lt').value = findSig('idle').drawdownLt ?? 3;
+        document.getElementById('sp500_on_idle_amt').value = findSig('idle').amount ?? 0;
+        document.getElementById('sp500_on_watch_lt').value = findSig('watch').drawdownLt ?? 10;
+        document.getElementById('sp500_on_watch_amt').value = findSig('watch').amount ?? 5000;
+        document.getElementById('sp500_on_buy_lt').value = findSig('buy').drawdownLt ?? 20;
+        document.getElementById('sp500_on_buy_amt').value = findSig('buy').amount ?? 10000;
+        document.getElementById('sp500_on_strong_amt').value = findSig('strong').amount ?? 15000;
+        const gate = on.premiumGate || {};
+        document.getElementById('sp500_gate_full').value = gate.fullPassMaxPct ?? 0.5;
+        document.getElementById('sp500_gate_half').value = gate.halfPassMaxPct ?? 1.5;
+        wrap.style.display = 'block';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeSp500Form() {
+        const wrap = document.getElementById('sp500FormWrap');
+        if (wrap) wrap.style.display = 'none';
+    }
+
+    async function saveSp500Strategy() {
+        if (!authUser || authUser.role !== 'admin') return;
+        const num = (id) => Number(document.getElementById(id).value);
+
+        const fullMax = num('sp500_gate_full');
+        const halfMax = num('sp500_gate_half');
+        if (!(fullMax < halfMax)) {
+            alert('溢价闸门：全额阈值必须小于半额阈值');
+            return;
+        }
+
+        const body = {
+            name: '标普500投资策略',
+            indexCode: 'SPX',
+            indexSecid: '100.SPX',
+            offsite: {
+                fundCode: document.getElementById('sp500OffsiteFundCode').value.trim(),
+                fundName: document.getElementById('sp500OffsiteFundName').value.trim(),
+                monthlyAmount: num('sp500OffsiteMonthly'),
+                tiers: [
+                    { id: 'pause',  label: '暂停定投', color: 'purple', multiplier: 0,   drawdownLt: num('sp500_off_pause_lt') },
+                    { id: 'half',   label: '减半定投', color: 'yellow', multiplier: 50,  drawdownLt: num('sp500_off_half_lt') },
+                    { id: 'normal', label: '正常定投', color: 'green',  multiplier: 100, drawdownLt: num('sp500_off_normal_lt') },
+                    { id: 'double', label: '加倍定投', color: 'red',    multiplier: 200, drawdownLt: null },
+                ],
+            },
+            onsite: {
+                etfCode: document.getElementById('sp500OnsiteEtfCode').value.trim(),
+                etfName: '博时标普500 ETF',
+                etfSecid: document.getElementById('sp500OnsiteSecid').value.trim(),
+                signals: [
+                    { id: 'idle',   label: '未到时机', color: 'gray',   amount: num('sp500_on_idle_amt'),   drawdownLt: num('sp500_on_idle_lt') },
+                    { id: 'watch',  label: '可关注',   color: 'yellow', amount: num('sp500_on_watch_amt'),  drawdownLt: num('sp500_on_watch_lt') },
+                    { id: 'buy',    label: '可加仓',   color: 'orange', amount: num('sp500_on_buy_amt'),    drawdownLt: num('sp500_on_buy_lt') },
+                    { id: 'strong', label: '强烈加仓', color: 'red',    amount: num('sp500_on_strong_amt'), drawdownLt: null },
+                ],
+                premiumGate: { fullPassMaxPct: fullMax, halfPassMaxPct: halfMax },
+            },
+        };
+        try {
+            const res = await fetch('/api/strategy/sp500-plans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                credentials: 'include',
+            }).then(r => r.json());
+            if (!res.success) {
+                alert('保存失败：' + (res.error || '未知错误'));
+                return;
+            }
+            closeSp500Form();
+            await loadSp500Strategy(true);
+        } catch (err) {
+            alert('保存失败：' + err.message);
+        }
+    }
+
     function escapeAttr(s) {
         return String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
@@ -9148,6 +9681,7 @@
                 loadEtfData();
                 loadGoldData();
                 loadActiveFundRecommendations();
+                loadSp500Strategy();
                 loadDcaPlans();
                 loadPositionData(); // 投资基准已合并到投资策略
             }

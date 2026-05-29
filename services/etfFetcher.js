@@ -230,7 +230,8 @@ function guessETFCategory(name) {
 // ============================================================
 async function fetchETFQuotesEastmoney(etfs) {
     const secids = etfs.map(e => e.secid).join(',');
-    const fields = 'f2,f3,f4,f5,f6,f7,f8,f9,f12,f14,f15,f16,f17,f18,f20,f21,f23,f115,f128,f140,f141,f152';
+    // f184 = IOPV 当日实时单位净值；f185 = 折溢价率(%)
+    const fields = 'f2,f3,f4,f5,f6,f7,f8,f9,f12,f14,f15,f16,f17,f18,f20,f21,f23,f115,f128,f140,f141,f152,f184,f185';
     const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&invt=2&fields=${fields}&secids=${secids}`;
 
     const res = await safeFetch(url, { headers: HEADERS });
@@ -239,6 +240,13 @@ async function fetchETFQuotesEastmoney(etfs) {
         const quotes = {};
         data.data.diff.forEach(item => {
             if (item.f2 !== '-' && item.f12) {
+                // IOPV / 折溢价率：东财对部分品种返回 '-' 或负数（语义不明），需识别为 null
+                const iopvRaw = item.f184;
+                const premRaw = item.f185;
+                let iopv = (iopvRaw == null || iopvRaw === '-' || iopvRaw === '') ? null : parseFloat(iopvRaw);
+                if (iopv == null || isNaN(iopv) || iopv <= 0) iopv = null; // IOPV 必须为正数才有效
+                let premiumPct = (premRaw == null || premRaw === '-' || premRaw === '') ? null : parseFloat(premRaw);
+                if (premiumPct != null && isNaN(premiumPct)) premiumPct = null;
                 quotes[item.f12] = {
                     price: parseFloat(item.f2) || 0,
                     changePercent: parseFloat(item.f3) || 0,
@@ -257,6 +265,8 @@ async function fetchETFQuotesEastmoney(etfs) {
                     floatCap: parseFloat(item.f21) || 0,        // 流通市值
                     pbRatio: parseFloat(item.f23) || null,      // 市净率
                     peTTM: parseFloat(item.f115) || null,       // 市盈率(TTM)
+                    iopv,                                       // IOPV 实时净值估值
+                    premiumPct,                                 // 折溢价率 (%)，正=溢价 / 负=折价
                 };
             }
         });
@@ -264,6 +274,33 @@ async function fetchETFQuotesEastmoney(etfs) {
         return quotes;
     }
     return {};
+}
+
+/**
+ * 按 secid 拉取单只 ETF 的实时价 + IOPV + 折溢价率。
+ * 用于 sp500-dca-strategy 的溢价闸门评估。
+ *
+ * @param {string} secid 形如 "1.513500" / "0.159949"
+ * @returns {Promise<{ price: number, iopv: number|null, premiumPct: number|null, name: string } | null>}
+ *          失败返回 null；IOPV / 折溢价率字段缺失时分别为 null（保持 caller 的降级链）
+ */
+async function fetchETFIopvBySecid(secid) {
+    if (!secid) return null;
+    const code = String(secid).split('.')[1] || String(secid);
+    try {
+        const quotes = await fetchETFQuotesEastmoney([{ secid }]);
+        const q = quotes[code];
+        if (!q) return null;
+        return {
+            price: q.price,
+            iopv: q.iopv != null ? q.iopv : null,
+            premiumPct: q.premiumPct != null ? q.premiumPct : null,
+            name: q.name || '',
+        };
+    } catch (err) {
+        console.warn(`  [ETF行情] fetchETFIopvBySecid(${secid}) 失败:`, err.message);
+        return null;
+    }
 }
 
 // ============================================================
@@ -610,5 +647,6 @@ module.exports = {
     fetchETFMinuteData,
     fetchETFKlinesForRange,
     fetchETFQuotes,
+    fetchETFIopvBySecid,
     isTradingHours,
 };

@@ -1,0 +1,82 @@
+{
+  "strategy": {
+    "name": "标普500投资策略",
+    "indexCode": "SPX",
+    "indexSecid": "100.SPX",
+    "offsite": {
+      "fundCode": "017641",
+      "fundName": "摩根标普500指数(QDII)人民币A",
+      "monthlyAmount": 1000,
+      "tiers": [
+        {
+          "id": "pause",
+          "label": "暂停定投",
+          "color": "purple",
+          "multiplier": 0,
+          "drawdownLt": 3
+        },
+        {
+          "id": "half",
+          "label": "减半定投",
+          "color": "yellow",
+          "multiplier": 50,
+          "drawdownLt": 10
+        },
+        {
+          "id": "normal",
+          "label": "正常定投",
+          "color": "green",
+          "multiplier": 100,
+          "drawdownLt": 20
+        },
+        {
+          "id": "double",
+          "label": "加倍定投",
+          "color": "red",
+          "multiplier": 200,
+          "drawdownLt": null
+        }
+      ]
+    },
+    "onsite": {
+      "etfCode": "513500",
+      "etfName": "博时标普500 ETF",
+      "etfSecid": "1.513500",
+      "signals": [
+        {
+          "id": "idle",
+          "label": "未到时机",
+          "color": "gray",
+          "amount": 0,
+          "drawdownLt": 3
+        },
+        {
+          "id": "watch",
+          "label": "可关注",
+          "color": "yellow",
+          "amount": 5000,
+          "drawdownLt": 10
+        },
+        {
+          "id": "buy",
+          "label": "可加仓",
+          "color": "orange",
+          "amount": 10000,
+          "drawdownLt": 20
+        },
+        {
+          "id": "strong",
+          "label": "强烈加仓",
+          "color": "red",
+          "amount": 15000,
+          "drawdownLt": null
+        }
+      ],
+      "premiumGate": {
+        "fullPassMaxPct": 0.5,
+        "halfPassMaxPct": 1.5
+      }
+    },
+    "updatedAt": "2026-05-29T02:13:16.434Z"
+  }
+}
