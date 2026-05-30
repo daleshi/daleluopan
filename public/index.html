@@ -3129,6 +3129,40 @@
         .af-cat-panel.active {
             display: block;
         }
+        /* ===== 指数实时行情 — 市场分类 Tab（视觉参数对齐 .af-cat-tab，独立命名以便差异化） ===== */
+        .idx-cat-tabs {
+            display: flex; gap: 0; margin-bottom: 12px; flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .idx-cat-tab {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 20px; border: none; background: none;
+            color: var(--text-secondary); font-size: 13px; font-weight: 500;
+            cursor: pointer; border-bottom: 2px solid transparent;
+            transition: all .2s; font-family: var(--font-sans);
+            position: relative; white-space: nowrap;
+        }
+        .idx-cat-tab:hover { color: var(--text-primary); }
+        .idx-cat-tab.active {
+            color: var(--accent-blue); font-weight: 700;
+            border-bottom-color: var(--accent-blue);
+        }
+        .idx-cat-tab .idx-cat-icon {
+            font-size: 14px;
+        }
+        .idx-cat-tab .idx-cat-count {
+            font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 10px;
+            background: var(--overlay-03); color: var(--text-muted);
+            font-family: var(--font-mono); transition: all .2s;
+        }
+        .idx-cat-tab.active .idx-cat-count {
+            background: var(--accent-blue-dim); color: var(--accent-blue);
+        }
+        @media (max-width: 480px) {
+            .idx-cat-tab { padding: 8px 12px; font-size: 12px; gap: 6px; }
+            .idx-cat-tab .idx-cat-icon { font-size: 13px; }
+            .idx-cat-tab .idx-cat-count { padding: 1px 5px; font-size: 9px; }
+        }
         .af-group-empty {
             text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 12px;
         }
@@ -3641,6 +3675,75 @@
         .idx-temp-label.warm { color: var(--orange-warn); }
         .idx-temp-label.hot { color: var(--red-danger); }
 
+        /* ===== 美股卡片增强：52w 区间条 / 动量 3 列 / Sparkline ===== */
+        .idx-range-bar-wrap {
+            grid-column: 1 / -1;
+            display: flex; flex-direction: column; gap: 4px;
+            margin-top: 2px; padding: 4px 0;
+        }
+        .idx-range-bar-labels {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 10px; color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .idx-range-bar-labels .idx-range-bar-mid {
+            color: var(--text-secondary); font-weight: 600;
+        }
+        .idx-range-bar-labels .idx-range-bar-mid.up { color: var(--green-value); }
+        .idx-range-bar-labels .idx-range-bar-mid.down { color: var(--red-danger); }
+        .idx-range-bar {
+            position: relative; height: 6px; border-radius: 3px;
+            background: linear-gradient(to right,
+                rgba(229,62,62,0.18) 0%,
+                rgba(236,201,75,0.18) 50%,
+                rgba(56,161,105,0.18) 100%);
+            overflow: visible;
+        }
+        .idx-range-bar-marker {
+            position: absolute; top: -2px; width: 10px; height: 10px;
+            border-radius: 50%; background: var(--accent-blue);
+            border: 2px solid var(--bg-card);
+            transform: translateX(-50%);
+            box-shadow: 0 0 4px rgba(0,0,0,0.25);
+            transition: left 0.6s ease;
+        }
+
+        .idx-momentum-row {
+            grid-column: 1 / -1;
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px; margin-top: 4px;
+        }
+        .idx-momentum-cell {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 2px; padding: 4px 2px;
+            background: var(--overlay-02); border-radius: 4px;
+        }
+        .idx-momentum-cell-label {
+            font-size: 10px; color: var(--text-muted);
+        }
+        .idx-momentum-cell-value {
+            font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+        }
+        .idx-momentum-cell-value.up { color: var(--green-value); }
+        .idx-momentum-cell-value.down { color: var(--red-danger); }
+        .idx-momentum-cell-value.na { color: var(--text-muted); }
+
+        .idx-sparkline-wrap {
+            grid-column: 1 / -1;
+            margin-top: 4px; padding: 2px 0;
+        }
+        .idx-sparkline {
+            display: block; width: 100%; height: 28px;
+            opacity: 0.85;
+        }
+
+        @media (max-width: 480px) {
+            .idx-sparkline { height: 22px; }
+            .idx-momentum-cell-label { font-size: 9px; }
+            .idx-momentum-cell-value { font-size: 10px; }
+            .idx-range-bar-labels { font-size: 9px; }
+        }
+
         .idx-quote-remove-btn {
             position: absolute; top: 6px; right: 6px;
             width: 20px; height: 20px; border-radius: 50%; border: none;
@@ -4121,6 +4224,24 @@
                         <div class="af-search-results" id="indexSearchResults"></div>
                     </div>
                     <div class="guest-hint" onclick="window.location.href='/admin'">🔒 登录后可搜索添加指数到看板</div>
+                </div>
+                <div class="idx-cat-tabs" id="indexCatTabs">
+                    <button class="idx-cat-tab active" data-market="all" onclick="switchIndexMarketTab('all')">
+                        <span class="idx-cat-icon">📊</span> 全部
+                        <span class="idx-cat-count" id="indexCatCountAll">0</span>
+                    </button>
+                    <button class="idx-cat-tab" data-market="cn" onclick="switchIndexMarketTab('cn')">
+                        <span class="idx-cat-icon">🇨🇳</span> A股
+                        <span class="idx-cat-count" id="indexCatCountCn">0</span>
+                    </button>
+                    <button class="idx-cat-tab" data-market="hk" onclick="switchIndexMarketTab('hk')">
+                        <span class="idx-cat-icon">🇭🇰</span> 港股
+                        <span class="idx-cat-count" id="indexCatCountHk">0</span>
+                    </button>
+                    <button class="idx-cat-tab" data-market="us" onclick="switchIndexMarketTab('us')">
+                        <span class="idx-cat-icon">🇺🇸</span> 美股
+                        <span class="idx-cat-count" id="indexCatCountUs">0</span>
+                    </button>
                 </div>
                 <div class="idx-summary-grid" id="indexSummaryGrid"></div>
             </div>
@@ -9740,6 +9861,47 @@
     let indexQuotesData = [];
     let indexQuotesLoaded = false;
     let _indexSearchTimer = null;
+    // 市场分类 Tab — 模块状态与常量
+    const MARKET_GROUPS = {
+        all: null,                  // null = 不过滤
+        cn:  ['SH', 'SZ', 'CSI'],   // A股：上交所 / 深交所 / 中证
+        hk:  ['HI'],                // 港股：恒生
+        us:  ['US'],                // 美股：标普 / 纳指 等
+    };
+    let currentMarketFilter = 'all';
+    let _lastIndexUpdateTime = null;
+    const _warnedUnknownMarkets = new Set();
+    function filterIndicesByMarket(indices, group) {
+        const allowed = MARKET_GROUPS[group];
+        if (!allowed) return indices.slice(); // all
+        return indices.filter(idx => {
+            const m = idx.market;
+            if (allowed.includes(m)) return true;
+            // 未知 market 兜底告警（每个值仅 warn 一次）
+            const isKnown = Object.values(MARKET_GROUPS).some(arr => arr && arr.includes(m));
+            if (!isKnown && m && !_warnedUnknownMarkets.has(m)) {
+                _warnedUnknownMarkets.add(m);
+                console.warn('[indexQuotes] 未识别的 market 值:', m, '— 将仅在「全部」Tab 可见');
+            }
+            return false;
+        });
+    }
+    window.switchIndexMarketTab = function(group) {
+        if (!MARKET_GROUPS.hasOwnProperty(group)) return;
+        if (group === currentMarketFilter) return;
+        currentMarketFilter = group;
+        // 切换 Tab 激活态
+        document.querySelectorAll('#indexCatTabs .idx-cat-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.market === group);
+        });
+        // 强制清空网格 → 让下一次渲染走"首次渲染"分支（避免 diff 误判）
+        const grid = document.getElementById('indexSummaryGrid');
+        if (grid) grid.innerHTML = '';
+        // 用已加载数据立即重渲染（不再发起 fetch）
+        if (indexQuotesData && indexQuotesData.length) {
+            renderIndexQuotesGrid({ indices: indexQuotesData, updateTime: _lastIndexUpdateTime });
+        }
+    };
 
     async function loadIndexQuotes(forceRefresh = false) {
         const grid = document.getElementById('indexSummaryGrid');
@@ -9753,6 +9915,7 @@
             if (json.success && json.data?.indices) {
                 indexQuotesData = json.data.indices;
                 indexQuotesLoaded = true;
+                _lastIndexUpdateTime = json.data.updateTime || _lastIndexUpdateTime;
                 renderIndexQuotesGrid(json.data);
 
             }
@@ -9770,24 +9933,51 @@
         }
         // 过滤掉上证指数（已在上方"市场风向标"展示）
         const filtered = (data.indices || []).filter(idx => idx.code !== '000001');
+
+        // 计数：基于全集（不应用当前 Tab 过滤），4 个 Tab 计数同步更新
+        const cnSet = MARKET_GROUPS.cn;
+        const hkSet = MARKET_GROUPS.hk;
+        const usSet = MARKET_GROUPS.us;
+        const countAll = filtered.length;
+        const countCn  = filtered.filter(idx => cnSet.includes(idx.market)).length;
+        const countHk  = filtered.filter(idx => hkSet.includes(idx.market)).length;
+        const countUs  = filtered.filter(idx => usSet.includes(idx.market)).length;
+        const elAll = document.getElementById('indexCatCountAll');
+        const elCn  = document.getElementById('indexCatCountCn');
+        const elHk  = document.getElementById('indexCatCountHk');
+        const elUs  = document.getElementById('indexCatCountUs');
+        if (elAll) elAll.textContent = countAll;
+        if (elCn)  elCn.textContent  = countCn;
+        if (elHk)  elHk.textContent  = countHk;
+        if (elUs)  elUs.textContent  = countUs;
+
+        // 顶部 countLabel 始终展示总关注数（不受 Tab 切换影响）
+        if (countLabel) countLabel.textContent = filtered.length > 0 ? `关注 ${filtered.length} 个指数` : '';
+
+        // 应用当前 Tab 过滤，得到实际渲染子集
+        const visible = filterIndicesByMarket(filtered, currentMarketFilter);
+
         if (filtered.length === 0) {
             if (grid) grid.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)">📊 暂无关注的指数，在上方搜索框中输入指数名称或代码添加关注</div>';
-            if (countLabel) countLabel.textContent = '';
             return;
         }
-        if (countLabel) countLabel.textContent = `关注 ${filtered.length} 个指数`;
+        if (visible.length === 0) {
+            // 当前 Tab 下无数据 — 仅"非全部" Tab 才会进入此分支（全部 Tab 在上面已 return）
+            if (grid) grid.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)">📊 该市场暂无关注指数，使用上方搜索框添加关注</div>';
+            return;
+        }
         if (grid) {
             if (grid.children.length === 0) {
                 // 首次渲染：全量 innerHTML
-                grid.innerHTML = filtered.map(idx => buildIndexQuoteCard(idx)).join('');
+                grid.innerHTML = visible.map(idx => buildIndexQuoteCard(idx)).join('');
             } else {
                 // 增量更新：diff 已有卡片，避免整块 DOM 重建导致闪烁
-                const newCodes = new Set(filtered.map(idx => idx.code));
+                const newCodes = new Set(visible.map(idx => idx.code));
                 // 移除已不在列表中的旧卡片
                 Array.from(grid.children).forEach(el => {
                     if (!newCodes.has(el.dataset.code)) grid.removeChild(el);
                 });
-                filtered.forEach((idx, i) => {
+                visible.forEach((idx, i) => {
                     const existing = grid.querySelector(`[data-code="${idx.code}"]`);
                     const newHtml = buildIndexQuoteCard(idx);
                     if (!existing) {
@@ -9848,6 +10038,82 @@
         return 'hot';
     }
 
+    // ===== 美股卡片增强工具函数（区间条 / 动量 3 列 / Sparkline）=====
+    function buildRangeBar(low, high, current, drawdownPct) {
+        if (low == null || high == null || !(high > low)) return '';
+        let pct = 0;
+        if (current != null && current > 0) {
+            pct = ((current - low) / (high - low)) * 100;
+            if (pct < 0) pct = 0;
+            if (pct > 100) pct = 100;
+        }
+        let midText = '';
+        let midCls = '';
+        if (drawdownPct != null) {
+            // 回撤是正数，展示为 "距高 -X.XX%"；零回撤即新高
+            if (drawdownPct === 0) {
+                midText = '52周新高';
+                midCls = 'up';
+            } else {
+                midText = `距高 -${drawdownPct.toFixed(2)}%`;
+                midCls = 'down';
+            }
+        }
+        return `<div class="idx-range-bar-wrap">
+            <div class="idx-range-bar-labels">
+                <span>低 ${fmtNum(low)}</span>
+                <span class="idx-range-bar-mid ${midCls}">${midText}</span>
+                <span>高 ${fmtNum(high)}</span>
+            </div>
+            <div class="idx-range-bar">
+                <div class="idx-range-bar-marker" style="left:${pct.toFixed(2)}%"></div>
+            </div>
+        </div>`;
+    }
+
+    function buildMomentumRow(changeMonth, change3Month, changeYear) {
+        if (changeMonth == null && change3Month == null && changeYear == null) return '';
+        const cell = (label, val) => {
+            if (val == null) {
+                return `<div class="idx-momentum-cell">
+                    <span class="idx-momentum-cell-label">${label}</span>
+                    <span class="idx-momentum-cell-value na">--</span>
+                </div>`;
+            }
+            const cls = val >= 0 ? 'up' : 'down';
+            const sign = val >= 0 ? '+' : '';
+            return `<div class="idx-momentum-cell">
+                <span class="idx-momentum-cell-label">${label}</span>
+                <span class="idx-momentum-cell-value ${cls}">${sign}${val.toFixed(2)}%</span>
+            </div>`;
+        };
+        return `<div class="idx-momentum-row">
+            ${cell('近1月', changeMonth)}
+            ${cell('近3月', change3Month)}
+            ${cell('近1年', changeYear)}
+        </div>`;
+    }
+
+    function buildSparkline(sparkData, momentumDir) {
+        if (!Array.isArray(sparkData) || sparkData.length < 2) return '';
+        const w = 100, h = 28;
+        const min = Math.min(...sparkData);
+        const max = Math.max(...sparkData);
+        const range = (max - min) || 1; // 防除零
+        const step = sparkData.length > 1 ? w / (sparkData.length - 1) : 0;
+        const points = sparkData.map((v, i) => {
+            const x = (i * step).toFixed(2);
+            const y = (h - ((v - min) / range) * h).toFixed(2);
+            return `${x},${y}`;
+        }).join(' ');
+        const stroke = momentumDir === 'down' ? 'var(--red-danger)' : 'var(--green-value)';
+        return `<div class="idx-sparkline-wrap">
+            <svg class="idx-sparkline" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+                <polyline points="${points}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </div>`;
+    }
+
     function buildIndexQuoteCard(idx) {
         const isUp = (idx.changePercent || 0) >= 0;
         const hasPrice = idx.price != null;
@@ -9898,20 +10164,16 @@
         html += '<div class="idx-card-detail">';
 
         if (isUS) {
-            // ── 美股指数：展示52周区间、今开/昨收、涨幅区间 ──
+            // ── 美股指数：今开/昨收 + 52w 区间条 + 价格水位 + 动量 3 列 + Sparkline ──
             if (idx.open != null) {
                 html += `<div class="idx-detail-item"><span class="idx-detail-label">今开</span><span class="idx-detail-value">${fmtNum(idx.open)}</span></div>`;
             }
             if (idx.prevClose != null) {
                 html += `<div class="idx-detail-item"><span class="idx-detail-label">昨收</span><span class="idx-detail-value">${fmtNum(idx.prevClose)}</span></div>`;
             }
-            if (idx.high52w != null) {
-                html += `<div class="idx-detail-item"><span class="idx-detail-label">52周高</span><span class="idx-detail-value">${fmtNum(idx.high52w)}</span></div>`;
-            }
-            if (idx.low52w != null) {
-                html += `<div class="idx-detail-item"><span class="idx-detail-label">52周低</span><span class="idx-detail-value">${fmtNum(idx.low52w)}</span></div>`;
-            }
-            // 52周价格水位进度条（替代A股的PE百分位）
+            // 52周区间条（替代旧的"52周高/52周低"两行 detail-item）
+            html += buildRangeBar(idx.low52w, idx.high52w, idx.price, idx.drawdownFromHigh52w);
+            // 52周价格水位进度条（保留）
             if (hasPEPct) {
                 const peC = _pctClass(idx.pePercentile);
                 html += `<div class="idx-pct-bar-wrap"><div class="idx-pct-bar-item">
@@ -9922,19 +10184,11 @@
                     <div class="idx-pct-bar"><div class="idx-pct-bar-fill ${peC}" style="width:${Math.min(idx.pePercentile, 100)}%"></div></div>
                 </div></div>`;
             }
-            // 近期涨幅
-            if (idx.changeMonth != null || idx.change3Month != null) {
-                html += '<div class="idx-pct-bar-wrap" style="gap:4px">';
-                if (idx.changeMonth != null) {
-                    const mDir = idx.changeMonth >= 0 ? 'up' : 'down';
-                    html += `<div class="idx-detail-item"><span class="idx-detail-label">近1月</span><span class="idx-detail-value ${mDir}">${idx.changeMonth >= 0 ? '+' : ''}${idx.changeMonth.toFixed(2)}%</span></div>`;
-                }
-                if (idx.change3Month != null) {
-                    const qDir = idx.change3Month >= 0 ? 'up' : 'down';
-                    html += `<div class="idx-detail-item"><span class="idx-detail-label">近3月</span><span class="idx-detail-value ${qDir}">${idx.change3Month >= 0 ? '+' : ''}${idx.change3Month.toFixed(2)}%</span></div>`;
-                }
-                html += '</div>';
-            }
+            // 动量 3 列（近1月 / 近3月 / 近1年）
+            html += buildMomentumRow(idx.changeMonth, idx.change3Month, idx.changeYear);
+            // 30 天 Sparkline（按近 1 月涨跌方向着色）
+            const sparkDir = (idx.changeMonth != null && idx.changeMonth < 0) ? 'down' : 'up';
+            html += buildSparkline(idx.sparkData, sparkDir);
         } else {
             // ── A股/港股指数：原有 PE/PB 估值展示 ──
             if (hasPE) {

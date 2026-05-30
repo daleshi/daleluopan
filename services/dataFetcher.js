@@ -317,6 +317,85 @@ function markEastmoneyKlineCooldown(reason) {
     }
 }
 
+// ============================================================
+// K 线源健康监控（重启清零，无持久化）
+// ============================================================
+const KLINE_HEALTH_RECENT_FAILURE_LIMIT = 50;
+const KLINE_HEALTH_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const KLINE_HEALTH_ALERT_WINDOW_MS = 60 * 60 * 1000;
+const KLINE_HEALTH_ALERT_MIN_AFFECTED_CODES = 3;
+
+const _klineSourceHealth = {
+    eastmoney: { success: 0, failure: 0, lastSuccessAt: null, lastFailureAt: null, recentFailures: [] },
+    tencent:   { success: 0, failure: 0, lastSuccessAt: null, lastFailureAt: null, recentFailures: [] },
+    yahoo:     { success: 0, failure: 0, lastSuccessAt: null, lastFailureAt: null, recentFailures: [] },
+};
+
+function recordKlineSourceSuccess(source, code) {
+    const h = _klineSourceHealth[source];
+    if (!h) return;
+    h.success++;
+    h.lastSuccessAt = Date.now();
+}
+
+function recordKlineSourceFailure(source, code, errMsg) {
+    const h = _klineSourceHealth[source];
+    if (!h) return;
+    h.failure++;
+    h.lastFailureAt = Date.now();
+    h.recentFailures.push({ code: String(code || ''), time: Date.now(), err: String(errMsg || '').slice(0, 200) });
+    if (h.recentFailures.length > KLINE_HEALTH_RECENT_FAILURE_LIMIT) {
+        h.recentFailures.shift();
+    }
+}
+
+function getKlineSourceHealthSnapshot() {
+    const out = {};
+    for (const [src, h] of Object.entries(_klineSourceHealth)) {
+        const total = h.success + h.failure;
+        out[src] = {
+            success: h.success,
+            failure: h.failure,
+            successRate: total > 0 ? parseFloat((h.success / total).toFixed(4)) : null,
+            lastSuccessAt: h.lastSuccessAt ? new Date(h.lastSuccessAt).toISOString() : null,
+            lastFailureAt: h.lastFailureAt ? new Date(h.lastFailureAt).toISOString() : null,
+            recentFailures: h.recentFailures.map(f => ({
+                code: f.code,
+                time: new Date(f.time).toISOString(),
+                err: f.err,
+            })),
+        };
+    }
+    return out;
+}
+
+function checkKlineSourceHealth() {
+    const cutoff = Date.now() - KLINE_HEALTH_ALERT_WINDOW_MS;
+    for (const [src, h] of Object.entries(_klineSourceHealth)) {
+        const recent = h.recentFailures.filter(f => f.time > cutoff);
+        if (recent.length === 0) continue;
+        const codes = [...new Set(recent.map(f => f.code).filter(Boolean))];
+        if (codes.length >= KLINE_HEALTH_ALERT_MIN_AFFECTED_CODES) {
+            console.warn(`[K线健康] ${src} 最近 1 小时失败 ${recent.length} 次，影响 ${codes.length} 个指数: ${codes.join(',')}`);
+        }
+    }
+}
+
+let _klineHealthMonitorTimer = null;
+function startKlineSourceHealthMonitor() {
+    if (_klineHealthMonitorTimer) return _klineHealthMonitorTimer;
+    _klineHealthMonitorTimer = setInterval(checkKlineSourceHealth, KLINE_HEALTH_CHECK_INTERVAL_MS);
+    if (_klineHealthMonitorTimer.unref) _klineHealthMonitorTimer.unref(); // 不阻止进程退出
+    return _klineHealthMonitorTimer;
+}
+
+function stopKlineSourceHealthMonitor() {
+    if (_klineHealthMonitorTimer) {
+        clearInterval(_klineHealthMonitorTimer);
+        _klineHealthMonitorTimer = null;
+    }
+}
+
 function isEastmoneyKlineTransientError(err) {
     const message = String(err?.message || '');
     return /socket hang up|ECONNRESET|ETIMEDOUT|timeout|network|HTTP 429|HTTP 403|HTTP 5\d\d/i.test(message);
@@ -1118,6 +1197,7 @@ async function fetchHistoryKlinesDetailed(secid, limit = 2520, altSecids = [], o
                 const data = await res.json();
                 if (data?.data?.klines?.length > 0) {
                     console.log(`  [K线] ${sid} 获取成功, ${data.data.klines.length} 条 (lmt=${lmt})`);
+                    recordKlineSourceSuccess('eastmoney', sid);
                     return {
                         klines: data.data.klines.map(line => {
                             const p = line.split(',');
@@ -1143,6 +1223,7 @@ async function fetchHistoryKlinesDetailed(secid, limit = 2520, altSecids = [], o
     }
 
     console.warn(`  [K线] ${secid} 所有secid均失败${lastErrorMessage ? `: ${lastErrorMessage}` : ''}`);
+    recordKlineSourceFailure('eastmoney', secid, lastErrorMessage);
     return {
         klines: [],
         sourceSecid: null,
@@ -1333,6 +1414,7 @@ async function fetchTencentKlines(code, market, cfg) {
             const days = data?.data?.[tc]?.day || data?.data?.[tc]?.qfqday || [];
             if (days.length > 0) {
                 console.log(`  [K线-腾讯] ${tc} fallback成功, ${days.length} 条`);
+                recordKlineSourceSuccess('tencent', tc);
                 return days.map(d => ({
                     date: d[0],
                     open: +d[1],
@@ -1351,6 +1433,7 @@ async function fetchTencentKlines(code, market, cfg) {
     }
     if (txCodesToTry.length > 0) {
         console.warn(`  [K线-腾讯] ${txCodesToTry.join('/')} 均失败`);
+        recordKlineSourceFailure('tencent', txCodesToTry[0], '所有候选 txCode 均无数据');
     }
     return [];
 }
@@ -1397,10 +1480,14 @@ async function fetchYahooKlines(cfg) {
         }
         if (klines.length > 0) {
             console.log(`  [K线-Yahoo] ${yahooCode} 获取成功, ${klines.length} 条`);
+            recordKlineSourceSuccess('yahoo', yahooCode);
+        } else {
+            recordKlineSourceFailure('yahoo', yahooCode, '接口返回空 K 线');
         }
         return klines;
     } catch (err) {
         console.warn(`  [K线-Yahoo] ${yahooCode} 失败:`, err.message);
+        recordKlineSourceFailure('yahoo', yahooCode, err.message);
         return [];
     }
 }
@@ -2171,6 +2258,120 @@ async function searchIndex(keyword) {
 // ============================================================
 // 获取指数实时行情 + 估值数据（基于 watchlist）
 // ============================================================
+
+// 美股卡片增强：从 indices.json 合并 K 线衍生统计字段（高 52 周/低 52 周/动量/Sparkline）
+const _INDICES_CACHE_FILE = path.join(__dirname, '..', 'data', 'cache', 'indices.json');
+
+/**
+ * 计算美股 K 线动量字段（基于交易日近似：1月≈21、3月≈63、6月≈126、1年≈252）
+ * @param {Array} historySeries - 升序 K 线数组，每条至少含 close 字段
+ * @param {number|null} currentPrice - 实时价（来自 quote）。若提供，优先用作"now"，避免 historySeries 末尾陈旧导致动量与回撤偏差
+ * @param {number|null} quoteHigh52w - 实时 quote 提供的 52 周高点（如腾讯源）。若提供，参与回撤计算的 max 比较
+ * @returns {Object} 动量字段对象（缺失时全为 null）
+ */
+function computeUSMomentum(historySeries, currentPrice = null, quoteHigh52w = null) {
+    const NA = {
+        changeMonth: null, change3Month: null, change6Month: null, changeYear: null,
+        drawdownFromHigh52w: null,
+    };
+    if (!Array.isArray(historySeries) || historySeries.length === 0) return NA;
+    const tailClose = historySeries[historySeries.length - 1]?.close;
+    // 优先用实时价；若实时价缺失/异常则回退到 K 线末尾
+    const last = (currentPrice && currentPrice > 0) ? currentPrice : tailClose;
+    if (!last || last <= 0) return NA;
+    const pickAgo = (days) => {
+        // 注意：当 last = currentPrice（今日 T+0），days 天前 = 末尾（昨日收盘）回退 days-1 个交易日
+        // 当 last = tailClose（K 线末尾），days 天前 = 末尾回退 days 个交易日
+        const offsetFromTail = (currentPrice && currentPrice > 0) ? (days - 1) : days;
+        const idx = historySeries.length - 1 - offsetFromTail;
+        if (idx < 0) return null;
+        const c = historySeries[idx]?.close;
+        return (c && c > 0) ? c : null;
+    };
+    const pct = (now, prev) => (prev && prev > 0) ? ((now - prev) / prev) * 100 : null;
+    const round2 = (v) => v == null ? null : parseFloat(v.toFixed(2));
+
+    const m1 = pickAgo(21);
+    const m3 = pickAgo(63);
+    const m6 = pickAgo(126);
+    const y1 = pickAgo(252);
+
+    // 距 52 周收盘高点回撤（正数 %）
+    // 关键：max 取自三方候选 —— historySeries 250 日 close + 当前实时价 + quote 提供的 high52w
+    // 避免历史 K 线源滞后/缺失最新高点时回撤为 0 的假象
+    const last250 = historySeries.slice(-250);
+    const closes250 = last250.map(k => k?.close).filter(c => c && c > 0);
+    if (currentPrice && currentPrice > 0) closes250.push(currentPrice);
+    if (quoteHigh52w && quoteHigh52w > 0) closes250.push(quoteHigh52w);
+    let drawdownFromHigh52w = null;
+    if (closes250.length > 0) {
+        const high = Math.max(...closes250);
+        if (high > 0) {
+            const dd = ((high - last) / high) * 100;
+            drawdownFromHigh52w = round2(dd < 0 ? 0 : dd);
+        }
+    }
+
+    return {
+        changeMonth: round2(pct(last, m1)),
+        change3Month: round2(pct(last, m3)),
+        change6Month: round2(pct(last, m6)),
+        changeYear: round2(pct(last, y1)),
+        drawdownFromHigh52w,
+    };
+}
+
+/**
+ * 读取 data/cache/indices.json 并构造 Map<code, indexRecord>，code 含 .market 后缀（如 'SPX.US'）
+ * @returns {{ map: Map<string, Object>, cacheTime: number }} 失败或文件不存在时返回空 Map + cacheTime=0
+ */
+function loadIndicesCacheMap() {
+    try {
+        if (!fs.existsSync(_INDICES_CACHE_FILE)) return { map: new Map(), cacheTime: 0 };
+        const raw = fs.readFileSync(_INDICES_CACHE_FILE, 'utf8');
+        const wrapper = JSON.parse(raw);
+        const indices = wrapper?.data?.indices || wrapper?.indices || [];
+        const cacheTime = typeof wrapper?.time === 'number' ? wrapper.time : 0;
+        if (!Array.isArray(indices)) return { map: new Map(), cacheTime };
+        return { map: new Map(indices.map(i => [i.code, i])), cacheTime };
+    } catch (e) {
+        console.warn('  [行情] 读取 indices.json 失败，跳过美股增强:', e.message);
+        return { map: new Map(), cacheTime: 0 };
+    }
+}
+
+// ============================================================
+// 运行时节奏对齐：indices.json 陈旧时主动触发美股 K 线刷新
+// ============================================================
+const INDICES_CACHE_STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 分钟
+const LAZY_REFRESH_LIMIT_PER_BATCH = 2; // 每次主动刷新最多 N 个指数，避免外部源压力突增
+let _indicesRefreshInProgress = false;
+
+function triggerLazyUSKlineRefresh(usWatchlist) {
+    if (_indicesRefreshInProgress) return; // 已有刷新进行中，跳过本次
+    if (!Array.isArray(usWatchlist) || usWatchlist.length === 0) return;
+    _indicesRefreshInProgress = true;
+    setImmediate(async () => {
+        try {
+            const targets = usWatchlist.slice(0, LAZY_REFRESH_LIMIT_PER_BATCH);
+            console.log(`  [行情] indices.json 陈旧，主动刷新 ${targets.length} 个美股指数 K 线: ${targets.map(t => t.code).join(',')}`);
+            for (const idx of targets) {
+                const poolKey = `${idx.code}.${idx.market}`;
+                const cfg = POOL_MAP[poolKey] || {
+                    name: idx.name, code: idx.code, secid: idx.secid, market: idx.market,
+                };
+                try {
+                    await fetchIndexHistory(cfg);
+                } catch (e) {
+                    // 静默：不阻塞批次
+                }
+            }
+        } finally {
+            _indicesRefreshInProgress = false;
+        }
+    });
+}
+
 async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
     const indices = readIndexWatchlist();
     if (!indices || indices.length === 0) return { indices: [], updateTime: new Date().toISOString() };
@@ -2193,6 +2394,18 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
         fetchDanjuanEvaluation().catch(() => ({})),
         fetchYZYXThermometer().catch(() => null),
     ]);
+
+    // 美股增强：加载 indices.json 缓存的 K 线衍生统计字段（仅在 results.map 内对美股启用）
+    const { map: indicesByCode, cacheTime: indicesCacheTime } = loadIndicesCacheMap();
+
+    // 节奏对齐：若 indices.json 陈旧（默认 30min）且 watchlist 含美股，异步触发 K 线刷新
+    // 本次响应仍用旧数据返回（不阻塞），下次请求即可受益
+    if (indicesCacheTime > 0 && (Date.now() - indicesCacheTime) > INDICES_CACHE_STALE_THRESHOLD_MS) {
+        const usWatchlist = indices.filter(i => i.market === 'US');
+        if (usWatchlist.length > 0) {
+            triggerLazyUSKlineRefresh(usWatchlist);
+        }
+    }
 
     const results = indices.map(idx => {
         const q = quotes[idx.code] || {};
@@ -2236,6 +2449,36 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             if (yzyxTemp) temperature = yzyxTemp.temperature;
         }
 
+        // 美股卡片增强：从 indices.json 合并 K 线衍生字段（high52w/low52w/sparkData + 动量）
+        // 必须放在 usValuationInfo 处理之前，使其使用增强后的 q.high52w/q.low52w 触发水位推导
+        let usEnrich = null;
+        if (idx.market === 'US') {
+            const fullCode = `${idx.code}.${idx.market}`;
+            const enriched = indicesByCode.get(fullCode);
+            if (enriched) {
+                // 用 indices.json 的 K 线统计覆盖（quotes 接口对美股一般拿不到这些字段）
+                if (enriched.high52w && (!q.high52w || q.high52w <= 0)) q.high52w = enriched.high52w;
+                if (enriched.low52w && (!q.low52w || q.low52w <= 0)) q.low52w = enriched.low52w;
+                // 关键：动量计算优先用实时价 q.price 作为 last，避免 historySeries 末尾陈旧
+                // （东财 K 线对美股可能滞后，但腾讯实时 quotes 一般是准确的）
+                // q.high52w 也参与回撤的 max 比较，避免历史 K 线缺最新高点时 dd=0 的假象
+                const momentum = computeUSMomentum(enriched.historySeries, q.price || null, q.high52w || null);
+                // sparkData 末尾追加实时价（若不重复且实时价有效），让 sparkline 与卡片头部价格连续
+                let sparkData = Array.isArray(enriched.sparkData) ? enriched.sparkData.slice() : null;
+                if (sparkData && sparkData.length > 0 && q.price && q.price > 0) {
+                    const lastSpark = sparkData[sparkData.length - 1];
+                    if (Math.abs(lastSpark - q.price) > 0.01) {
+                        sparkData.push(q.price);
+                        if (sparkData.length > 31) sparkData = sparkData.slice(-31);
+                    }
+                }
+                usEnrich = {
+                    sparkData,
+                    ...momentum,
+                };
+            }
+        }
+
         // 美股指数特殊处理：公开数据源不提供PE/PB，从腾讯扩展字段和K线位置推算估值区间
         let usValuationInfo = null;
         if (idx.market === 'US' && poolCfg) {
@@ -2268,12 +2511,16 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             low: q.low || null,
             open: q.open || null,
             prevClose: q.prevClose || null,
-            // 52周高低（美股从腾讯扩展字段获取）
+            // 52周高低（美股从腾讯扩展字段获取，兜底来自 indices.json K线统计）
             high52w: q.high52w || null,
             low52w: q.low52w || null,
-            // 涨幅区间
-            changeMonth: q.changeMonth ?? null,
-            change3Month: q.change3Month ?? null,
+            // 涨幅区间（美股优先使用 indices.json K线计算结果，其他市场用 quotes 字段）
+            changeMonth: (usEnrich?.changeMonth ?? q.changeMonth) ?? null,
+            change3Month: (usEnrich?.change3Month ?? q.change3Month) ?? null,
+            change6Month: usEnrich?.change6Month ?? null,
+            changeYear: usEnrich?.changeYear ?? null,
+            drawdownFromHigh52w: usEnrich?.drawdownFromHigh52w ?? null,
+            sparkData: usEnrich?.sparkData ?? null,
             // 估值
             pe, pb, pePercentile, pbPercentile,
             roe, dividend, evaType, temperature,
@@ -2308,4 +2555,8 @@ module.exports = {
     readIndexWatchlist,
     writeIndexWatchlist,
     fetchIndexQuotesForWatchlist,
+    // 健康监控（K 线源）
+    getKlineSourceHealthSnapshot,
+    startKlineSourceHealthMonitor,
+    stopKlineSourceHealthMonitor,
 };

@@ -10,6 +10,7 @@ const {
     fetchAllIndexData, fetchYZYXIndexDetail, fetchDanjuanEvaluation,
     FULL_INDEX_POOL, DEFAULT_SELECTED_CODES, POOL_MAP, INDEX_ICON_PRESETS,
     searchIndex, readIndexWatchlist, writeIndexWatchlist, fetchIndexQuotesForWatchlist,
+    getKlineSourceHealthSnapshot, startKlineSourceHealthMonitor,
 } = require('./services/dataFetcher');
 const {
     fetchAllStockData, readWatchlist, writeWatchlist, ensureWatchlist, isTradingHours,
@@ -859,6 +860,25 @@ app.get('/api/health', (req, res) => {
         trading: isTradingHours(),
         cache: cacheStatus,
     });
+});
+
+/**
+ * GET /api/health/kline-sources - K 线源健康度快照（公开）
+ * 返回 eastmoney / tencent / yahoo 三源的成功率、最近失败次数、最后成功/失败时间
+ */
+app.get('/api/health/kline-sources', (req, res) => {
+    try {
+        const snapshot = (typeof getKlineSourceHealthSnapshot === 'function')
+            ? getKlineSourceHealthSnapshot()
+            : null;
+        res.json({
+            success: true,
+            snapshot,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'K 线源健康快照获取失败: ' + err.message });
+    }
 });
 
 // ============================================================
@@ -3927,14 +3947,27 @@ app.listen(PORT, () => {
         console.log('[启动] 服务已就绪（使用磁盘缓存秒开），后台刷新数据中...');
     }
 
-    // Phase 2: 后台异步并行刷新所有数据（不阻塞请求）
+    // Phase 2: 后台异步刷新（K 线优先 + 其他并发）
     (async () => {
         try {
             const refreshStart = Date.now();
-            console.log('[启动] Phase 2: 开始后台并行刷新所有数据...');
+            console.log('[启动] Phase 2: 开始后台数据刷新（K 线优先）...');
 
+            // Phase 2a: 优先 await K 线（indices.json）刷新
+            // 关键：fetchIndexQuotesForWatchlist 内部读 indices.json 计算美股动量/Sparkline，
+            // 必须先确保 indices.json 是当日最新快照，避免冷启动窗口数据陈旧
+            const phase2aStart = Date.now();
+            try {
+                await getCachedData(true);
+                const phase2aTime = ((Date.now() - phase2aStart) / 1000).toFixed(1);
+                console.log(`[启动] Phase 2a: K 线优先刷新完成 (${phase2aTime}s) ✅ 指数完整数据`);
+            } catch (err) {
+                console.warn(`[启动] Phase 2a: K 线刷新失败（继续 Phase 2b）:`, err.message);
+            }
+
+            // Phase 2b: 其他 5 类数据并发刷新
+            const phase2bStart = Date.now();
             const results = await Promise.allSettled([
-                getCachedData(true).then(() => console.log('  [预加载] ✅ 指数完整数据')),
                 getCachedIndexQuotes(true).then(() => console.log('  [预加载] ✅ 指数实时行情')),
                 smartCacheGet('active-funds', () => fetchAllActiveFundData(true), true).then(() => console.log('  [预加载] ✅ 严选基金')),
                 smartCacheGet('stocks', () => fetchAllStockData(true), true).then(() => console.log('  [预加载] ✅ 股票行情')),
@@ -3944,9 +3977,11 @@ app.listen(PORT, () => {
 
             const succeeded = results.filter(r => r.status === 'fulfilled').length;
             const failed = results.filter(r => r.status === 'rejected');
+            const phase2bTime = ((Date.now() - phase2bStart) / 1000).toFixed(1);
             const refreshTime = ((Date.now() - refreshStart) / 1000).toFixed(1);
 
-            console.log(`[启动] Phase 2: 后台刷新完成 (${refreshTime}s)，成功 ${succeeded}/${results.length}`);
+            console.log(`[启动] Phase 2b: 其他数据并发刷新完成 (${phase2bTime}s)，成功 ${succeeded}/${results.length}`);
+            console.log(`[启动] Phase 2 总耗时 ${refreshTime}s`);
             if (failed.length > 0) {
                 failed.forEach(r => console.warn('  [预加载] ❌ 失败:', r.reason?.message || r.reason));
             }
@@ -3954,4 +3989,14 @@ app.listen(PORT, () => {
             console.warn('[启动] Phase 2: 后台刷新出错:', err.message);
         }
     })();
+
+    // 启动 K 线源健康监控（每 30 分钟聚合检查一次）
+    try {
+        if (typeof startKlineSourceHealthMonitor === 'function') {
+            startKlineSourceHealthMonitor();
+            console.log('[启动] K 线源健康监控已启动（30 分钟检查间隔）');
+        }
+    } catch (e) {
+        console.warn('[启动] K 线源健康监控启动失败:', e.message);
+    }
 });
