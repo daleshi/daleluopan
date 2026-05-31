@@ -660,18 +660,64 @@ async function fetchAllStockData(forceRefresh = false) {
 }
 
 // ============================================================
-// 判断当前是否为交易时间（简化判断）
+// 判断当前是否为交易时间（多市场感知）
 // ============================================================
-function isTradingHours() {
+
+/** A 股交易时段：周一~周五 09:15-15:05（北京时间）*/
+function _isCNTrading() {
     const now = new Date();
     const day = now.getDay();
-    // 周末
     if (day === 0 || day === 6) return false;
-    const h = now.getHours();
-    const m = now.getMinutes();
-    const time = h * 60 + m;
-    // 9:15 - 15:05 视为交易相关时段
+    const time = now.getHours() * 60 + now.getMinutes();
     return time >= 9 * 60 + 15 && time <= 15 * 60 + 5;
+}
+
+/** 港股交易时段：周一~周五 09:30-12:00 + 13:00-16:10（与北京时间相同时区）*/
+function _isHKTrading() {
+    const now = new Date();
+    const day = now.getDay();
+    if (day === 0 || day === 6) return false;
+    const time = now.getHours() * 60 + now.getMinutes();
+    const morning = time >= 9 * 60 + 30 && time <= 12 * 60;
+    const afternoon = time >= 13 * 60 && time <= 16 * 60 + 10;
+    return morning || afternoon;
+}
+
+/**
+ * 美股交易时段（粗粒度判定，涵盖夏/冬令时）：
+ *   北京时间 周一晚~周六凌晨：21:30 ~ 次日 05:00
+ *   - 夏令时：纽约 09:30-16:00 = 北京 21:30-04:00
+ *   - 冬令时：纽约 09:30-16:00 = 北京 22:30-05:00
+ *   合并为 21:30-05:00 + 30 分钟缓冲
+ *   注意：北京周六凌晨对应纽约周五交易日尾盘
+ */
+function _isUSTrading() {
+    const now = new Date();
+    const day = now.getDay();   // 0=Sun, 1=Mon, ..., 6=Sat
+    const time = now.getHours() * 60 + now.getMinutes();
+    // 周一~周五 21:30 之后开盘
+    if (day >= 1 && day <= 5 && time >= 21 * 60 + 30) return true;
+    // 周二~周六 凌晨 05:00 之前 = 纽约前一日交易日尾盘
+    if (day >= 2 && day <= 6 && time <= 5 * 60) return true;
+    return false;
+}
+
+/**
+ * 是否处于交易时段
+ * @param {string|string[]|undefined} markets - 市场代码集合：'CN' | 'HK' | 'US'
+ *   - undefined: 兼容旧调用，仅检查 A 股
+ *   - 字符串：仅检查该市场
+ *   - 数组：任一市场开盘则返回 true
+ */
+function isTradingHours(markets) {
+    if (markets === undefined) return _isCNTrading();
+    const list = Array.isArray(markets) ? markets : [markets];
+    for (const m of list) {
+        if (m === 'CN' && _isCNTrading()) return true;
+        if (m === 'HK' && _isHKTrading()) return true;
+        if (m === 'US' && _isUSTrading()) return true;
+    }
+    return false;
 }
 
 // ============================================================

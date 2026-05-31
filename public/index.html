@@ -268,6 +268,76 @@
         body.role-admin .drag-handle:hover { opacity: 0.8; }
         .card-dragging { opacity: 0.4; }
         .card-drag-over { outline: 2px dashed var(--border-accent); outline-offset: -2px; }
+
+        /* ===== 指数卡片专属拖拽手柄（更醒目，仅管理员可见）===== */
+        .idx-drag-handle {
+            display: none;
+            position: absolute; top: 8px; left: 8px;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4fa3ff, #3a7bd5);
+            color: #fff; font-size: 13px; font-weight: 700;
+            cursor: grab;
+            align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(58, 123, 213, 0.35);
+            opacity: 0.55; transition: all 0.2s;
+            z-index: 3; user-select: none;
+        }
+        body.role-admin .idx-drag-handle { display: flex; }
+        /* 卡片 hover 时手柄整体变明显（即使没碰到手柄本身）*/
+        body.role-admin .idx-summary-card:hover .idx-drag-handle {
+            opacity: 0.95; transform: scale(1.05);
+        }
+        /* 直接 hover 手柄时变全亮 + 弹出 tooltip */
+        body.role-admin .idx-drag-handle:hover {
+            opacity: 1; transform: scale(1.15);
+            box-shadow: 0 3px 10px rgba(58, 123, 213, 0.6);
+        }
+        .idx-drag-handle:active { cursor: grabbing; transform: scale(0.95) !important; }
+        /* 拖拽手柄上方提示气泡（CSS 实现，无需 JS） */
+        .idx-drag-handle::after {
+            content: '拖动调整顺序';
+            position: absolute;
+            bottom: calc(100% + 6px); left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 10px; border-radius: 6px;
+            background: var(--bg-card); color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            font-size: 11px; font-weight: 500; white-space: nowrap;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .idx-drag-handle:hover::after {
+            opacity: 1; transform: translateX(-50%) translateY(-2px);
+        }
+        /* 拖拽手柄下方箭头 */
+        .idx-drag-handle::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 1px); left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--border-subtle);
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .idx-drag-handle:hover::before { opacity: 1; }
+        /* 管理员提示条：拖拽功能引导（仅管理员） */
+        .idx-admin-hint {
+            display: none;
+            padding: 6px 12px; border-radius: var(--radius-sm);
+            background: linear-gradient(90deg, rgba(79,163,255,0.12), rgba(58,123,213,0.08));
+            border: 1px solid rgba(79,163,255,0.25);
+            color: var(--text-secondary); font-size: 12px;
+            white-space: nowrap;
+        }
+        body.role-admin .idx-admin-hint { display: inline-flex; align-items: center; gap: 6px; }
+        .idx-admin-hint-icon {
+            display: inline-block; width: 18px; height: 18px;
+            border-radius: 50%; background: linear-gradient(135deg, #4fa3ff, #3a7bd5);
+            color: #fff; font-size: 11px; font-weight: 700;
+            line-height: 18px; text-align: center;
+        }
         /* 未登录时给搜索框位置留一个只读提示 */
         .guest-hint {
             display: none;
@@ -4224,6 +4294,7 @@
                         <div class="af-search-results" id="indexSearchResults"></div>
                     </div>
                     <div class="guest-hint" onclick="window.location.href='/admin'">🔒 登录后可搜索添加指数到看板</div>
+                    <div class="idx-admin-hint" id="indexAdminHint">💡 管理员提示：拖动卡片左上角的 <span class="idx-admin-hint-icon">⠿</span> 即可调整指数顺序</div>
                 </div>
                 <div class="idx-cat-tabs" id="indexCatTabs">
                     <button class="idx-cat-tab active" data-market="all" onclick="switchIndexMarketTab('all')">
@@ -9871,6 +9942,7 @@
     let currentMarketFilter = 'all';
     let _lastIndexUpdateTime = null;
     const _warnedUnknownMarkets = new Set();
+    let _indexDnDInitialized = false;
     function filterIndicesByMarket(indices, group) {
         const allowed = MARKET_GROUPS[group];
         if (!allowed) return indices.slice(); // all
@@ -9910,7 +9982,7 @@
             grid.innerHTML = '<div class="loading-wrap"><div class="loading-spinner"></div></div>';
         }
         try {
-            const res = await fetch('/api/indices/quotes');
+            const res = await fetch('/api/indices/quotes' + (forceRefresh ? '?refresh=1' : ''));
             const json = await res.json();
             if (json.success && json.data?.indices) {
                 indexQuotesData = json.data.indices;
@@ -10011,6 +10083,17 @@
                 });
             }
         }
+        // 拖拽排序初始化（事件委托，仅绑定一次；管理员才会真正生效）
+        setupIndexDnDOnce();
+    }
+
+    function setupIndexDnDOnce() {
+        if (_indexDnDInitialized) return;
+        const grid = document.getElementById('indexSummaryGrid');
+        if (!grid) return;
+        if (typeof initCardDnD !== 'function') return; // initCardDnD 在文件后段定义，等待加载
+        initCardDnD(grid, 'index');
+        _indexDnDInitialized = true;
     }
 
     function _evaClass(evaType) {
@@ -10142,8 +10225,11 @@
 
         // 基本信息行：名称 + 价格 + 涨跌
         const fullCode = idx.code + '.' + idx.market;
-        let html = `<div class="idx-summary-card ${cardClass}" data-code="${idx.code}" onclick="openIdxDetailModal('${fullCode}')">
-            <div class="idx-card-basic">
+        const isAdmin = !!(authUser && authUser.role === 'admin');
+        const draggableAttr = isAdmin ? ' draggable="true"' : '';
+        const dragHandle = isAdmin ? '<div class="idx-drag-handle" title="拖动调整顺序">⠿</div>' : '';
+        let html = `<div class="idx-summary-card ${cardClass}" data-code="${idx.code}"${draggableAttr} onclick="openIdxDetailModal('${fullCode}')">
+            ${dragHandle}<div class="idx-card-basic">
                 <div class="idx-summary-icon" style="background:${iconBg};color:${iconColor};font-size:${icon.length > 2 ? '10px' : '14px'}">${icon}</div>
                 <div class="idx-summary-body">
                     <div class="idx-summary-name">${escapeHtml(idx.name)}</div>
@@ -10261,10 +10347,15 @@
             });
             const json = await res.json();
             if (!json.success) throw new Error(json.error);
-            indexQuotesLoaded = false;
+            // 乐观更新：立即从本地状态移除并重渲染（_lastIndexUpdateTime 保持不变）
+            indexQuotesData = indexQuotesData.filter(i => i.code !== code);
+            renderIndexQuotesGrid({ indices: indexQuotesData, updateTime: _lastIndexUpdateTime });
+            // 后台兜底强刷（不 await）—— 确保后端缓存与 UI 最终一致
             loadIndexQuotes(true);
         } catch (err) {
             alert('移除失败: ' + err.message);
+            // API 失败 → 强刷恢复正确状态
+            loadIndexQuotes(true);
         }
     }
 
@@ -11886,8 +11977,16 @@
     // endpoint: 'fund' | 'etf' | 'stock'，codeAttr: 数据属性名
     function initCardDnD(grid, type) {
         if (!grid) return;
-        const endpointMap = { etf: '/api/etfs/reorder', stock: '/api/stocks/reorder' };
-        const codeAttrMap = { etf: 'etfCode', stock: 'stockCode' };
+        const endpointMap = {
+            etf:   '/api/etfs/reorder',
+            stock: '/api/stocks/reorder',
+            index: '/api/indices/reorder',
+        };
+        const codeAttrMap = {
+            etf:   'etfCode',
+            stock: 'stockCode',
+            index: 'code',
+        };
         const endpoint = endpointMap[type];
         const codeAttr = codeAttrMap[type];
         if (!endpoint) return;
@@ -11928,6 +12027,36 @@
             } else {
                 grid.insertBefore(dragSrc, target);
             }
+
+            // ─── 指数面板特殊处理：Tab 过滤下拖拽，需保持其他市场顺序不变 ───
+            if (type === 'index' && Array.isArray(indexQuotesData)) {
+                // 1) 当前 grid 仅含可见子集（可能因 Tab 过滤少于全集）
+                const visibleNew = Array.from(grid.children)
+                    .map(el => el.dataset.code)
+                    .filter(Boolean);
+                const visibleSet = new Set(visibleNew);
+                const codeMap = new Map(indexQuotesData.map(i => [i.code, i]));
+                // 2) 在原 indexQuotesData 中找第一个 visible 元素的位置
+                const firstVisibleIdx = indexQuotesData.findIndex(i => visibleSet.has(i.code));
+                // 3) 抽出非 visible 元素（保持原相对顺序）
+                const nonVisible = indexQuotesData.filter(i => !visibleSet.has(i.code));
+                // 4) 把 visibleNew 顺序的元素插入第一个原 visible 元素的位置
+                const insertItems = visibleNew.map(c => codeMap.get(c)).filter(Boolean);
+                const newOrder = [...nonVisible];
+                const insertAt = Math.min(firstVisibleIdx, newOrder.length);
+                newOrder.splice(insertAt, 0, ...insertItems);
+                indexQuotesData = newOrder;
+                // 5) 持久化使用全集 codes（不带后缀），保证 watchlist 完整顺序
+                const codes = indexQuotesData.map(i => i.code);
+                fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codes }),
+                }).catch(err => console.error('[拖拽排序] 保存失败:', err));
+                return;
+            }
+
+            // ─── ETF / 股票通用路径（保留原行为）───
             // 提取新顺序并持久化
             const codes = Array.from(grid.children).map(el => {
                 const raw = el.dataset[codeAttr] || '';
@@ -12858,6 +12987,15 @@
             authUser = null;
         }
         updateAuthUI();
+        // 认证状态变化后重渲染指数面板，确保管理员的拖拽手柄注入到卡片 HTML
+        // （指数面板可能在 checkAuth 完成之前就已首次渲染过，那时 authUser 仍是 null）
+        if (typeof indexQuotesData !== 'undefined' && Array.isArray(indexQuotesData) && indexQuotesData.length > 0) {
+            const grid = document.getElementById('indexSummaryGrid');
+            if (grid) {
+                grid.innerHTML = ''; // 强制走"首次渲染"分支，注入 dragHandle / draggable 属性
+                renderIndexQuotesGrid({ indices: indexQuotesData, updateTime: _lastIndexUpdateTime });
+            }
+        }
     }
 
     function updateAuthUI() {

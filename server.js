@@ -243,9 +243,33 @@ const CACHE_TTL_CLOSED  = 4 * 60 * 60 * 1000; // 休市时段: 4小时
 const CACHE_TTL_INDEX_QUOTES_TRADING = 30 * 1000; // 指数行情交易时段: 30秒
 const CACHE_TTL_INDEX_QUOTES_CLOSED  = 30 * 60 * 1000; // 指数行情休市: 30分钟
 
+/**
+ * 推断指数 watchlist 涉及的市场集合（用于 index-quotes TTL 动态判定）
+ * 返回 ['CN' | 'HK' | 'US'] 子集；异常时兜底 ['CN']
+ */
+function _detectIndexWatchlistMarkets() {
+    try {
+        const w = readIndexWatchlist();
+        const set = new Set();
+        for (const i of w) {
+            if (i.market === 'SH' || i.market === 'SZ' || i.market === 'CSI') set.add('CN');
+            else if (i.market === 'HI' || i.market === 'HK') set.add('HK');
+            else if (i.market === 'US') set.add('US');
+        }
+        return set.size > 0 ? [...set] : ['CN'];
+    } catch (e) {
+        return ['CN'];
+    }
+}
+
 function getCacheTTL(key) {
+    // index-quotes 单独按 watchlist 涉及的市场动态判定（任一市场开盘 → 短 TTL）
+    if (key === 'index-quotes') {
+        const trading = isTradingHours(_detectIndexWatchlistMarkets());
+        return trading ? CACHE_TTL_INDEX_QUOTES_TRADING : CACHE_TTL_INDEX_QUOTES_CLOSED;
+    }
+    // 其他 cache key 沿用 A 股交易时段（向后兼容）
     const trading = isTradingHours();
-    if (key === 'index-quotes') return trading ? CACHE_TTL_INDEX_QUOTES_TRADING : CACHE_TTL_INDEX_QUOTES_CLOSED;
     if (key === 'stocks' || key === 'etfs') return trading ? 15 * 1000 : 30 * 60 * 1000;
     if (key === 'active-funds') return trading ? 10 * 60 * 1000 : 60 * 60 * 1000;
     if (key === 'daily-eval') return 30 * 60 * 1000; // 每日估值：30分钟
@@ -959,6 +983,8 @@ app.post('/api/indices/add', requireAuth, (req, res) => {
         };
         indices.push(newIndex);
         writeIndexWatchlist(indices);
+        // 失效 index-quotes 内存缓存，确保新增指数立即可见
+        delete _smartCache['index-quotes'];
         console.log(`[指数] 添加关注: ${name}(${code})`);
         res.json({ success: true, data: { index: newIndex, total: indices.length } });
     } catch (err) {
@@ -984,6 +1010,8 @@ app.post('/api/indices/remove', requireAuth, (req, res) => {
         }
         const removed = indices.splice(idx, 1)[0];
         writeIndexWatchlist(indices);
+        // 失效 index-quotes 内存缓存，确保下次请求触发新鲜计算（避免删除后旧缓存仍含被删指数）
+        delete _smartCache['index-quotes'];
         console.log(`[指数] 移除关注: ${removed.name}(${code})`);
         res.json({ success: true, data: { removed: removed.name, total: indices.length } });
     } catch (err) {
