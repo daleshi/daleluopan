@@ -11,6 +11,7 @@ const {
     FULL_INDEX_POOL, DEFAULT_SELECTED_CODES, POOL_MAP, INDEX_ICON_PRESETS,
     searchIndex, readIndexWatchlist, writeIndexWatchlist, fetchIndexQuotesForWatchlist,
     getKlineSourceHealthSnapshot, startKlineSourceHealthMonitor,
+    fetchIndexHistory,
 } = require('./services/dataFetcher');
 const {
     fetchAllStockData, readWatchlist, writeWatchlist, ensureWatchlist, isTradingHours,
@@ -923,6 +924,68 @@ app.get('/api/indices/quotes', async (req, res) => {
     } catch (err) {
         console.error('[API] /api/indices/quotes 错误:', err.message);
         res.status(500).json({ success: false, error: '获取指数行情失败: ' + err.message });
+    }
+});
+
+/**
+ * GET /api/indices/:code/klines - 按完整 code（含市场后缀）查询单个指数的 K 线
+ *   - 路径参数 code：形如 'SPX.US' / '000300.SH' / 'HSTECH.HI'
+ *   - 复用 fetchIndexHistory failover 链（东财 → 腾讯 → Yahoo）
+ *   - 内存缓存命中时 <50ms 返回
+ *   - 候选池外指数也支持（从 watchlist 动态构造 cfg）
+ */
+app.get('/api/indices/:code/klines', async (req, res) => {
+    const fullCode = String(req.params.code || '').trim();
+    if (!fullCode || !/^[A-Za-z0-9._-]{2,20}$/.test(fullCode)) {
+        return res.status(400).json({ success: false, error: '非法 code 参数' });
+    }
+    try {
+        // 1) 优先查 POOL_MAP（候选池内有完整 cfg）
+        let cfg = POOL_MAP[fullCode];
+        // 2) 否则从 watchlist 动态构造（用户搜索添加的非主流指数）
+        if (!cfg) {
+            const watchlist = readIndexWatchlist();
+            const item = watchlist.find(i => `${i.code}.${i.market}` === fullCode);
+            if (item) {
+                cfg = {
+                    name: item.name,
+                    code: item.code,
+                    market: item.market,
+                    secid: item.secid,
+                };
+            }
+        }
+        if (!cfg) {
+            return res.status(404).json({ success: false, error: '指数不存在或不在关注列表' });
+        }
+        // 3) 调用 failover 链
+        const result = await fetchIndexHistory(cfg);
+        const klines = result?.klines || [];
+        const status = result?.status || {};
+
+        if (klines.length === 0) {
+            // 三方源全部失败 → 200 + success:false 让前端走 error 态
+            return res.json({
+                success: false,
+                error: 'K线数据暂时无法获取，请稍后重试',
+                data: { code: fullCode, source: 'none' },
+            });
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                code: fullCode,
+                historySeries: klines,
+                source: status.source || 'unknown',
+                sourceLabel: status.label || '',
+                stale: !!status.usedStaleCache,
+                fetchedAt: new Date().toISOString(),
+            },
+        });
+    } catch (err) {
+        console.error(`[API] /api/indices/${fullCode}/klines 错误:`, err.message);
+        res.status(500).json({ success: false, error: '获取K线失败: ' + err.message });
     }
 });
 

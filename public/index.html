@@ -269,6 +269,73 @@
         .card-dragging { opacity: 0.4; }
         .card-drag-over { outline: 2px dashed var(--border-accent); outline-offset: -2px; }
 
+        /* ===== ETF / 股票卡片专属醒目拖拽手柄（仅管理员可见，与指数同款）===== */
+        .pro-drag-handle {
+            display: none;
+            position: absolute; top: 8px; left: 8px;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4fa3ff, #3a7bd5);
+            color: #fff; font-size: 13px; font-weight: 700;
+            cursor: grab;
+            align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(58, 123, 213, 0.35);
+            opacity: 0.55; transition: all 0.2s;
+            z-index: 3; user-select: none;
+        }
+        body.role-admin .pro-drag-handle { display: flex; }
+        body.role-admin .etf-card:hover .pro-drag-handle,
+        body.role-admin .stock-card:hover .pro-drag-handle {
+            opacity: 0.95; transform: scale(1.05);
+        }
+        body.role-admin .pro-drag-handle:hover {
+            opacity: 1; transform: scale(1.15);
+            box-shadow: 0 3px 10px rgba(58, 123, 213, 0.6);
+        }
+        .pro-drag-handle:active { cursor: grabbing; transform: scale(0.95) !important; }
+        .pro-drag-handle::after {
+            content: '拖动调整顺序';
+            position: absolute;
+            bottom: calc(100% + 6px); left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 10px; border-radius: 6px;
+            background: var(--bg-card); color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            font-size: 11px; font-weight: 500; white-space: nowrap;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .pro-drag-handle:hover::after {
+            opacity: 1; transform: translateX(-50%) translateY(-2px);
+        }
+        .pro-drag-handle::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 1px); left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--border-subtle);
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .pro-drag-handle:hover::before { opacity: 1; }
+        /* 管理员拖拽引导提示条（通用，可同时给 ETF/股票面板使用）*/
+        .pro-admin-hint {
+            display: none;
+            padding: 6px 12px; border-radius: var(--radius-sm);
+            background: linear-gradient(90deg, rgba(79,163,255,0.12), rgba(58,123,213,0.08));
+            border: 1px solid rgba(79,163,255,0.25);
+            color: var(--text-secondary); font-size: 12px;
+            white-space: nowrap;
+        }
+        body.role-admin .pro-admin-hint { display: inline-flex; align-items: center; gap: 6px; }
+        .pro-admin-hint-icon {
+            display: inline-block; width: 18px; height: 18px;
+            border-radius: 50%; background: linear-gradient(135deg, #4fa3ff, #3a7bd5);
+            color: #fff; font-size: 11px; font-weight: 700;
+            line-height: 18px; text-align: center;
+        }
+
         /* ===== 指数卡片专属拖拽手柄（更醒目，仅管理员可见）===== */
         .idx-drag-handle {
             display: none;
@@ -1040,6 +1107,75 @@
         .featured-chart-empty {
             min-height: 160px; display: flex; align-items: center; justify-content: center;
             color: var(--text-muted); font-size: 13px;
+        }
+        /* ===== 区间走势：loading 骨架屏 + error 重试 ===== */
+        .featured-chart-loading {
+            height: 220px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 14px;
+            background: var(--overlay-02); border-radius: var(--radius-sm);
+        }
+        .kline-skeleton-svg {
+            display: flex; align-items: flex-end; justify-content: center;
+            gap: 6px; height: 110px; width: 80%;
+        }
+        .kline-skeleton-bar {
+            flex: 1; max-width: 24px; min-height: 22px;
+            background: linear-gradient(90deg,
+                var(--overlay-06) 0%,
+                var(--overlay-12) 50%,
+                var(--overlay-06) 100%);
+            background-size: 200% 100%;
+            border-radius: 3px;
+            animation: klineShimmer 1.4s ease-in-out infinite;
+        }
+        .kline-skeleton-bar:nth-child(1) { height: 55%; animation-delay: 0s; }
+        .kline-skeleton-bar:nth-child(2) { height: 75%; animation-delay: 0.1s; }
+        .kline-skeleton-bar:nth-child(3) { height: 45%; animation-delay: 0.2s; }
+        .kline-skeleton-bar:nth-child(4) { height: 90%; animation-delay: 0.3s; }
+        .kline-skeleton-bar:nth-child(5) { height: 60%; animation-delay: 0.4s; }
+        .kline-skeleton-bar:nth-child(6) { height: 80%; animation-delay: 0.5s; }
+        .kline-skeleton-bar:nth-child(7) { height: 50%; animation-delay: 0.6s; }
+        .kline-skeleton-bar:nth-child(8) { height: 70%; animation-delay: 0.7s; }
+        @keyframes klineShimmer {
+            0%, 100% { background-position: 200% 50%; opacity: 0.55; }
+            50%      { background-position: -200% 50%; opacity: 0.95; }
+        }
+        .kline-skeleton-label {
+            color: var(--text-muted); font-size: 12px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .featured-chart-error {
+            height: 220px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 12px;
+            background: var(--overlay-02); border-radius: var(--radius-sm);
+            padding: 16px;
+        }
+        .featured-chart-error-icon { font-size: 28px; opacity: 0.85; }
+        .featured-chart-error-msg {
+            color: var(--text-secondary); font-size: 13px; font-weight: 500;
+            text-align: center; max-width: 80%;
+        }
+        .featured-chart-error-detail {
+            color: var(--text-muted); font-size: 11px;
+            text-align: center; max-width: 80%;
+        }
+        .featured-chart-retry-btn {
+            margin-top: 4px;
+            padding: 7px 18px; border-radius: 999px;
+            border: none; cursor: pointer;
+            background: linear-gradient(135deg, #4fa3ff, #3a7bd5);
+            color: #fff; font-size: 12px; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(58, 123, 213, 0.3);
+        }
+        .featured-chart-retry-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(58, 123, 213, 0.5);
+        }
+        .featured-chart-retry-btn:active { transform: translateY(0); }
+        .featured-chart-retry-btn:disabled {
+            opacity: 0.5; cursor: not-allowed; transform: none;
         }
 
         .index-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); gap: 16px; }
@@ -4392,6 +4528,7 @@
                         <div class="etf-search-results" id="etfSearchResults"></div>
                     </div>
                     <div class="guest-hint" onclick="window.location.href='/admin'">🔒 登录后可搜索添加 ETF</div>
+                    <div class="pro-admin-hint">💡 管理员提示：拖动卡片左上角的 <span class="pro-admin-hint-icon">⠿</span> 即可调整 ETF 顺序</div>
                 </div>
                 <div class="etf-grid" id="etfGrid">
                     <div class="loading-wrap"><div class="loading-spinner"></div></div>
@@ -4414,6 +4551,7 @@
                         <div class="stock-search-results" id="stockSearchResults"></div>
                     </div>
                     <div class="guest-hint" onclick="window.location.href='/admin'">🔒 登录后可搜索添加股票</div>
+                    <div class="pro-admin-hint">💡 管理员提示：拖动卡片左上角的 <span class="pro-admin-hint-icon">⠿</span> 即可调整股票顺序</div>
                 </div>
                 <div class="stock-grid" id="stockGrid">
                     <div class="loading-wrap"><div class="loading-spinner"></div></div>
@@ -6703,10 +6841,102 @@
     // ================================================================
     let idxModalTrendState = { range: '1y', date: null, code: null };
 
+    // ===== 模态框区间走势 — 按需 K 线加载 + 并发去重 + 多池回写 =====
+    const _modalTrendInFlight = new Map(); // code → Promise
+
+    function _patchHistorySeries(pool, code, history) {
+        if (!Array.isArray(pool) || !code || !Array.isArray(history)) return;
+        const item = pool.find(i => i && i.code === code);
+        if (item) item.historySeries = history;
+    }
+
+    /**
+     * 推断 market：优先用 d.market；否则在已知数据池查；最后兜底 'SH'
+     */
+    function _inferMarket(d) {
+        if (d && d.market) return d.market;
+        if (d && d.code) {
+            const fromPools = [indexQuotesData, dashboardData, indexData]
+                .flatMap(p => Array.isArray(p) ? p : [])
+                .find(i => i && i.code === d.code && i.market);
+            if (fromPools) return fromPools.market;
+            // POOL_MAP 兜底（POOL_MAP 是后端常量，前端没有；改用启发式：SPX/NDX → US、HSTECH/HSI → HI、其余 → SH）
+            if (/^(SPX|NDX|DJI|VIX)$/i.test(d.code)) return 'US';
+            if (/^(HS|HSI|HSTECH|HSCEI|HSCE)/i.test(d.code)) return 'HI';
+        }
+        return 'SH';
+    }
+
+    /**
+     * 异步确保 d.historySeries 可用。已有数据直接返回，否则发起去重的拉取请求。
+     * 成功后回写 d 与三个数据池；失败时抛错。
+     */
+    async function ensureModalTrendData(d, forceRefresh = false) {
+        if (!d || !d.code) throw new Error('缺少指数 code');
+        if (!forceRefresh && Array.isArray(d.historySeries) && d.historySeries.length >= 2) {
+            return d;
+        }
+        const market = _inferMarket(d);
+        const fullCode = `${d.code}.${market}`;
+        // 并发去重：同一 code 复用进行中的 Promise
+        if (_modalTrendInFlight.has(d.code)) {
+            return _modalTrendInFlight.get(d.code);
+        }
+        const p = (async () => {
+            const url = '/api/indices/' + encodeURIComponent(fullCode) + '/klines';
+            const resp = await fetch(url);
+            const json = await resp.json();
+            if (!json.success) {
+                throw new Error(json.error || 'K线数据获取失败');
+            }
+            const history = (json.data && json.data.historySeries) || [];
+            if (history.length < 2) {
+                throw new Error('K 线数据不足');
+            }
+            d.historySeries = history;
+            d.dataSources = d.dataSources || {};
+            d.dataSources.kline = {
+                source: json.data.source || 'unknown',
+                label: json.data.sourceLabel || '',
+                usedStaleCache: !!json.data.stale,
+            };
+            // 回写其他数据池（下次打开同一指数瞬间命中）
+            _patchHistorySeries(indexQuotesData, d.code, history);
+            if (typeof dashboardData !== 'undefined') _patchHistorySeries(dashboardData, d.code, history);
+            if (typeof indexData !== 'undefined')      _patchHistorySeries(indexData, d.code, history);
+            return d;
+        })();
+        _modalTrendInFlight.set(d.code, p);
+        try {
+            return await p;
+        } finally {
+            _modalTrendInFlight.delete(d.code);
+        }
+    }
+
     function openIdxDetailModal(code) {
-        const d = getCurrentDashboardCards().find(item => item.code === code);
-        if (!d) return;
-        idxModalTrendState = { range: '1y', date: null, code };
+        // 优先在 dashboard 数据池找完整 d（含 historySeries / pe / pb 等）
+        let d = getCurrentDashboardCards().find(item => item.code === code);
+        // 兜底：从指数实时行情面板数据池构造最小 d（覆盖搜索添加的非主流指数）
+        if (!d) {
+            const quote = (typeof indexQuotesData !== 'undefined' && Array.isArray(indexQuotesData))
+                ? indexQuotesData.find(i => i && (i.code === code || (i.code + '.' + i.market) === code))
+                : null;
+            if (quote) {
+                d = Object.assign({}, quote, {
+                    historySeries: Array.isArray(quote.historySeries) ? quote.historySeries : [],
+                    dataSources: quote.dataSources || {},
+                });
+            }
+        }
+        if (!d) {
+            console.warn('[模态框] 未找到指数:', code);
+            return;
+        }
+        idxModalTrendState = { range: '1y', date: null, code: d.code };
+        // 模态框打开期间的运行时状态（不污染数据本身）
+        delete d.__trendError;
+        d.__trendLoading = !(Array.isArray(d.historySeries) && d.historySeries.length >= 2);
 
         const mask = document.getElementById('idxDetailModal');
         const header = document.getElementById('idxModalHeader');
@@ -6719,6 +6949,19 @@
         document.body.style.overflow = 'hidden';
 
         setTimeout(() => renderIdxModalTrend(d), 80);
+
+        // 异步拉 K 线（若需要），完成后回到 renderIdxModalTrend 二次渲染
+        if (d.__trendLoading) {
+            ensureModalTrendData(d).then(() => {
+                d.__trendLoading = false;
+                // 用户可能已切到其他指数，确认仍是当前模态框才渲染
+                if (idxModalTrendState.code === d.code) renderIdxModalTrend(d);
+            }).catch(err => {
+                d.__trendLoading = false;
+                d.__trendError = err && err.message ? err.message : '加载失败';
+                if (idxModalTrendState.code === d.code) renderIdxModalTrend(d);
+            });
+        }
     }
 
     function closeIdxDetailModal(event) {
@@ -6802,7 +7045,13 @@
 
         // 数据源信息
         const ds = d.dataSources || {};
-        const klineStatusLabel = ds.kline?.label ? ` · ${ds.kline.label}` : '';
+        const klineCount = Array.isArray(d.historySeries) ? d.historySeries.length : (ds.klinesCount || 0);
+        let klineStatusLabel = '';
+        if (ds.kline) {
+            const label = ds.kline.label || ds.kline.source || '';
+            const stale = ds.kline.usedStaleCache ? '（数据可能滞后）' : '';
+            if (label || stale) klineStatusLabel = ` · ${label}${stale}`;
+        }
 
         return `
             <!-- 行情 -->
@@ -6869,7 +7118,7 @@
             <div class="data-source-info" style="margin-top:12px;">
                 <div class="dot dot-${ds.primary === 'danjuan-wind' ? 'ok' : ds.primary !== 'none' ? 'partial' : 'fail'}"></div>
                 ${ds.primary === 'danjuan-wind' ? '数据来源: Wind' : ds.primary || '参考数据'}
-                · K线${ds.klinesCount || 0}条${klineStatusLabel}
+                · K线${klineCount || 0}条${klineStatusLabel}
             </div>
         `;
     }
@@ -6881,11 +7130,58 @@
         const detailEl = document.getElementById('idxModalTrendDetail');
         if (!chartEl || !axisEl || !detailEl) return;
 
+        // ① error 态
+        if (d.__trendError) {
+            chartEl.innerHTML = '<div class="featured-chart-error">'
+                + '<div class="featured-chart-error-icon">⚠️</div>'
+                + '<div class="featured-chart-error-msg">历史趋势数据暂时无法获取</div>'
+                + '<div class="featured-chart-error-detail">' + escapeHtml(d.__trendError) + '</div>'
+                + '<button class="featured-chart-retry-btn" onclick="retryModalTrend(\'' + d.code + '\')">🔄 重试加载</button>'
+                + '</div>';
+            axisEl.innerHTML = '';
+            detailEl.innerHTML = '';
+            return;
+        }
+
+        // ② loading 态（首次未拉到 + 已在 inflight）
+        if (d.__trendLoading) {
+            chartEl.innerHTML = '<div class="featured-chart-loading">'
+                + '<div class="kline-skeleton-svg">'
+                + '<div class="kline-skeleton-bar"></div>'
+                + '<div class="kline-skeleton-bar"></div>'
+                + '<div class="kline-skeleton-bar"></div>'
+                + '<div class="kline-skeleton-bar"></div>'
+                + '<div class="kline-skeleton-bar"></div>'
+                + '<div class="kline-skeleton-bar"></div>'
+                + '<div class="kline-skeleton-bar"></div>'
+                + '<div class="kline-skeleton-bar"></div>'
+                + '</div>'
+                + '<div class="kline-skeleton-label">📈 正在加载历史趋势数据…</div>'
+                + '</div>';
+            axisEl.innerHTML = '';
+            detailEl.innerHTML = '';
+            return;
+        }
+
         const series = getTrendSeries(d, idxModalTrendState.range);
         if (series.length < 2) {
+            // 兜底：仍无数据但非 loading/error → 标记 loading 触发拉取
             chartEl.innerHTML = '<div class="featured-chart-empty">历史趋势数据暂未获取到</div>';
             axisEl.innerHTML = '';
             detailEl.innerHTML = '';
+            // 若尚未触发过拉取（避免无限循环），异步触发一次
+            if (!_modalTrendInFlight.has(d.code) && !d.__trendError) {
+                d.__trendLoading = true;
+                renderIdxModalTrend(d);
+                ensureModalTrendData(d).then(() => {
+                    d.__trendLoading = false;
+                    if (idxModalTrendState.code === d.code) renderIdxModalTrend(d);
+                }).catch(err => {
+                    d.__trendLoading = false;
+                    d.__trendError = err && err.message ? err.message : '加载失败';
+                    if (idxModalTrendState.code === d.code) renderIdxModalTrend(d);
+                });
+            }
             return;
         }
 
@@ -6913,7 +7209,7 @@
         if (!FEATURED_TREND_RANGES[rangeKey]) return;
         idxModalTrendState.range = rangeKey;
         idxModalTrendState.date = null;
-        const d = getCurrentDashboardCards().find(item => item.code === idxModalTrendState.code);
+        const d = _findModalIndex(idxModalTrendState.code);
         if (d) {
             const body = document.getElementById('idxModalBody');
             if (body) {
@@ -6925,9 +7221,45 @@
 
     function selectIdxModalTrendPoint(dateStr) {
         idxModalTrendState.date = dateStr;
-        const d = getCurrentDashboardCards().find(item => item.code === idxModalTrendState.code);
+        const d = _findModalIndex(idxModalTrendState.code);
         if (d) renderIdxModalTrend(d);
     }
+
+    /**
+     * 在 dashboardData / indexData / indexQuotesData 中查找当前模态框对应的 d 对象
+     * （重试场景 + 非主流指数兜底）
+     */
+    function _findModalIndex(code) {
+        if (!code) return null;
+        const d1 = getCurrentDashboardCards().find(item => item.code === code);
+        if (d1) return d1;
+        if (typeof indexQuotesData !== 'undefined' && Array.isArray(indexQuotesData)) {
+            const d2 = indexQuotesData.find(item => item && item.code === code);
+            if (d2) return d2;
+        }
+        return null;
+    }
+
+    /**
+     * 用户点击「重试」按钮 — 重置错误态，重新触发 K 线拉取
+     */
+    window.retryModalTrend = function(code) {
+        const d = _findModalIndex(code);
+        if (!d) return;
+        d.__trendError = null;
+        d.__trendLoading = true;
+        // 重试时强制清空 historySeries 触发 forceRefresh
+        d.historySeries = [];
+        renderIdxModalTrend(d);
+        ensureModalTrendData(d, true).then(() => {
+            d.__trendLoading = false;
+            if (idxModalTrendState.code === d.code) renderIdxModalTrend(d);
+        }).catch(err => {
+            d.__trendLoading = false;
+            d.__trendError = err && err.message ? err.message : '加载失败';
+            if (idxModalTrendState.code === d.code) renderIdxModalTrend(d);
+        });
+    };
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
@@ -11064,7 +11396,7 @@
             const fmtCap = (c) => { if (!c) return '--'; if (c >= 100000000) return (c / 100000000).toFixed(1) + '亿'; return (c / 10000).toFixed(1) + '万'; };
             const sparkSvg = etf.sparkData && etf.sparkData.length > 2 ? generateETFSparkSvg(etf.sparkData, cp) : '';
             return { flash, html: `<div class="etf-card ${flash}" data-etf-code="${etf.code}" draggable="true" onclick="showETFDetail('${etf.shortCode}')">
-                <div class="drag-handle" title="拖拽排序">⠿</div>                <button class="etf-card-remove" onclick="event.stopPropagation();removeETF('${etf.shortCode}')" title="移除">✕</button>
+                <div class="pro-drag-handle" title="拖动调整顺序" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</div>                <button class="etf-card-remove" onclick="event.stopPropagation();removeETF('${etf.shortCode}')" title="移除">✕</button>
                 <div class="etf-card-header">
                     <div class="etf-card-icon" style="background:${etf.iconBg};color:${etf.iconColor}">${etf.icon || etf.shortCode.slice(-2)}</div>
                     <div class="etf-card-info">
@@ -11853,7 +12185,7 @@
             const amountStr = formatAmount(s.amount);
             const capStr = formatCap(s.marketCap);
             return { html: `<div class="stock-card ${flashClass}" id="stock-card-${idx}" data-stock-code="${s.shortCode || s.code}" draggable="true">
-                <div class="drag-handle" title="拖拽排序">⠿</div>                <button class="stock-card-remove" onclick="event.stopPropagation();removeStock('${s.shortCode || s.code}','${(s.name||'').replace(/'/g,'')}')" title="取消关注">×</button>
+                <div class="pro-drag-handle" title="拖动调整顺序" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</div>                <button class="stock-card-remove" onclick="event.stopPropagation();removeStock('${s.shortCode || s.code}','${(s.name||'').replace(/'/g,'')}')" title="取消关注">×</button>
                 <div class="stock-card-header">
                     <div class="stock-card-icon" style="background:${s.iconBg};color:${s.iconColor}">${escapeHtml(s.icon)}</div>
                     <div class="stock-card-title">
