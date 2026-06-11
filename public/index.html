@@ -3934,6 +3934,56 @@
         .idx-momentum-cell-value.down { color: var(--red-danger); }
         .idx-momentum-cell-value.na { color: var(--text-muted); }
 
+        /* ===== 全市场指数卡片：多周期动量 4 列徽章（A股/港股/美股 通用） ===== */
+        .idx-card-momentum-row {
+            grid-column: 1 / -1;
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 4px; margin-top: 4px;
+        }
+        .idx-mm-cell {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 2px; padding: 4px 2px;
+            background: var(--overlay-02); border-radius: 4px;
+        }
+        .idx-mm-cell-label {
+            font-size: 10px; color: var(--text-muted);
+        }
+        .idx-mm-cell-value {
+            font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+        }
+        .idx-mm-cell-value.up { color: var(--red-danger); }
+        .idx-mm-cell-value.down { color: var(--green-value); }
+        .idx-mm-cell-value.flat { color: var(--text-secondary); }
+        .idx-mm-cell-value.na { color: var(--text-muted); }
+        @media (max-width: 480px) {
+            .idx-card-momentum-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .idx-mm-cell-label { font-size: 9px; }
+            .idx-mm-cell-value { font-size: 10px; }
+        }
+
+        /* ===== 温度计 Tab 数据时效性提示 ===== */
+        .thermo-stale-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 11px; font-weight: 600;
+            padding: 2px 8px; border-radius: 10px;
+            color: #b7791f; background: rgba(246, 173, 85, 0.18);
+            border: 1px solid rgba(246, 173, 85, 0.35);
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .yzyx-fetched-at {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 11px; color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .ds-stale {
+            color: var(--text-muted) !important;
+            opacity: 0.75;
+        }
+
         .idx-sparkline-wrap {
             grid-column: 1 / -1;
             margin-top: 4px; padding: 2px 0;
@@ -6014,11 +6064,25 @@
         const rows = comparisonEntries.map(({ meta, data }) => {
             const pct = data.pePercentile;
             const pctCls = pct != null ? (pct <= 30 ? 'low' : pct <= 70 ? 'mid' : 'high') : '';
-            return `<div class="source-row">
+            // 数据时效性标注：stale 时整行加灰；fetchedAt 转 HH:MM 显示
+            const staleCls = meta.stale ? ' ds-stale' : '';
+            let timeBadge = '';
+            if (meta.fetchedAt) {
+                try {
+                    const d = new Date(meta.fetchedAt);
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const mm = String(d.getMinutes()).padStart(2, '0');
+                    timeBadge = `<span class="yzyx-fetched-at">${hh}:${mm}</span>`;
+                } catch (e) { /* ignore */ }
+            } else if (meta.stale) {
+                timeBadge = `<span class="yzyx-fetched-at">--</span>`;
+            }
+            return `<div class="source-row${staleCls}">
                 <div class="source-dot" style="background:${meta.color}"></div>
                 <span class="source-name">${escapeHtml(meta.name)}</span>
                 <span class="source-pe">PE ${data.pe != null ? data.pe.toFixed(2) : 'N/A'}</span>
                 ${pct != null ? `<span class="source-pct ${pctCls}">${pct.toFixed(2)}%</span>` : ''}
+                ${timeBadge}
             </div>`;
         });
 
@@ -6853,17 +6917,35 @@
     /**
      * 推断 market：优先用 d.market；否则在已知数据池查；最后兜底 'SH'
      */
+    /**
+     * 增强版市场推断（优先级：market 字段 → secid 前缀 → code 正则 → 数据池查找 → 兜底 SH）
+     */
     function _inferMarket(d) {
-        if (d && d.market) return d.market;
+        // 优先级 1：d.market 直接返回
+        if (d && d.market && /^(SH|SZ|HI|US|CSI)$/i.test(d.market)) {
+            return d.market.toUpperCase();
+        }
+        // 优先级 2：通过 secid 前缀判断
+        if (d && d.secid) {
+            const sec = String(d.secid);
+            if (/^100\./.test(sec) || /^us_/i.test(sec)) return 'US';
+            if (/^1\./.test(sec)) return 'SH';
+            if (/^0\./.test(sec)) return 'SZ';
+            if (/^2\./.test(sec)) return 'CSI';
+        }
+        // 优先级 3：code 正则匹配
+        if (d && d.code) {
+            if (/^(SPX|NDX|DJI|VIX|IXIC|US.*INDEX)$/i.test(d.code)) return 'US';
+            if (/^(HSI|HSTECH|HSCEI|HSSCNE)$/i.test(d.code)) return 'HI';
+        }
+        // 优先级 4：在数据池中查找
         if (d && d.code) {
             const fromPools = [indexQuotesData, dashboardData, indexData]
                 .flatMap(p => Array.isArray(p) ? p : [])
                 .find(i => i && i.code === d.code && i.market);
             if (fromPools) return fromPools.market;
-            // POOL_MAP 兜底（POOL_MAP 是后端常量，前端没有；改用启发式：SPX/NDX → US、HSTECH/HSI → HI、其余 → SH）
-            if (/^(SPX|NDX|DJI|VIX)$/i.test(d.code)) return 'US';
-            if (/^(HS|HSI|HSTECH|HSCEI|HSCE)/i.test(d.code)) return 'HI';
         }
+        // 优先级 5：兜底
         return 'SH';
     }
 
@@ -6876,14 +6958,22 @@
         if (!forceRefresh && Array.isArray(d.historySeries) && d.historySeries.length >= 2) {
             return d;
         }
-        const market = _inferMarket(d);
-        const fullCode = `${d.code}.${market}`;
+        // 如果 d.code 已含市场后缀（如 000300.SH），直接使用；否则推断市场并拼接
+        let fullCode;
+        if (/\.[A-Z]{2,5}$/.test(d.code)) {
+            fullCode = d.code;
+        } else {
+            const market = _inferMarket(d);
+            fullCode = `${d.code}.${market}`;
+        }
         // 并发去重：同一 code 复用进行中的 Promise
-        if (_modalTrendInFlight.has(d.code)) {
-            return _modalTrendInFlight.get(d.code);
+        if (_modalTrendInFlight.has(fullCode)) {
+            return _modalTrendInFlight.get(fullCode);
         }
         const p = (async () => {
-            const url = '/api/indices/' + encodeURIComponent(fullCode) + '/klines';
+            // 支持时间范围切换：优先用 idxModalTrendState.range，默认 1y
+            const rangeParam = idxModalTrendState?.range || '1y';
+            const url = '/api/indices/' + encodeURIComponent(fullCode) + '/klines?range=' + rangeParam;
             const resp = await fetch(url);
             const json = await resp.json();
             if (!json.success) {
@@ -7003,12 +7093,13 @@
 
         // PE柱状条
         let peSectionHTML = '';
+        const isUSRef = d.peSource === 'us-historical-median' || (d.market === 'US' && d.usValuation);
         if (hasPE) {
             peSectionHTML = `
             <div class="idx-modal-pe-section">
                 <div class="idx-modal-pe-header">
-                    <span class="idx-modal-pe-label">PE-TTM 百分位（近10年）</span>
-                    <span class="idx-modal-pe-value" style="color:${state.color}">${d.pe.toFixed(2)} · ${hasPct ? d.pePercentile.toFixed(2) + '%' : 'N/A'}</span>
+                    <span class="idx-modal-pe-label">${isUSRef ? 'PE 估值参考（历史中位数）' : 'PE-TTM 百分位（近10年）'}</span>
+                    <span class="idx-modal-pe-value" style="color:${state.color}">${d.pe.toFixed(2)}${hasPct ? ' · ' + d.pePercentile.toFixed(2) + '%' : ''}${isUSRef ? ' <span style="font-size:10px;color:var(--text-muted)">(参考值)</span>' : ''}</span>
                 </div>
                 ${hasPct ? `<div class="pe-bar-container">
                     <div class="pe-bar-zones">
@@ -7018,7 +7109,7 @@
                     </div>
                     <div class="pe-pointer" style="left:${Math.min(d.pePercentile, 100)}%"></div>
                 </div>
-                <div class="pe-range"><span>0%</span><span>近10年PE百分位</span><span>100%</span></div>` : ''}
+                <div class="pe-range"><span>0%</span><span>${isUSRef ? '价格水位' : '近10年PE百分位'}</span><span>100%</span></div>${isUSRef && d.usValuation ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">历史中位数PE: ${d.usValuation.peHistoricalMedian}，历史均值PE: ${d.usValuation.peHistoricalMean || 'N/A'}</div>` : ''}` : ''}
             </div>`;
         }
 
@@ -7119,6 +7210,7 @@
                 <div class="dot dot-${ds.primary === 'danjuan-wind' ? 'ok' : ds.primary !== 'none' ? 'partial' : 'fail'}"></div>
                 ${ds.primary === 'danjuan-wind' ? '数据来源: Wind' : ds.primary || '参考数据'}
                 · K线${klineCount || 0}条${klineStatusLabel}
+                ${d.updateTime ? `<span style="margin-left:8px;font-size:10px;color:var(--text-muted)">更新: ${new Date(d.updateTime).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
             </div>
         `;
     }
@@ -7431,7 +7523,21 @@
         const macro = thermoData?.macro || {};
 
         if (thermoData?.updateTime) {
-            updateEl.innerHTML = `<span class="update-time-badge"><span class="utb-dot"></span><span class="utb-time">${thermoData.updateTime}</span></span>`;
+            // 主：知有行官网温度更新时间；副：本站抓取时间 fetchedAt（HH:MM:SS）+ stale 徽章
+            let extra = '';
+            if (thermoData.fetchedAt) {
+                try {
+                    const d = new Date(thermoData.fetchedAt);
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const mm = String(d.getMinutes()).padStart(2, '0');
+                    const ss = String(d.getSeconds()).padStart(2, '0');
+                    extra += `<span class="yzyx-fetched-at">本站抓取 ${hh}:${mm}:${ss}</span>`;
+                } catch (e) { /* ignore */ }
+            }
+            if (thermoData.stale) {
+                extra += `<span class="thermo-stale-badge" title="本次抓取失败，使用上次缓存的数据">⚠️ 数据可能滞后</span>`;
+            }
+            updateEl.innerHTML = `<span class="update-time-badge"><span class="utb-dot"></span><span class="utb-time">${thermoData.updateTime}</span></span>${extra}`;
         } else {
             updateEl.textContent = '--';
         }
@@ -10509,6 +10615,40 @@
         </div>`;
     }
 
+    /**
+     * 格式化多周期动量徽章值（红涨绿跌，由 CSS 类决定颜色）。
+     * @param {string} label 周期标签，如 '1月'
+     * @param {number|null} value 涨跌幅 %（已 round2）
+     */
+    function formatMomentumCell(label, value) {
+        if (value == null || isNaN(value)) {
+            return `<div class="idx-mm-cell">
+                <span class="idx-mm-cell-label">${label}</span>
+                <span class="idx-mm-cell-value na">--</span>
+            </div>`;
+        }
+        let cls = 'flat';
+        if (value > 0) cls = 'up';
+        else if (value < 0) cls = 'down';
+        const sign = value > 0 ? '+' : '';
+        return `<div class="idx-mm-cell">
+            <span class="idx-mm-cell-label">${label}</span>
+            <span class="idx-mm-cell-value ${cls}">${sign}${value.toFixed(2)}%</span>
+        </div>`;
+    }
+
+    /**
+     * 4 列多周期动量徽章（A股/港股/美股 通用，红涨绿跌；null 显示 --）
+     */
+    function buildIndexCardMomentumRow(idx) {
+        return `<div class="idx-card-momentum-row">
+            ${formatMomentumCell('1月', idx.momentum1m)}
+            ${formatMomentumCell('3月', idx.momentum3m)}
+            ${formatMomentumCell('6月', idx.momentum6m)}
+            ${formatMomentumCell('1年', idx.momentum1y)}
+        </div>`;
+    }
+
     function buildSparkline(sparkData, momentumDir) {
         if (!Array.isArray(sparkData) || sparkData.length < 2) return '';
         const w = 100, h = 28;
@@ -10646,6 +10786,16 @@
                 }
                 html += '</div>';
             }
+        }
+
+        // 多周期动量徽章（A股/港股/美股 通用，4 列 1月 / 3月 / 6月 / 1年）
+        // 美股卡片此前已渲染过原 3 列美股动量徽章 + Sparkline，此处再追加 4 列统一动量行
+        // —— 数据来源：后端在 fetchIndexQuotesForWatchlist 中为全市场写入的 momentum1m/3m/6m/1y 字段
+        if (idx.momentum1m != null || idx.momentum3m != null || idx.momentum6m != null || idx.momentum1y != null) {
+            html += buildIndexCardMomentumRow(idx);
+        } else if (!isUS) {
+            // A 股/港股 historySeries 不足时也渲染占位行，保持视觉一致（4 列 --）
+            html += buildIndexCardMomentumRow(idx);
         }
 
         // 温度计

@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const {
-    fetchAllIndexData, fetchYZYXIndexDetail, fetchDanjuanEvaluation,
+    fetchAllIndexData, fetchYZYXIndexDetail, fetchYZYXThermometer, resetYZYXCache, fetchDanjuanEvaluation,
     FULL_INDEX_POOL, DEFAULT_SELECTED_CODES, POOL_MAP, INDEX_ICON_PRESETS,
     searchIndex, readIndexWatchlist, writeIndexWatchlist, fetchIndexQuotesForWatchlist,
     getKlineSourceHealthSnapshot, startKlineSourceHealthMonitor,
@@ -414,7 +414,12 @@ async function getCachedData(forceRefresh = false) {
     const configChanged = currentHash !== lastSelectedCodesHash;
     if (configChanged) forceRefresh = true;
 
-    const data = await smartCacheGet('indices', () => fetchAllIndexData(selectedCodes), forceRefresh);
+    // forceRefresh=true 时同步透传给温度计抓取，避免内存 TTL 拦截
+    const data = await smartCacheGet(
+        'indices',
+        () => fetchAllIndexData(selectedCodes, { forceRefreshThermometer: !!forceRefresh }),
+        forceRefresh,
+    );
     cachedData = data;
     lastFetchTime = Date.now();
     lastSelectedCodesHash = currentHash;
@@ -956,19 +961,63 @@ app.get('/api/indices/:code/klines', async (req, res) => {
             }
         }
         if (!cfg) {
-            return res.status(404).json({ success: false, error: '指数不存在或不在关注列表' });
+            // ─── 市场后缀模糊匹配：尝试常见后缀，取第一个成功返回 K 线的 ───
+            const candidates = ['US', 'SH', 'SZ', 'HI', 'CSI'];
+            const baseCode = fullCode.replace(/\.[A-Z]{2,5}$/, ''); // 去掉可能存在的后缀
+            let fuzzyCfg = null;
+            let fuzzyDetail = '';
+            for (const mkt of candidates) {
+                const tryFull = `${baseCode}.${mkt}`;
+                if (POOL_MAP[tryFull]) {
+                    fuzzyCfg = POOL_MAP[tryFull];
+                    fuzzyDetail = `已匹配到预置指数池: ${tryFull}`;
+                    console.log(`  [K线] 模糊匹配: ${fullCode} → ${tryFull}`);
+                    break;
+                }
+            }
+            // 同时尝试在 watchlist 中拼接后缀查找
+            if (!fuzzyCfg) {
+                const watchlist = readIndexWatchlist();
+                for (const mkt of candidates) {
+                    const tryFull = `${baseCode}.${mkt}`;
+                    const item = watchlist.find(i => `${i.code}.${i.market}` === tryFull);
+                    if (item) {
+                        fuzzyCfg = {
+                            name: item.name,
+                            code: item.code,
+                            market: item.market,
+                            secid: item.secid,
+                        };
+                        fuzzyDetail = `已匹配到关注列表: ${item.name}(${tryFull})`;
+                        console.log(`  [K线] watchlist 模糊匹配: ${fullCode} → ${tryFull}`);
+                        break;
+                    }
+                }
+            }
+            if (fuzzyCfg) {
+                cfg = fuzzyCfg;
+            } else {
+                return res.status(404).json({
+                    success: false,
+                    error: '指数不存在或不在关注列表',
+                    detail: `无法匹配代码「${fullCode}」，请检查代码格式是否正确（如 SPX.US、000300.SH），或先将该指数添加到关注列表。`,
+                });
+            }
         }
-        // 3) 调用 failover 链
-        const result = await fetchIndexHistory(cfg);
+        // 3) 调用 failover 链（支持 range 参数）
+        const range = req.query.range || '1y';
+        const result = await fetchIndexHistory(cfg, { range });
         const klines = result?.klines || [];
         const status = result?.status || {};
 
         if (klines.length === 0) {
             // 三方源全部失败 → 200 + success:false 让前端走 error 态
+            const statusDetail = status?.label ? `（${status.label}）` : '（所有数据源均失败）';
             return res.json({
                 success: false,
                 error: 'K线数据暂时无法获取，请稍后重试',
-                data: { code: fullCode, source: 'none' },
+                detail: `指数 ${fullCode} 的K线数据${statusDetail}。可能原因：数据源维护中、网络连接问题、或该指数无历史数据。`,
+                data: { code: fullCode, source: 'none', status: status?.label || 'unknown' },
             });
         }
 
@@ -1221,6 +1270,35 @@ app.get('/api/daily-eval', async (req, res) => {
     } catch (err) {
         console.error('[API] /api/daily-eval 错误:', err.message);
         res.status(500).json({ success: false, error: '每日估值获取失败: ' + err.message });
+    }
+});
+
+/**
+ * POST /api/thermometer/refresh - 管理员强制刷新温度计缓存
+ * 清空 _yzyxCache 与 _yzyxDetailCache 后立即重新抓取一次，
+ * 返回最新 fetchedAt / 全市场温度 / 已更新的指数数量。
+ */
+app.post('/api/thermometer/refresh', requireAdmin, async (req, res) => {
+    try {
+        resetYZYXCache();
+        const data = await fetchYZYXThermometer({ force: true });
+        if (!data) {
+            return res.status(502).json({
+                success: false,
+                error: '知有行温度计抓取失败，请稍后再试',
+            });
+        }
+        return res.json({
+            success: true,
+            fetchedAt: data._meta?.fetchedAt || new Date().toISOString(),
+            source: data._meta?.source || null,
+            stale: !!data._meta?.stale,
+            marketTemperature: data.marketTemperature ?? null,
+            indexCount: Array.isArray(data.indices) ? data.indices.length : 0,
+        });
+    } catch (err) {
+        console.error('[API] /api/thermometer/refresh 错误:', err.message);
+        res.status(500).json({ success: false, error: '强制刷新失败: ' + err.message });
     }
 });
 

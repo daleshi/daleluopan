@@ -1233,18 +1233,33 @@ async function fetchHistoryKlinesDetailed(secid, limit = 2520, altSecids = [], o
     };
 }
 
+/**
+ * 根据 range 参数切片 K 线数据
+ * @param {Array} klines - 完整 K 线数据
+ * @param {string} range - 时间范围（1y/3y/5y/10y）
+ * @returns {Array} 切片后的 K 线数据
+ */
+function sliceByRange(klines, range) {
+    if (!Array.isArray(klines) || klines.length === 0) return klines;
+    const sizeMap = { '1y': 252, '3y': 756, '5y': 1260, '10y': 2520 };
+    const targetSize = sizeMap[range] || sizeMap['1y'];
+    return klines.slice(-Math.min(targetSize, klines.length));
+}
+
 async function fetchHistoryKlines(secid, limit = 2520, altSecids = [], options = {}) {
     const result = await fetchHistoryKlinesDetailed(secid, limit, altSecids, options);
     return result.klines;
 }
 
-async function fetchIndexHistory(cfg) {
+async function fetchIndexHistory(cfg, options = {}) {
     const cacheKey = `${cfg.code}.${cfg.market}`;
     const profile = buildIndexKlineProfile(cfg);
     const freshEntry = getFreshKlinesEntry(cacheKey);
     if (freshEntry) {
+        // 支持 range 参数切片
+        const klines = sliceByRange(freshEntry.klines, options.range);
         return {
-            klines: freshEntry.klines,
+            klines,
             status: createKlineRefreshStatus({
                 state: 'fresh-cache',
                 label: freshEntry.source === 'eastmoney' ? '主源缓存命中' : '备用缓存命中',
@@ -1260,8 +1275,9 @@ async function fetchIndexHistory(cfg) {
     if (cooldownActive) {
         if (staleEntry) {
             console.log(`  [K线] 东方财富冷却中，${cfg.name} 直接复用${staleEntry.source === 'eastmoney' ? '主源缓存' : '备用缓存'}`);
+            const klines = sliceByRange(staleEntry.klines, options?.range);
             return {
-                klines: staleEntry.klines,
+                klines,
                 status: createKlineRefreshStatus({
                     state: 'cooldown-cache',
                     label: '主源冷却中 · 已回退缓存',
@@ -1280,8 +1296,9 @@ async function fetchIndexHistory(cfg) {
         });
         if (eastmoneyResult.klines.length > 0) {
             setCachedKlines(cacheKey, eastmoneyResult.klines, 'eastmoney');
+            const klines = sliceByRange(eastmoneyResult.klines, options?.range);
             return {
-                klines: eastmoneyResult.klines,
+                klines,
                 status: createKlineRefreshStatus({
                     state: profile.specialCSI ? 'special-primary-live' : 'primary-live',
                     label: profile.specialCSI ? '特殊指数专用主源' : '主源直连',
@@ -1313,8 +1330,9 @@ async function fetchIndexHistory(cfg) {
         const tencentKlines = await fetchTencentKlines(cfg.code, cfg.market, cfg);
         if (tencentKlines.length > 0) {
             setCachedKlines(cacheKey, tencentKlines, 'tencent');
+            const klines = sliceByRange(tencentKlines, options?.range);
             return {
-                klines: tencentKlines,
+                klines,
                 status: createKlineRefreshStatus({
                     state: cooldownActive ? 'cooldown-tencent' : 'tencent-fallback',
                     label: cooldownActive ? '主源冷却中 · 备用源生效中' : '备用源生效中',
@@ -1331,8 +1349,9 @@ async function fetchIndexHistory(cfg) {
         const yahooKlines = await fetchYahooKlines(cfg);
         if (yahooKlines.length > 0) {
             setCachedKlines(cacheKey, yahooKlines, 'yahoo');
+            const klines = sliceByRange(yahooKlines, options?.range);
             return {
-                klines: yahooKlines,
+                klines,
                 status: createKlineRefreshStatus({
                     state: 'yahoo-fallback',
                     label: 'Yahoo Finance 数据',
@@ -1345,8 +1364,9 @@ async function fetchIndexHistory(cfg) {
 
     if (staleEntry) {
         console.warn(`  [K线] ${cfg.name} 返回历史缓存，避免页面刷新空白`);
+        const klines = sliceByRange(staleEntry.klines, options?.range);
         return {
-            klines: staleEntry.klines,
+            klines,
             status: createKlineRefreshStatus({
                 state: 'stale-cache-final',
                 label: cooldownActive ? '主源冷却中 · 已回退缓存' : '已回退缓存',
@@ -1495,9 +1515,10 @@ async function fetchYahooKlines(cfg) {
 // ============================================================
 // 组装完整的指数数据
 // ============================================================
-async function fetchAllIndexData(selectedCodes) {
+async function fetchAllIndexData(selectedCodes, options = {}) {
     console.log('[数据] ===== 开始获取所有指数数据 =====');
     const startTime = Date.now();
+    const forceRefreshThermometer = !!(options && options.forceRefreshThermometer);
 
     // 根据用户选择构建动态配置
     const INDEX_CONFIG = buildIndexConfig(selectedCodes);
@@ -1511,7 +1532,7 @@ async function fetchAllIndexData(selectedCodes) {
     const [quotes, djEvaMap, yzyxData] = await Promise.all([
         fetchRealtimeQuotes(ALL_INDEX_CONFIG),
         fetchDanjuanEvaluation(),
-        fetchYZYXThermometer(),
+        fetchYZYXThermometer({ force: forceRefreshThermometer }),
     ]);
 
     // Step 2: 动态选择当前可用的 3 个估值对比来源
@@ -1551,8 +1572,31 @@ async function fetchAllIndexData(selectedCodes) {
             console.log(`  [${cfg.name}] 蛋卷基金: PE=${pe}, PE百分位=${pePercentile}%, 估值=${evaType}`);
         }
 
+        // 美股指数估值参考占位（具体计算移到 const quote 定义之后，避免 TDZ 错误）
+        let usValuationInfo = null;
+
         // 2c. 新浪财经行情（对港股备选）
         const quote = quotes[cfg.code] || {};
+
+        // 来源1.5: 美股指数估值参考（使用历史中位数）—— 此处可安全使用 quote
+        if (cfg.market === 'US' && !pe) {
+            usValuationInfo = cfg.usValuation || null;
+            if (usValuationInfo && usValuationInfo.peHistoricalMedian) {
+                // 使用历史中位数作为参考PE（标注为参考值）
+                pe = usValuationInfo.peHistoricalMedian;
+                peSource = 'us-historical-median';
+                // 尝试基于当前价格位置估算百分位（简化算法）
+                if (quote.price && quote.high52w && quote.low52w && quote.high52w > quote.low52w) {
+                    const range52w = quote.high52w - quote.low52w;
+                    const position52w = ((quote.price - quote.low52w) / range52w) * 100;
+                    pePercentile = parseFloat(position52w.toFixed(1));
+                    if (position52w < 30) evaType = 'low';
+                    else if (position52w < 70) evaType = 'mid';
+                    else evaType = 'high';
+                }
+                console.log(`  [${cfg.name}] 美股估值参考: PE≈${pe} (历史中位数), PE百分位≈${pePercentile}%`);
+            }
+        }
         if (!quote.price && klines.length === 0) {
             try {
                 const sinaCode = (cfg.market === 'HI' || cfg.market === 'HK') ? `rt_hk${cfg.code}` : `sh${cfg.code}`;
@@ -1632,9 +1676,13 @@ async function fetchAllIndexData(selectedCodes) {
                 .filter(([, value]) => hasValuationPayload(value))
         );
 
+        // 全市场多周期动量（基于 historySeries，K 线不足时为 null）
+        const momentum = calcMomentumSet(historySeries, quote.price);
+
         const result = {
             name: cfg.name,
             code: resultCode,
+            market: cfg.market,
             icon: cfg.icon,
             iconBg: cfg.iconBg,
             iconColor: cfg.iconColor,
@@ -1654,10 +1702,17 @@ async function fetchAllIndexData(selectedCodes) {
             evaType,  // low / mid / high
             peOverHistory,
             pbOverHistory,
+            // 全市场多周期动量（红涨绿跌，单位 %）
+            momentum1m: momentum.momentum1m,
+            momentum3m: momentum.momentum3m,
+            momentum6m: momentum.momentum6m,
+            momentum1y: momentum.momentum1y,
             // 知有行温度
             temperature: yzyxTemp ? yzyxTemp.temperature : null,
             temperatureStatus: yzyxTemp ? getTemperatureStatus(yzyxTemp.temperature) : null,
             internalYield: yzyxTemp ? yzyxTemp.internalYield : null,
+            // 美股估值参考
+            usValuation: usValuationInfo,
             // 行情统计
             high52w, low52w, high10y, low10y,
             sparkData: recentPrices,
@@ -1712,8 +1767,12 @@ async function fetchAllIndexData(selectedCodes) {
     const dashboardIndices = [...dashboardOnly, ...dashboardCore];
     const klineStatusSummary = summarizeKlineRefreshStatuses(results.map(item => item.dataSources?.kline));
 
+    // 温度计 meta（数据源 / fetchedAt / stale）
+    const yzyxMeta = yzyxData && yzyxData._meta ? yzyxData._meta : null;
+    const responseFetchedAt = new Date().toISOString();
+
     return {
-        updateTime: new Date().toISOString(),
+        updateTime: responseFetchedAt,
         indices: coreIndices,
         dashboardIndices,
         thermometer: yzyxData ? {
@@ -1725,6 +1784,10 @@ async function fetchAllIndexData(selectedCodes) {
             bands: yzyxData.bands,
             notes: yzyxData.notes,
             macro: yzyxData.macro,
+            // 数据时效性透出（前端"更新于"与 stale 徽章使用）
+            fetchedAt: yzyxMeta ? yzyxMeta.fetchedAt : null,
+            source: yzyxMeta ? yzyxMeta.source : null,
+            stale: yzyxMeta ? !!yzyxMeta.stale : false,
         } : null,
         meta: {
             fetchTime: elapsed + 's',
@@ -1742,6 +1805,9 @@ async function fetchAllIndexData(selectedCodes) {
                 color: item.color,
                 metricText: item.metricText,
                 successCount: item.successCount,
+                // 时效性：成功抓取的数据源使用本次响应时间；successCount=0 标 stale=true
+                fetchedAt: item.successCount > 0 ? responseFetchedAt : null,
+                stale: item.successCount === 0,
             })),
             klineStatusSummary,
             selectedCodes: INDEX_CONFIG.map(c => `${c.code}.${c.market}`),
@@ -1756,58 +1822,116 @@ async function fetchAllIndexData(selectedCodes) {
 // ============================================================
 let _yzyxCache = null;
 let _yzyxCacheTime = 0;
+let _yzyxCacheSource = null; // 'youzhiyouxing-data' | 'youzhiyouxing-thermometer'
 
-async function fetchYZYXThermometer() {
-    // 缓存 10 分钟（知有行数据每日更新一次）
-    if (_yzyxCache && Date.now() - _yzyxCacheTime < 600000) {
+const THERMOMETER_MAX_TTL = 4 * 60 * 60 * 1000; // 4 小时强制刷新兜底
+
+/**
+ * 交易时段感知的温度计 TTL：
+ * - A 股开盘（含港股 9:30-12:00 与 13:00 之后的重叠时段）→ 60 秒
+ * - 仅港股 / 美股开盘 → 5 分钟
+ * - 全市场休市 → 30 分钟
+ */
+function getThermometerTTL() {
+    let isTradingHoursFn;
+    try {
+        // 延迟引入，避免 dataFetcher 与 stockFetcher 之间循环依赖
+        ({ isTradingHours: isTradingHoursFn } = require('./stockFetcher'));
+    } catch (e) {
+        return 30 * 60 * 1000;
+    }
+    try {
+        if (isTradingHoursFn(['CN'])) return 60 * 1000;
+        if (isTradingHoursFn(['HK', 'US'])) return 5 * 60 * 1000;
+    } catch (e) {
+        // 任何异常退化为休市态
+    }
+    return 30 * 60 * 1000;
+}
+
+/**
+ * 抓取知有行温度计。
+ * @param {Object} [options]
+ * @param {boolean} [options.force=false] 跳过 TTL 缓存，强制重新抓取（仍尊重失败时回退）
+ */
+async function fetchYZYXThermometer(options = {}) {
+    const force = !!options.force;
+    const ttl = getThermometerTTL();
+    const age = Date.now() - _yzyxCacheTime;
+
+    // 命中内存缓存（force=true 时跳过；超过 4h 兜底强制刷新）
+    if (!force && _yzyxCache && age < ttl && age < THERMOMETER_MAX_TTL) {
         return _yzyxCache;
     }
 
-    const url = 'https://youzhiyouxing.cn/data';
-    try {
+    const tryFetch = async (path, sourceTag, retries) => {
+        const url = `https://youzhiyouxing.cn${path}`;
         const res = await safeFetch(url, {
             headers: {
                 ...HEADERS,
                 'Referer': 'https://youzhiyouxing.cn/',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             },
-        }, 2);
+        }, retries);
         const html = await res.text();
-
-        // 解析页面中的温度数据（从 JSON 嵌入或 script 标签中提取）
         const result = parseYZYXPage(html);
         if (result && result.indices && result.indices.length > 0) {
-            console.log(`  [知有行] 获取 ${result.indices.length} 个指数温度数据, 全市场温度: ${result.marketTemperature}°`);
+            // 成功路径：附挂时效性 meta 并写入内存缓存
+            result._meta = {
+                source: sourceTag,
+                fetchedAt: new Date().toISOString(),
+                stale: false,
+            };
             _yzyxCache = result;
             _yzyxCacheTime = Date.now();
+            _yzyxCacheSource = sourceTag;
+            console.log(`  [知有行] (${path}) 获取 ${result.indices.length} 个指数温度数据, 全市场温度: ${result.marketTemperature}°`);
             return result;
         }
+        return null;
+    };
+
+    // 主路径
+    try {
+        const r1 = await tryFetch('/data', 'youzhiyouxing-data', 2);
+        if (r1) return r1;
     } catch (err) {
         console.warn('  [知有行] 温度计数据获取失败:', err.message);
     }
 
-    // 备选: 尝试 /thermometer 路径
+    // 备选路径
     try {
-        const res2 = await safeFetch('https://youzhiyouxing.cn/thermometer', {
-            headers: {
-                ...HEADERS,
-                'Referer': 'https://youzhiyouxing.cn/',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            },
-        }, 1);
-        const html2 = await res2.text();
-        const result2 = parseYZYXPage(html2);
-        if (result2 && result2.indices && result2.indices.length > 0) {
-            console.log(`  [知有行] (/thermometer) 获取 ${result2.indices.length} 个指数温度数据`);
-            _yzyxCache = result2;
-            _yzyxCacheTime = Date.now();
-            return result2;
-        }
+        const r2 = await tryFetch('/thermometer', 'youzhiyouxing-thermometer', 1);
+        if (r2) return r2;
     } catch (err2) {
         console.warn('  [知有行] /thermometer 也失败:', err2.message);
     }
 
+    // 注意：此处**不**更新 _yzyxCacheTime，下次请求会继续尝试 HTTP
+    // 失败时回退到上次成功的缓存，并打 stale 标记
+    if (_yzyxCache) {
+        console.warn('  [知有行] 抓取失败，回退到上次缓存（stale）');
+        return {
+            ..._yzyxCache,
+            _meta: {
+                source: _yzyxCacheSource || 'stale-cache',
+                fetchedAt: new Date(_yzyxCacheTime).toISOString(),
+                stale: true,
+            },
+        };
+    }
     return null;
+}
+
+/**
+ * 清空温度计相关全部缓存（管理员强制刷新使用）
+ */
+function resetYZYXCache() {
+    _yzyxCache = null;
+    _yzyxCacheTime = 0;
+    _yzyxCacheSource = null;
+    for (const k of Object.keys(_yzyxDetailCache)) delete _yzyxDetailCache[k];
+    for (const k of Object.keys(_yzyxDetailCacheTime)) delete _yzyxDetailCacheTime[k];
 }
 
 function stripHtmlContent(htmlFragment) {
@@ -2067,7 +2191,9 @@ async function fetchYZYXIndexDetail(code) {
         return null;
     }
 
-    if (_yzyxDetailCache[normalizedCode] && Date.now() - (_yzyxDetailCacheTime[normalizedCode] || 0) < 600000) {
+    const detailTTL = getThermometerTTL();
+    const detailAge = Date.now() - (_yzyxDetailCacheTime[normalizedCode] || 0);
+    if (_yzyxDetailCache[normalizedCode] && detailAge < detailTTL && detailAge < THERMOMETER_MAX_TTL) {
         return _yzyxDetailCache[normalizedCode];
     }
 
@@ -2263,6 +2389,43 @@ async function searchIndex(keyword) {
 const _INDICES_CACHE_FILE = path.join(__dirname, '..', 'data', 'cache', 'indices.json');
 
 /**
+ * 计算单一周期涨跌幅（%），基于交易日切片。
+ * - 优先使用 currentPrice 作为 "now"，避免 historySeries 末尾陈旧
+ * - 当 currentPrice 缺失时回退到 historySeries 末尾收盘价
+ * @param {Array<{close:number}>} historySeries 升序 K 线
+ * @param {number} days 交易日数（1月≈21、3月≈63、6月≈126、1年≈252）
+ * @param {number|null} currentPrice 实时价
+ * @returns {number|null} 涨跌幅 %（保留两位），数据不足返回 null
+ */
+function calcMomentum(historySeries, days, currentPrice = null) {
+    if (!Array.isArray(historySeries) || historySeries.length === 0) return null;
+    if (typeof days !== 'number' || days <= 0) return null;
+    const tailClose = historySeries[historySeries.length - 1]?.close;
+    const last = (currentPrice && currentPrice > 0) ? currentPrice : tailClose;
+    if (!last || last <= 0) return null;
+    // 当 last = currentPrice（今日 T+0），days 天前 = 末尾回退 days-1 个交易日
+    const offsetFromTail = (currentPrice && currentPrice > 0) ? (days - 1) : days;
+    const idx = historySeries.length - 1 - offsetFromTail;
+    if (idx < 0) return null;
+    const past = historySeries[idx]?.close;
+    if (!past || past <= 0) return null;
+    return parseFloat((((last - past) / past) * 100).toFixed(2));
+}
+
+/**
+ * 一次性计算 1m/3m/6m/1y 四周期动量（基于交易日近似）
+ * @returns {{momentum1m:number|null, momentum3m:number|null, momentum6m:number|null, momentum1y:number|null}}
+ */
+function calcMomentumSet(historySeries, currentPrice = null) {
+    return {
+        momentum1m: calcMomentum(historySeries, 21, currentPrice),
+        momentum3m: calcMomentum(historySeries, 63, currentPrice),
+        momentum6m: calcMomentum(historySeries, 126, currentPrice),
+        momentum1y: calcMomentum(historySeries, 252, currentPrice),
+    };
+}
+
+/**
  * 计算美股 K 线动量字段（基于交易日近似：1月≈21、3月≈63、6月≈126、1年≈252）
  * @param {Array} historySeries - 升序 K 线数组，每条至少含 close 字段
  * @param {number|null} currentPrice - 实时价（来自 quote）。若提供，优先用作"now"，避免 historySeries 末尾陈旧导致动量与回撤偏差
@@ -2279,22 +2442,10 @@ function computeUSMomentum(historySeries, currentPrice = null, quoteHigh52w = nu
     // 优先用实时价；若实时价缺失/异常则回退到 K 线末尾
     const last = (currentPrice && currentPrice > 0) ? currentPrice : tailClose;
     if (!last || last <= 0) return NA;
-    const pickAgo = (days) => {
-        // 注意：当 last = currentPrice（今日 T+0），days 天前 = 末尾（昨日收盘）回退 days-1 个交易日
-        // 当 last = tailClose（K 线末尾），days 天前 = 末尾回退 days 个交易日
-        const offsetFromTail = (currentPrice && currentPrice > 0) ? (days - 1) : days;
-        const idx = historySeries.length - 1 - offsetFromTail;
-        if (idx < 0) return null;
-        const c = historySeries[idx]?.close;
-        return (c && c > 0) ? c : null;
-    };
-    const pct = (now, prev) => (prev && prev > 0) ? ((now - prev) / prev) * 100 : null;
-    const round2 = (v) => v == null ? null : parseFloat(v.toFixed(2));
 
-    const m1 = pickAgo(21);
-    const m3 = pickAgo(63);
-    const m6 = pickAgo(126);
-    const y1 = pickAgo(252);
+    // 复用统一的 calcMomentum 口径，保持与全市场 momentum 字段一致
+    const set = calcMomentumSet(historySeries, currentPrice);
+    const round2 = (v) => v == null ? null : parseFloat(v.toFixed(2));
 
     // 距 52 周收盘高点回撤（正数 %）
     // 关键：max 取自三方候选 —— historySeries 250 日 close + 当前实时价 + quote 提供的 high52w
@@ -2313,10 +2464,10 @@ function computeUSMomentum(historySeries, currentPrice = null, quoteHigh52w = nu
     }
 
     return {
-        changeMonth: round2(pct(last, m1)),
-        change3Month: round2(pct(last, m3)),
-        change6Month: round2(pct(last, m6)),
-        changeYear: round2(pct(last, y1)),
+        changeMonth: set.momentum1m,
+        change3Month: set.momentum3m,
+        change6Month: set.momentum6m,
+        changeYear: set.momentum1y,
         drawdownFromHigh52w,
     };
 }
@@ -2377,14 +2528,33 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
     if (!indices || indices.length === 0) return { indices: [], updateTime: new Date().toISOString() };
 
     // 构造 allConfigs 格式以复用 fetchRealtimeQuotes
+    // 增强：确保 market 字段始终正确，避免前端 _inferMarket() 推断失败
     const configs = indices.map(idx => {
         const poolKey = `${idx.code}.${idx.market}`;
         const poolCfg = POOL_MAP[poolKey];
-        return poolCfg || {
+        if (poolCfg) return poolCfg;
+        // 不在 POOL_MAP 中：尽量补全 market
+        let inferredMarket = idx.market || '';
+        // 从 secid 前缀推断
+        if (!inferredMarket && idx.secid) {
+            const sec = String(idx.secid);
+            if (/^100\.|^us_/i.test(sec)) inferredMarket = 'US';
+            else if (/^1\./.test(sec)) inferredMarket = 'SH';
+            else if (/^0\./.test(sec)) inferredMarket = 'SZ';
+            else if (/^2\./.test(sec)) inferredMarket = 'CSI';
+        }
+        // 从 code 正则推断
+        if (!inferredMarket && idx.code) {
+            if (/^(SPX|NDX|DJI|VIX|IXIC|US.*INDEX)$/i.test(idx.code)) inferredMarket = 'US';
+            else if (/^(HSI|HSCEI|HSSTECH|HSSCNE)$/i.test(idx.code)) inferredMarket = 'HI';
+        }
+        // 兜底
+        if (!inferredMarket) inferredMarket = 'SH';
+        return {
             name: idx.name,
             code: idx.code,
             secid: idx.secid,
-            market: idx.market,
+            market: inferredMarket,
         };
     });
 
@@ -2479,6 +2649,35 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             }
         }
 
+        // 全市场多周期动量（A 股 / 港股 / 美股 统一字段）
+        // - 美股：复用 computeUSMomentum 的口径（已在 usEnrich 中算好）
+        // - 其他市场：从 indices.json 缓存的 historySeries 计算；缓存中也已含 momentum1m/3m/6m/1y 可直接复用
+        let momentumAll = { momentum1m: null, momentum3m: null, momentum6m: null, momentum1y: null };
+        if (idx.market === 'US' && usEnrich) {
+            momentumAll = {
+                momentum1m: usEnrich.changeMonth ?? null,
+                momentum3m: usEnrich.change3Month ?? null,
+                momentum6m: usEnrich.change6Month ?? null,
+                momentum1y: usEnrich.changeYear ?? null,
+            };
+        } else {
+            const fullCodeForMomentum = `${idx.code}.${idx.market}`;
+            const enrichedAny = indicesByCode.get(fullCodeForMomentum);
+            if (enrichedAny) {
+                if (enrichedAny.momentum1m != null || enrichedAny.momentum3m != null || enrichedAny.momentum6m != null || enrichedAny.momentum1y != null) {
+                    momentumAll = {
+                        momentum1m: enrichedAny.momentum1m ?? null,
+                        momentum3m: enrichedAny.momentum3m ?? null,
+                        momentum6m: enrichedAny.momentum6m ?? null,
+                        momentum1y: enrichedAny.momentum1y ?? null,
+                    };
+                } else if (Array.isArray(enrichedAny.historySeries) && enrichedAny.historySeries.length > 0) {
+                    // 兜底：旧版本 indices.json 还没写过 momentumXxx 字段时，现场算
+                    momentumAll = calcMomentumSet(enrichedAny.historySeries, q.price || null);
+                }
+            }
+        }
+
         // 美股指数特殊处理：公开数据源不提供PE/PB，从腾讯扩展字段和K线位置推算估值区间
         let usValuationInfo = null;
         if (idx.market === 'US' && poolCfg) {
@@ -2494,9 +2693,11 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             }
         }
 
-        return {
+        // 构造完整代码（含市场后缀），与 fetchAllIndexData() 返回的 code 格式保持一致
+            const fullCode = `${idx.code}.${idx.market}`;
+            return {
             name: idx.name,
-            code: idx.code,
+            code: fullCode,
             market: idx.market,
             secid: idx.secid,
             icon: idx.icon,
@@ -2514,13 +2715,18 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             // 52周高低（美股从腾讯扩展字段获取，兜底来自 indices.json K线统计）
             high52w: q.high52w || null,
             low52w: q.low52w || null,
-            // 涨幅区间（美股优先使用 indices.json K线计算结果，其他市场用 quotes 字段）
+            // 涨幅区间（美股专属，旧字段保留向后兼容）
             changeMonth: (usEnrich?.changeMonth ?? q.changeMonth) ?? null,
             change3Month: (usEnrich?.change3Month ?? q.change3Month) ?? null,
             change6Month: usEnrich?.change6Month ?? null,
             changeYear: usEnrich?.changeYear ?? null,
             drawdownFromHigh52w: usEnrich?.drawdownFromHigh52w ?? null,
             sparkData: usEnrich?.sparkData ?? null,
+            // 全市场多周期动量（A股/港股/美股统一字段）
+            momentum1m: momentumAll.momentum1m,
+            momentum3m: momentumAll.momentum3m,
+            momentum6m: momentumAll.momentum6m,
+            momentum1y: momentumAll.momentum1y,
             // 估值
             pe, pb, pePercentile, pbPercentile,
             roe, dividend, evaType, temperature,
@@ -2549,6 +2755,7 @@ module.exports = {
     fetchDanjuanEvaluation,
     fetchYZYXThermometer,
     fetchYZYXIndexDetail,
+    resetYZYXCache,
     getTemperatureStatus,
     fetchAllIndexData,
     searchIndex,

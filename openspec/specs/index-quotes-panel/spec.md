@@ -1,294 +1,240 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: 指数行情面板按市场分类切换
 
-系统 SHALL 在「基金总览」Tab 下的「指数实时行情」面板中提供市场分类 Tab 切换能力，允许用户在 `📊 全部 / 🇨🇳 A股 / 🇭🇰 港股 / 🇺🇸 美股` 四个分类间切换显示范围。
+系统 SHALL 在「基金总览」页面的指数实时行情区域提供「全部 / A股 / 港股 / 美股」四个 Tab 按钮，点击后仅显示对应市场的指数卡片。
 
-#### Scenario: 默认渲染显示全部分类
+#### Scenario: 默认加载全部
 
-- **WHEN** 用户首次进入「基金总览」Tab 并加载指数行情
-- **THEN** 系统在搜索栏与卡片网格之间渲染 4 个 Tab 按钮，第一个「📊 全部」处于激活态，卡片网格展示用户关注的所有指数（不区分市场，但仍排除上证指数 000001）
+- **GIVEN** 用户进入基金总览页
+- **WHEN** 页面首次渲染
+- **THEN** 「全部」Tab 高亮，所有指数卡片可见
 
-#### Scenario: 切换到 A 股分类
+#### Scenario: 切换至 A 股 Tab
 
-- **GIVEN** 用户的指数 watchlist 包含 SH/SZ/CSI/HI/US 各类指数
+- **GIVEN** watchlist 包含沪深 300（SH）、中证 500（SH）、恒生指数（HK）、标普 500（US）
 - **WHEN** 用户点击「🇨🇳 A股」Tab
-- **THEN** 卡片网格仅展示 `market` 字段为 `SH`、`SZ` 或 `CSI` 的指数，其他市场指数不渲染
+- **THEN** 仅显示沪深 300、中证 500 卡片，恒生与标普不可见
 
-#### Scenario: 切换到港股分类
+#### Scenario: 切换 Tab 后 URL 不刷
 
-- **WHEN** 用户点击「🇭🇰 港股」Tab
-- **THEN** 卡片网格仅展示 `market === 'HI'` 的指数
+- **WHEN** 用户点击任意市场 Tab
+- **THEN** 页面不重新加载，仅 `display` 属性变化
 
-#### Scenario: 切换到美股分类
+#### Scenario: 市场归类规则
 
-- **WHEN** 用户点击「🇺🇸 美股」Tab
-- **THEN** 卡片网格仅展示 `market === 'US'` 的指数
+- **GIVEN** 指数 code 后缀为 `.SH`、`.SZ`、`.BJ` → 归入 A 股
+- **GIVEN** 指数 code 后缀为 `.HK` → 归入港股
+- **GIVEN** 指数 code 后缀为 `.US` → 归入美股
+- **GIVEN** 无后缀或未知后缀 → 归入 A 股（兜底）
 
-#### Scenario: 切回全部分类
-
-- **GIVEN** 用户当前激活的 Tab 为「🇭🇰 港股」
-- **WHEN** 用户点击「📊 全部」Tab
-- **THEN** 卡片网格恢复展示所有市场的指数
+---
 
 ### Requirement: 各 Tab 实时显示关注计数
 
-系统 SHALL 在每个市场分类 Tab 上同时显示该市场下用户已关注的指数数量。
+系统 SHALL 在每个 Tab 右侧实时显示该分类下的指数数量（格式：`全部 (N)`），并在增删指数后自动更新。
 
-#### Scenario: 全部 Tab 计数等于已关注总数
+#### Scenario: 初始计数正确
 
-- **GIVEN** 用户 watchlist 关注了 9 个指数（含上证指数 000001）
-- **WHEN** 系统渲染 Tab 计数
-- **THEN** 「📊 全部」计数显示为 8（排除上证指数 000001，与卡片网格实际可见数一致）
+- **GIVEN** watchlist 共 10 个指数（A股 6、港股 2、美股 2）
+- **THEN** Tab 显示：`全部 (10)` / `🇨🇳 A股 (6)` / `🇭🇰 港股 (2)` / `🇺🇸 美股 (2)`
 
-#### Scenario: 单分类计数与渲染卡片数严格一致
+#### Scenario: 删除指数后计数更新
 
-- **GIVEN** 用户 watchlist 包含 6 个 A 股指数（SH/SZ/CSI 任意混合）、1 个港股、2 个美股
-- **WHEN** 系统渲染 Tab
-- **THEN** 计数为「全部 9 / A股 6 / 港股 1 / 美股 2」，且切换到对应 Tab 后实际渲染的卡片数与计数完全一致
+- **WHEN** 管理员删除 1 个 A 股指数
+- **THEN** `全部` 和 `🇨🇳 A股` 计数同步 -1，其余 Tab 不变
 
-#### Scenario: watchlist 变更后计数实时更新
-
-- **WHEN** 用户通过搜索框添加一个新港股指数
-- **THEN** 在下一次 `renderIndexQuotesGrid` 调用时，「🇭🇰 港股」Tab 计数加 1，「📊 全部」Tab 计数加 1
+---
 
 ### Requirement: 空分类显示引导文案
 
-系统 SHALL 在用户切换到关注数为 0 的分类 Tab 时显示引导文案，而不是空白网格。
+系统 SHALL 当用户切换到无任何指数的市场 Tab 时，显示友好引导文案（而非空白）。
 
-#### Scenario: 切到无关注指数的分类
+#### Scenario: 港股 Tab 为空
 
-- **GIVEN** 用户 watchlist 中没有美股指数
-- **WHEN** 用户点击「🇺🇸 美股」Tab
-- **THEN** 卡片网格区域显示居中文案 "📊 该市场暂无关注指数，使用上方搜索框添加关注"
+- **GIVEN** watchlist 中无港股指数
+- **WHEN** 用户点击「🇭🇰 港股」Tab
+- **THEN** 显示：「暂无关注的港股指数，点击 + 添加」
 
-#### Scenario: 引导文案不阻挡 Tab 切换
-
-- **GIVEN** 用户当前看到「该市场暂无关注指数」引导文案
-- **WHEN** 用户点击其他有数据的 Tab
-- **THEN** 引导文案被替换为对应市场的指数卡片，不需刷新页面
+---
 
 ### Requirement: 切换 Tab 不破坏轮询增量更新
 
-系统 SHALL 在用户切换 Tab 之后，继续支持交易时段内的指数行情轮询增量更新（保持丝滑无闪烁）。
+系统 SHALL 在用户切换市场 Tab 时，后台轮询（`refreshInterval`）继续正常运行，且回到「全部」Tab 时卡片增量更新逻辑不受影响。
 
-#### Scenario: 切换 Tab 后下一次轮询正常更新价格
+#### Scenario: 轮询在后台持续
 
-- **GIVEN** 用户当前在「🇨🇳 A股」Tab，沪深 300 卡片显示 3850.12
-- **WHEN** 后台轮询返回新价格 3855.30
-- **THEN** 沪深 300 卡片的价格区域增量更新为 3855.30，不重建整张卡片，无闪烁
+- **GIVEN** 用户停留在「🇺🇸 美股」Tab
+- **WHEN** 每 30 秒轮询触发
+- **THEN** 所有指数数据（含 A 股/港股）仍被获取并更新内存，`lastUpdateTime` 正确刷新
 
-#### Scenario: 切换 Tab 时强制清空网格
+#### Scenario: 切回全部 Tab 卡片顺序不变
 
-- **GIVEN** 用户当前在「📊 全部」Tab 且已渲染 8 张卡片
-- **WHEN** 用户切换到「🇭🇰 港股」Tab
-- **THEN** 系统先清空 `#indexSummaryGrid` DOM，然后按新 filter 走"首次渲染"分支（全量 innerHTML），避免增量 diff 路径在大批量移除时误判
+- **GIVEN** 用户拖拽调整过指数顺序
+- **WHEN** 切换到港股 Tab 再切回全部
+- **THEN** 卡片顺序与拖拽后一致，未重置
+
+---
 
 ### Requirement: 市场归类前端规则
 
-系统 SHALL 使用一份前端常量 `MARKET_GROUPS` 将后端返回的 `market` 字段归类到 4 个 UI 分类。
+前端 SHALL 根据指数 `market` 字段（或 code 后缀）判断所属市场，规则与后端 `dataFetcher.js` 的 `POOL_MAP` 保持一致。
 
-#### Scenario: 标准市场代码映射
+#### Scenario: 根据 market 字段归类
 
-- **WHEN** 系统对一条 `market === 'SH'` / `'SZ'` / `'CSI'` 的指数进行分类
-- **THEN** 该指数归入「🇨🇳 A股」分类
+- **GIVEN** 指数对象含 `market: 'HK'`
+- **THEN** 该指数在「🇭🇰 港股」Tab 下可见
 
-#### Scenario: 港股市场代码映射
+#### Scenario: 根据 code 后缀兜底归类
 
-- **WHEN** 系统对一条 `market === 'HI'` 的指数进行分类
-- **THEN** 该指数归入「🇭🇰 港股」分类
+- **GIVEN** 指数对象无 `market` 字段，但 `code: '000300.SH'`
+- **THEN** 根据 `.SH` 后缀归入 A 股
 
-#### Scenario: 美股市场代码映射
-
-- **WHEN** 系统对一条 `market === 'US'` 的指数进行分类
-- **THEN** 该指数归入「🇺🇸 美股」分类
-
-#### Scenario: 未知 market 值兜底
-
-- **GIVEN** 后端某天返回了一条 `market === 'LSE'` 的指数（当前未支持的市场代码）
-- **WHEN** 系统应用分类
-- **THEN** 该指数仅在「📊 全部」Tab 可见，不出现在 cn/hk/us 任何 Tab；同时控制台输出 `console.warn` 标识未识别市场
+---
 
 ### Requirement: 不影响市场风向标与搜索框
 
-系统 SHALL 仅作用于「指数实时行情」面板（`#indexSummaryGrid`），不修改「市场风向标」（上证指数大卡片）的渲染逻辑，不限制搜索框的搜索范围。
+修改 SHALL NOT 影响页面其他元素：市场风向标（`#marketAngleBadge`）、搜索框（`#indexSearchInput`）、添加指数按钮。
 
-#### Scenario: 市场风向标始终独立展示
+#### Scenario: 风向标在所有 Tab 下均显示
 
-- **WHEN** 用户在任意分类 Tab 之间切换
-- **THEN** 顶部 `#featuredIndexRow` 中的上证指数大卡片始终展示，不参与任何分类过滤
+- **WHEN** 用户切换 Tab
+- **THEN** `#marketAngleBadge` 内容不变（仍显示「偏向 🇨🇳 A股」等）
 
-#### Scenario: 搜索框始终全市场搜索
+#### Scenario: 搜索框在所有 Tab 下均可使用
 
-- **GIVEN** 用户当前激活的 Tab 为「🇨🇳 A股」
-- **WHEN** 用户在搜索框输入"标普"
-- **THEN** 搜索结果包含标普 500（美股），用户可点击添加；添加成功后该指数自动出现在「🇺🇸 美股」与「📊 全部」Tab，但当前 Tab（A 股）不会立即跳转
+- **WHEN** 用户在任意 Tab 下输入搜索词
+- **THEN** 搜索下拉正常弹出，点击结果调用 `addIndex(code)`
+
+---
 
 ### Requirement: 视觉与交互一致性
 
-系统 SHALL 复用同页面「严选基金」的 `.af-cat-tabs` 视觉语言（圆角胶囊 Tab、激活态高亮、计数徽章），通过独立类名 `.idx-cat-tabs` 实现样式隔离。
+新增的 Tab 按钮 SHALL 复用现有 `.featured-card-tab` 样式（或等效果），保持与「投资策略」页 Tab 一致的视觉风格。
 
-#### Scenario: 视觉风格与严选基金 Tab 对齐
+#### Scenario: Tab 选中态高亮
 
-- **WHEN** 用户对比同页面的「📈 指数基金 / 🎯 主动基金」Tab 与新增的市场分类 Tab
-- **THEN** 两套 Tab 在圆角、内边距、激活色、字号、计数徽章样式上保持一致
+- **WHEN** 用户点击「🇺🇸 美股」Tab
+- **THEN** 该 Tab 背景变为 accent 色，字体加粗，与现有 tab 选中态一致
 
-#### Scenario: 移动端响应式
+#### Scenario: Tab 切换过渡平滑
 
-- **WHEN** 视口宽度 < 480px
-- **THEN** 4 个 Tab 仍可完整显示在一行内（必要时使用 `flex-wrap` 或紧凑 padding），不出现横向滚动条
+- **WHEN** 点击 Tab
+- **THEN** 卡片区域淡入淡出（opacity 0→1，200ms），无生硬闪烁
 
+---
 
 ### Requirement: 美股指数卡片字段后端透出
 
-系统 SHALL 在 `/api/indices/quotes` 响应中为美股（`market === 'US'`）指数记录额外透出 K 线衍生统计字段，复用已存在的 `data/cache/indices.json` 数据，不发起新外部请求。
+后端 SHALL 在 `/api/indices/quotes` 和 `/api/indices` 的响应中，为美股指数（market=`US`）额外透出以下字段，供前端渲染使用：
 
-#### Scenario: 美股记录字段齐全
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `high52w` | number | 52 周最高价 |
+| `low52w` | number | 52 周最低价 |
+| `momentum1m` | number | 近 1 月涨幅 % |
+| `momentum3m` | number | 近 3 月涨幅 % |
+| `sparkData` | number[] | 近 30 日收盘价序列（用于 mini 走势图） |
 
-- **GIVEN** `data/cache/indices.json` 中 SPX.US 含 `high52w / low52w / sparkData / historySeries`
-- **WHEN** 调用 `/api/indices/quotes`
-- **THEN** 响应中 SPX 记录包含：
-  - `high52w` / `low52w`（来自 indices.json 原值）
-  - `changeMonth` / `change3Month` / `change6Month` / `changeYear`（基于 historySeries 末尾相对位置计算，单位 %，保留 2 位小数）
-  - `drawdownFromHigh52w`（距 52 周收盘高点回撤，正数 %，保留 2 位小数）
-  - `sparkData`（最近 30 个交易日 close 数组，直接复用）
+#### Scenario: 标准响应包含新字段
 
-#### Scenario: A 股 / 港股不受影响
+- **GIVEN** watchlist 中含 SPX.US
+- **WHEN** 调用 `GET /api/indices/quotes`
+- **THEN** SPX 对象含 `high52w`、`low52w`、`momentum1m`、`momentum3m`、`sparkData` 字段
 
-- **GIVEN** A 股或港股指数 watchlist
-- **WHEN** 调用 `/api/indices/quotes`
-- **THEN** 这些非美股记录的 `change6Month / changeYear / drawdownFromHigh52w / sparkData` 字段保持为 `null`（向后兼容，不增加 payload）
+#### Scenario: A 股指数不含美股专属字段
 
-#### Scenario: indices.json 不可读时优雅降级
+- **WHEN** 响应中含沪深 300（.SH）
+- **THEN** 该对象不含 `high52w` / `low52w` / `momentum1m` 等字段（保持向后兼容）
 
-- **GIVEN** `data/cache/indices.json` 不存在或解析失败
-- **WHEN** 调用 `/api/indices/quotes`
-- **THEN** 系统输出 `console.warn` 提示，美股记录的 `high52w / low52w / change6Month / changeYear / drawdownFromHigh52w / sparkData` 全部为 null；其他基础字段（price / changePercent / open / prevClose）正常返回
-
-#### Scenario: historySeries 长度不足
-
-- **GIVEN** indices.json 中某美股记录 `historySeries.length < 252`（数据不足 1 年）
-- **WHEN** 计算动量字段
-- **THEN** `changeYear` 返回 null，但 `changeMonth / change3Month / change6Month` 在数据足够时仍正常返回
-
-#### Scenario: 触发 evaType 自动推导
-
-- **GIVEN** 美股记录补齐 `high52w / low52w / price` 后
-- **WHEN** 进入 `usValuationInfo` 处理分支
-- **THEN** 系统自动计算 `pePercentile`（即 52 周价格水位），并按区间映射 `evaType`（< 30 → low、30~70 → mid、≥ 70 → high）
+---
 
 ### Requirement: 美股指数卡片 52 周区间条
 
-系统 SHALL 在美股指数卡片中以单行视觉化方式展示 52 周价格区间，含低点、高点、当前价位置标记、距高回撤百分比。
+前端 SHALL 在美股指数卡片上渲染「52 周区间水位条」：一个横向进度条，表示当前价在 52 周最低价与最高价之间的位置。
 
-#### Scenario: 区间条基础渲染
+#### Scenario: 水位条位置正确
 
-- **GIVEN** 美股记录含 `high52w = 7599.38, low52w = 5861.43, price = 7580.06`
+- **GIVEN** SPX 当前价 5500，52w 最低 4000、最高 6000
 - **WHEN** 渲染卡片
-- **THEN** 卡片中包含一个 `.idx-range-bar` 元素：
-  - 左侧文字 `低 5861.43`，右侧文字 `高 7599.38`
-  - 横向背景条 + 圆点标记，圆点 left 位置 = `(price - low52w) / (high52w - low52w) * 100%`
-  - 副标签 `距高 -0.25%`（即 `drawdownFromHigh52w` 的负数表达，方便阅读）
+- **THEN** 水位条填充比例为 `(5500-4000)/(6000-4000) = 75%`，左侧标注 `4000`，右侧标注 `6000`
 
-#### Scenario: 当前价超出 52 周区间（极端场景）
+#### Scenario: 价格突破 52w 最高/最低时取边界
 
-- **WHEN** 因 quote 与 indices.json 时间差导致 `price > high52w`
-- **THEN** 圆点位置被钳制在 0~100%（超出时 = 100%），不破坏布局
+- **GIVEN** 当前价 > high52w（盘中创新高）
+- **WHEN** 渲染
+- **THEN** 水位条 100% 填充，数字仍为历史 high52w/low52w
 
-#### Scenario: 字段缺失降级
-
-- **WHEN** 美股记录的 `high52w` 或 `low52w` 为 null
-- **THEN** 整个区间条不渲染（不显示占位符）
+---
 
 ### Requirement: 美股指数卡片 3 列动量徽章
 
-系统 SHALL 在美股指数卡片中以等宽 3 列布局展示`近 1 月 / 近 3 月 / 近 1 年`涨跌幅。
+前端 SHALL 在美股指数卡片上以 3 列徽章形式展示动量：
 
-#### Scenario: 三列动量正常渲染
+| 列 | 内容 |
+|---|---|
+| 近 1 月 | `momentum1m`（红涨绿跌） |
+| 近 3 月 | `momentum3m` |
+| 今年以来 | `ytdChange`（如可计算） |
 
-- **GIVEN** 美股记录含 `changeMonth = 2.1, change3Month = 6.4, changeYear = 21.3`
-- **WHEN** 渲染卡片
-- **THEN** 卡片中包含一个 `.idx-momentum-row` 元素，3 列均分宽度：
-  - 第 1 列：`近1月 +2.10%`，正数应用 `up` 类（绿色）
-  - 第 2 列：`近3月 +6.40%`
-  - 第 3 列：`近1年 +21.30%`
-  - 涨跌符号正确：负数显示 `-` 不显示 `+`，应用 `down` 类（红色）
+#### Scenario: 动量徽章颜色正确
 
-#### Scenario: 部分字段缺失
-
-- **GIVEN** `changeYear = null`（数据不足 1 年）
+- **GIVEN** `momentum1m = 5.2%`
 - **WHEN** 渲染
-- **THEN** 第 3 列显示 `近1年 --`，灰色样式，不破坏 3 列布局
+- **THEN** 显示「近1月 +5.20%」，文字颜色为红色（上涨）
 
-#### Scenario: 整行降级
+#### Scenario: 数据为 null 时显示 --
 
-- **WHEN** 三个动量字段全为 null
-- **THEN** `.idx-momentum-row` 整行不渲染
+- **GIVEN** `momentum3m` 为 null（历史数据不足）
+- **WHEN** 渲染
+- **THEN** 显示「近3月 --」
+
+---
 
 ### Requirement: 美股指数卡片 30 天 Sparkline
 
-系统 SHALL 在美股指数卡片底部展示 30 天收盘价微缩走势图（Sparkline），无外部库依赖。
+前端 SHALL 在美股指数卡片的某固定区域（如卡片底部或价格旁）渲染一个 30 天迷你走势图（Sparkline），使用 `sparkData` 数组。
 
-#### Scenario: Sparkline 正常渲染
+#### Scenario: Sparkline 渲染成功
 
-- **GIVEN** 美股记录含 `sparkData` 数组，长度 ≥ 2
+- **GIVEN** `sparkData.length >= 2`
 - **WHEN** 渲染卡片
-- **THEN** 卡片底部包含一个 `<svg class="idx-sparkline" viewBox="0 0 100 28">` 元素：
-  - 含一个 `<polyline>` 折线，points 等距按 sparkData 自适应缩放（min/max 自动）
-  - 主色按 `changeMonth >= 0` 决定：涨用 `var(--accent-green)`、跌用 `var(--accent-red)`
-  - `stroke-width = 1.5`，无填充
-  - SVG 高度 28px（移动端 < 480px 时 22px）
+- **THEN** 显示一个宽度 ~100px、高度 ~30px 的 SVG 折线图，折线颜色根据首尾涨跌决定（红/绿）
 
-#### Scenario: 数据点过少时不渲染
+#### Scenario: sparkData 不足时隐藏
 
-- **GIVEN** `sparkData.length < 2` 或 `sparkData == null`
+- **GIVEN** `sparkData.length < 2`
 - **WHEN** 渲染
-- **THEN** Sparkline 元素整体不渲染
+- **THEN** Sparkline 区域不显示或显示「--」
 
-#### Scenario: 数据全部相同（极端值）
-
-- **GIVEN** `sparkData = [100, 100, 100, ...]`（30 天无波动）
-- **WHEN** 渲染
-- **THEN** 折线水平居中显示，不抛出除零错误（min/max 相等时手动设 range = 1）
+---
 
 ### Requirement: A 股 / 港股卡片视觉零变更
 
-系统 MUST 保持 A 股 / 港股 / 主动基金 / ETF / 各类策略卡片**完全不受本次改动影响**，仅作用于 `idx.market === 'US'` 分支。
+修改 SHALL NOT 改变 A 股和港股指数卡片的现有布局、字段和样式。美股专属元素（52w 条、动量徽章、Sparkline）仅在 `market === 'US'` 时渲染。
 
-#### Scenario: A 股卡片不变
+#### Scenario: A 股卡片无 52w 条
 
 - **WHEN** 渲染沪深 300 卡片
-- **THEN** 卡片视觉、布局、字段与本 change 实施前完全一致（PE / PB / 百分位 / ROE / 股息 / 温度 全保留）
+- **THEN** HTML 中不含 `.idx-card-52w-bar` 元素
 
-#### Scenario: 港股卡片不变
+#### Scenario: 港股卡片无动量徽章
 
 - **WHEN** 渲染恒生科技卡片
-- **THEN** 卡片视觉、布局、字段与本 change 实施前完全一致
+- **THEN** 不含 `.idx-card-momentum` 区块
 
-#### Scenario: 严选基金 / ETF / 其他 Tab 不变
-
-- **WHEN** 用户切换到「严选基金」「投资策略」等 Tab
-- **THEN** 对应卡片视觉零变化
+---
 
 ### Requirement: 移动端响应式
 
-系统 SHALL 在视窗宽度 < 480px 时保证美股新增卡片元素布局不破版。
+新增的 52w 条、动量徽章、Sparkline 在移动端（≤480px）自动调整为纵向堆叠或省略，保持卡片宽度不溢出。
 
-#### Scenario: Sparkline 移动端高度调整
+#### Scenario: 480px 下动量徽章纵向排列
 
-- **WHEN** 视窗宽度 < 480px
-- **THEN** `.idx-sparkline` 高度从 28px 缩减至 22px，宽度自适应卡片
+- **WHEN** 屏幕宽度 480px
+- **THEN** 3 列动量徽章变为单列，高度自适应
 
-#### Scenario: 3 列动量保持单行
-
-- **WHEN** 视窗宽度 = 360px（极小屏）
-- **THEN** `.idx-momentum-row` 三列仍单行展示，不换行（必要时缩减字号）
-
-#### Scenario: 52 周区间条保持单行
-
-- **WHEN** 视窗宽度 < 480px
-- **THEN** 区间条左右文字与圆点保持同一行，必要时数字简化（如 `5861` 不 `5861.43`）
-
+---
 
 ### Requirement: 删除指数后立即从 UI 移除
 
@@ -317,6 +263,8 @@
 - **GIVEN** 网络异常导致 `/api/indices/remove` 返回 500
 - **WHEN** 管理员尝试删除
 - **THEN** 系统弹 `alert('移除失败: ...')` 并重新调用 `loadIndexQuotes(true)`，UI 恢复到删除前状态（卡片回归）
+
+---
 
 ### Requirement: 全市场交易时段感知缓存
 
@@ -359,6 +307,8 @@
 - **WHEN** 调用 `isTradingHours(['CN', 'HK', 'US'])`
 - **THEN** 任一市场处于开盘时段返回 true，全部休市返回 false
 
+---
+
 ### Requirement: 指数卡片管理员拖拽排序
 
 系统 SHALL 允许管理员通过拖拽指数卡片调整顺序，并将顺序持久化到 watchlist。
@@ -367,7 +317,7 @@
 
 - **GIVEN** 已登录管理员
 - **WHEN** 渲染指数卡片
-- **THEN** 每张卡片左上角显示 `⠿` 拖拽手柄（CSS 类 `.drag-handle`），鼠标悬停时变明亮
+- **THEN** 每张卡片左上角显示 `⠿` 拖拽手柄（CSS 类 `.idx-drag-handle`），鼠标悬停时变明亮
 
 #### Scenario: 普通用户无拖拽能力
 
@@ -413,3 +363,403 @@
 - **GIVEN** `renderIndexQuotesGrid` 被轮询多次调用
 - **WHEN** 系统初始化拖拽
 - **THEN** 通过 `_indexDnDInitialized` 模块状态标志位，`initCardDnD` 仅在首次渲染时绑定一次，事件委托随 children 增删自然生效
+
+---
+
+### Requirement: 按指数 code 单独查询 K 线接口
+
+系统 SHALL 提供 `GET /api/indices/:code/klines` 公开 API，按完整 code（含市场后缀，如 `SPX.US`）返回单个指数的历史 K 线，复用现有 failover 链。
+
+#### Scenario: 标准请求成功
+
+- **GIVEN** watchlist 含 SPX.US 指数
+- **WHEN** 调用 `GET /api/indices/SPX.US/klines`
+- **THEN** 系统返回 200 + `{ success: true, data: { code: 'SPX.US', historySeries: [...], source: 'eastmoney'|'tencent'|'yahoo'|'stale-cache', sourceLabel: '主源直连'|'备用源生效中'|..., stale: false|true, fetchedAt: ISOString } }`
+- **AND** historySeries 数组每项含 `{ date, open, close, high, low, ... }` 字段
+
+#### Scenario: 候选池外指数动态查找
+
+- **GIVEN** 用户搜索添加了某不在 DEFAULT_SELECTED_CODES 候选池但已在 watchlist 的指数
+- **WHEN** 调用对应 code 的 klines 接口
+- **THEN** 系统从 `readIndexWatchlist()` 动态构造 cfg，调用 `fetchIndexHistory(cfg)` 返回 K 线
+
+#### Scenario: 未知 code 返回 404
+
+- **WHEN** 调用 `GET /api/indices/UNKNOWN.XX/klines`
+- **AND** 该 code 既不在候选池也不在 watchlist
+- **THEN** 系统返回 404 + `{ success: false, error: '指数不存在或不在关注列表' }`
+
+#### Scenario: 数据源全部失败返回错误但 HTTP 200
+
+- **GIVEN** 东方财富 / 腾讯 / Yahoo 三方均超时或失败
+- **WHEN** 调用接口
+- **THEN** 系统返回 HTTP 200 + `{ success: false, error: 'K线数据暂时无法获取，请稍后重试', data: { code, source: 'none' } }`
+- **AND** 前端可通过 success=false 分支显示 error UI
+
+#### Scenario: 缓存命中快速返回
+
+- **GIVEN** 同一 code 30 秒内被请求过
+- **WHEN** 再次调用
+- **THEN** 系统从 `_klineCache` 内存缓存返回，响应时间 < 50ms
+
+#### Scenario: stale 缓存兜底
+
+- **GIVEN** 主源失败但 stale 缓存内有同 code 的旧数据
+- **WHEN** 调用接口
+- **THEN** 系统返回 `{ success: true, data: { ..., source: 'stale-cache', stale: true } }`，前端正常渲染图并在数据源行标注"已回退缓存"
+
+---
+
+### Requirement: 模态框打开时按需异步加载 K 线
+
+系统 SHALL 在用户点击指数卡片打开详情模态框时，**立即**显示已有元信息（价格、PE、52周高低、估值徽章），**独立异步**拉取 K 线数据并填充「区间走势分析」区。
+
+#### Scenario: 首次打开有 K 线缓存
+
+- **GIVEN** 用户首次点击沪深 300 卡片
+- **WHEN** 模态框打开
+- **THEN** Header / 行情 / 关键指标 / PE 百分位条立即可见
+- **AND** 趋势区显示骨架屏 + 「📈 正在加载历史趋势数据…」
+- **AND** 异步 fetch 完成后趋势区平滑替换为 SVG 折线图
+
+#### Scenario: 用户点击未在 dashboard 候选池的指数
+
+- **GIVEN** 用户搜索添加了某非主流指数到 watchlist
+- **WHEN** 点击该指数的实时行情卡片
+- **THEN** 模态框正常打开（不再 silently return），从 `indexQuotesData` 兜底构造元信息
+- **AND** 异步触发 `GET /api/indices/:code/klines` 拉趋势
+
+#### Scenario: 模态框关闭后 K 线缓存保留
+
+- **GIVEN** 用户成功打开并查看了 NDX 模态框
+- **WHEN** 关闭后再次打开 NDX 模态框
+- **THEN** historySeries 已写回内存数据池（indexQuotesData / dashboardData），趋势图**立即可见**无 loading 闪烁
+
+---
+
+### Requirement: 区间走势三态可见反馈（loading / success / error）
+
+系统 SHALL 在「区间走势分析」区根据数据状态显示明确反馈：loading（骨架屏 + 文案）、success（SVG 折线 + 范围按钮）、error（提示 + 重试按钮）。
+
+#### Scenario: loading 态视觉
+
+- **GIVEN** 模态框打开但 K 线尚未拉到
+- **WHEN** 渲染趋势区
+- **THEN** 区域显示一个高度等于趋势图（220px）的骨架屏（含 `@keyframes shimmer` 扫光动画）
+- **AND** 文案为 「📈 正在加载历史趋势数据…」
+
+#### Scenario: success 态正常渲染
+
+- **WHEN** historySeries.length >= 2
+- **THEN** 区域渲染 SVG 折线图 + 时间轴 + 范围按钮（1y/3y/5y/10y，按 coverage 启用/禁用）
+- **AND** 数据源行显示 K 线 source 标签（如"主源直连 · 2520 条"）
+
+#### Scenario: error 态显示重试按钮
+
+- **GIVEN** `/api/indices/:code/klines` 返回 success=false 或网络异常
+- **WHEN** 渲染趋势区
+- **THEN** 区域显示 「⚠️ 历史趋势数据暂时无法获取」+ 「🔄 重试」按钮
+- **AND** 点击重试按钮后回到 loading 态，重新触发拉取
+
+#### Scenario: 重试成功后切回 success
+
+- **GIVEN** 当前 error 态显示「重试」按钮
+- **WHEN** 用户点击重试且后端这次返回 success=true（如服务端缓存恢复 / 网络恢复）
+- **THEN** 趋势区切换为 SVG 折线图
+
+#### Scenario: 切换范围按钮不重复请求
+
+- **GIVEN** historySeries 已加载（含完整 10 年数据）
+- **WHEN** 用户在 1y/3y/5y/10y 之间切换
+- **THEN** 系统**不**发起新的 K 线请求，仅本地 slice 渲染
+
+---
+
+### Requirement: 并发请求去重
+
+系统 SHALL 在前端用 `Map<code, Promise>` 防止同一 code 的并发 K 线请求重复触发。
+
+#### Scenario: 快速切换 / 重试时去重
+
+- **GIVEN** 用户快速连续点击「重试」按钮 5 次
+- **WHEN** 上一次请求尚在 inflight
+- **THEN** 系统**仅触发 1 次** fetch，后续 4 次复用同一 Promise
+
+#### Scenario: 用户切换到其他指数时不影响当前请求
+
+- **WHEN** 用户在 SPX 加载中切换到 NDX
+- **THEN** SPX 的请求继续进行（用于回写缓存），NDX 单独发起新请求
+
+---
+
+### Requirement: K 线响应回写多数据池
+
+系统 SHALL 在 K 线请求成功后将 historySeries 回写到 `indexQuotesData / dashboardData / indexData` 三个前端数据池（如对应 code 存在），保证下次打开同一指数模态框时直接命中。
+
+#### Scenario: 回写 indexQuotesData
+
+- **GIVEN** 用户在指数实时行情面板点击 HSCEI 模态框
+- **WHEN** K 线拉取成功
+- **THEN** `indexQuotesData.find(i => i.code === 'HSCEI').historySeries` 被设为响应中的 historySeries
+
+#### Scenario: 回写 dashboardData（如 code 在候选池）
+
+- **GIVEN** HSCEI 在 dashboard 候选池
+- **WHEN** K 线拉取成功
+- **THEN** `dashboardData.find(...).historySeries` 也同步更新
+
+#### Scenario: code 不在某数据池时跳过
+
+- **GIVEN** 某 code 不在 dashboardData 中
+- **WHEN** 回写
+- **THEN** 跳过该池，不抛错
+
+---
+
+### Requirement: 数据源透明度提示
+
+系统 SHALL 在模态框「数据源」行显示 K 线实际来源（eastmoney / tencent / yahoo / stale-cache）。
+
+#### Scenario: 显示主源直连
+
+- **WHEN** K 线来自东方财富主源
+- **THEN** 数据源行包含 "K线N条 · 主源直连"
+
+#### Scenario: 显示备用源
+
+- **WHEN** K 线来自腾讯备用源（东方财富冷却中或失败）
+- **THEN** 数据源行包含 "K线N条 · 备用源生效中"
+
+#### Scenario: 显示 stale 标识
+
+- **WHEN** K 线来自 stale-cache
+- **THEN** 数据源行包含 "K线N条 · 已回退缓存（数据可能滞后）"
+
+---
+
+### Requirement: 市场推断逻辑增强
+
+系统 SHALL 在前端 `_inferMarket(d)` 函数中实现多字段联合推断，确保所有指数（特别是美股指数）都能正确识别市场，从而拼接出正确的完整代码（code + market）。
+
+#### Scenario: 通过 d.market 字段精确推断
+
+- **GIVEN** `d.market` 存在且为合法值（`SH` / `SZ` / `HK` / `US` / `HI` / `CSI`）
+- **WHEN** 调用 `_inferMarket(d)`
+- **THEN** 直接返回 `d.market` 的值
+
+#### Scenario: 通过 d.secid 字段推断
+
+- **GIVEN** `d.market` 不存在，但 `d.secid` 存在（如 `'100.SPX'`）
+- **WHEN** 调用 `_inferMarket(d)`
+- **THEN** 根据 `secid` 前缀判断：`100.` → `US`，`1.` → `SH`，`0.` → `SZ`，`2.` → `CSI`，否则 → `US`
+
+#### Scenario: 通过 d.code 正则匹配推断
+
+- **GIVEN** `d.market` 和 `d.secid` 都不存在
+- **WHEN** 调用 `_inferMarket(d)` 且 `d.code` 匹配已知美股指数正则（`/^(SPX|NDX|DJI|VIX)$/i`）
+- **THEN** 返回 `US`
+
+#### Scenario: 通过数据池查找推断
+
+- **GIVEN** 以上方法都无法推断
+- **WHEN** 调用 `_inferMarket(d)`
+- **THEN** 在 `indexQuotesData`、`dashboardData`、`indexData` 三个数据池中查找 `i.code === d.code` 且 `i.market` 存在的项，如果找到则返回该 `i.market`
+
+#### Scenario: 兜底返回 SH
+
+- **GIVEN** 所有推断方法都失败
+- **WHEN** 调用 `_inferMarket(d)`
+- **THEN** 返回 `'SH'`（向后兼容）
+
+---
+
+### Requirement: K 线 API 市场后缀模糊匹配
+
+系统 SHALL 在后端 `/api/indices/:code/klines` 接口中，当精确匹配（`POOL_MAP[fullCode]` 和 watchlist 查找都失败）时，自动尝试常见市场后缀（`.US` / `.SH` / `.SZ` / `.HI`），选择第一个能返回有效 K 线数据的市场。
+
+#### Scenario: 精确匹配成功
+
+- **GIVEN** `fullCode = 'SPX.US'`
+- **WHEN** 调用 `/api/indices/SPX.US/klines`
+- **THEN** 系统从 `POOL_MAP['SPX.US']` 获取配置，正常返回 K 线数据
+
+#### Scenario: 精确匹配失败，模糊匹配成功
+
+- **GIVEN** `fullCode = 'SPX'`（缺少市场后缀）
+- **WHEN** 调用 `/api/indices/SPX/klines`
+- **THEN** 系统尝试 `SPX.US`（因为 `SPX` 匹配美股指数正则），成功获取 K 线数据并返回
+
+#### Scenario: 所有模糊匹配都失败
+
+- **GIVEN** `fullCode = 'UNKNOWN'`（未知指数）
+- **WHEN** 调用 `/api/indices/UNKNOWN/klines`
+- **THEN** 系统尝试所有市场后缀（`.US` / `.SH` / `.SZ` / `.HI`）都失败，返回 404 + `{ success: false, error: '指数不存在或不在关注列表' }`
+
+#### Scenario: 模糊匹配使用并行超时
+
+- **GIVEN** 需要模糊匹配
+- **WHEN** 系统尝试多个市场后缀
+- **THEN** 并行发起所有尝试，每个尝试设置 3 秒超时，取第一个成功的结果；如果全部失败，返回 404
+
+---
+
+### Requirement: 美股指数数据准确性保障
+
+系统 SHALL 确保美股指数（SPX、NDX 等）的 PE、价格、股息率等关键指标来自最新、最可靠的数据源，并在数据可能不准确时明确标注。
+
+#### Scenario: PE 数据来自 Yahoo Finance 最新值
+
+- **GIVEN** watchlist 包含 SPX.US
+- **WHEN** 调用 `/api/indices/quotes` 或打开 SPX 详情模态框
+- **THEN** `d.pe` 字段来自 Yahoo Finance 最新数据（或 Shiller PE 中位数，如果 Yahoo PE 不可靠）
+
+#### Scenario: 价格数据来自 Yahoo Finance 实时行情
+
+- **GIVEN** watchlist 包含 SPX.US
+- **WHEN** 调用 `/api/indices/quotes`
+- **THEN** `d.price` 字段来自 Yahoo Finance 或腾讯行情（备用）的最新值，且 `d.updateTime` 标注数据获取时间
+
+#### Scenario: 数据过时标注
+
+- **GIVEN** 美股指数的数据源返回的数据已超过 15 分钟（非交易时段除外）
+- **WHEN** 渲染指数详情模态框
+- **THEN** 在关键指标区域显示黄色警告标识，提示"数据可能延迟"
+
+---
+
+### Requirement: K 线加载错误反馈增强
+
+系统 SHALL 在 K 线数据加载失败时，提供明确的错误原因说明和重试引导，而不是泛化的"暂时无法获取"。
+
+#### Scenario: 404 错误明确提示
+
+- **GIVEN** 用户点击某不在 `POOL_MAP` 和 watchlist 中的指数
+- **WHEN** 模态框尝试加载 K 线数据
+- **THEN** 显示"指数不存在或不在关注列表，请先添加该指数到关注列表"
+
+#### Scenario: 数据源全部失败提示具体原因
+
+- **GIVEN** 东方财富、腾讯、Yahoo Finance 三个数据源都失败
+- **WHEN** 模态框尝试加载 K 线数据
+- **THEN** 显示"所有数据源暂时无法访问（东方财富: socket hang up; 腾讯: timeout; Yahoo: invalid symbol），请稍后重试"
+
+#### Scenario: 重试按钮清除错误状态
+
+- **GIVEN** 当前显示 K 线加载错误
+- **WHEN** 用户点击"重试"按钮
+- **THEN** 错误提示消失，显示 loading 骨架屏，并重新发起 K 线数据请求
+
+---
+
+### Requirement: 数据时效性透明化
+
+系统 SHALL 在指数详情模态框中显示关键数据的更新时间戳，让用户了解数据时效性。
+
+#### Scenario: 显示 K 线数据获取时间
+
+- **GIVEN** K 线数据加载成功
+- **WHEN** 渲染"区间走势分析"区域
+- **THEN** 在数据源行显示"K线N条 · 主源直连 · 更新于 HH:MM:SS"（或"已回退缓存 · 更新于 YYYY-MM-DD HH:MM"）
+
+#### Scenario: 显示指数行情更新时间
+
+- **GIVEN** 指数详情模态框打开
+- **WHEN** 渲染行情区域（价格、涨跌幅）
+- **THEN** 在价格旁边显示"更新于 HH:MM"（来自 `d.updateTime` 或 `/api/indices/quotes` 的响应时间）
+
+---
+
+### Requirement: 全市场指数多周期动量字段后端透出
+
+后端 SHALL 在 `/api/indices/quotes` 与 `/api/indices` 的响应中，为**全部市场**（A 股 / 港股 / 美股）的每个指数对象统一透出多周期涨跌幅字段，基于现有 `historySeries` 在后端计算（避免前端重复计算）。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `momentum1m` | number\|null | 近 1 月（约 21 个交易日）涨跌幅 %（保留两位小数） |
+| `momentum3m` | number\|null | 近 3 月（约 63 个交易日）涨跌幅 % |
+| `momentum6m` | number\|null | 近 6 月（约 126 个交易日）涨跌幅 % |
+| `momentum1y` | number\|null | 近 1 年（约 252 个交易日）涨跌幅 % |
+
+#### Scenario: A 股指数响应包含全部 4 个动量字段
+
+- **GIVEN** watchlist 含沪深 300（`000300.SH`）且 historySeries 长度 ≥ 252
+- **WHEN** 调用 `GET /api/indices/quotes`
+- **THEN** 沪深 300 对象同时包含 `momentum1m` / `momentum3m` / `momentum6m` / `momentum1y` 四个字段，类型为 number 或 null
+
+#### Scenario: 港股指数响应包含全部 4 个动量字段
+
+- **GIVEN** watchlist 含恒生科技（`HSTECH.HK`）
+- **WHEN** 调用 `GET /api/indices/quotes`
+- **THEN** 恒生科技对象包含 `momentum1m` / `momentum3m` / `momentum6m` / `momentum1y` 四个字段
+
+#### Scenario: 历史数据不足时对应字段为 null
+
+- **GIVEN** 某指数 historySeries 长度 = 30（不足 3 月）
+- **WHEN** 调用 `GET /api/indices/quotes`
+- **THEN** 该对象 `momentum1m` 为有效数字，`momentum3m` / `momentum6m` / `momentum1y` 均为 `null`
+
+#### Scenario: 字段数值与口径一致
+
+- **GIVEN** 沪深 300 当前价 = 4000，21 个交易日前收盘 = 3800
+- **WHEN** 后端计算 `momentum1m`
+- **THEN** 字段值 = `((4000 - 3800) / 3800 * 100).toFixed(2)` = `5.26`
+
+#### Scenario: 美股指数兼容现有口径
+
+- **GIVEN** watchlist 含 SPX.US
+- **WHEN** 调用 `GET /api/indices/quotes`
+- **THEN** 美股指数对象仍保留原有 `momentum1m` / `momentum3m` / `ytdChange` 字段，新增的 `momentum6m` / `momentum1y` 采用与其它市场相同的口径（基于交易日数）
+
+---
+
+### Requirement: 指数卡片多周期动量徽章
+
+前端 SHALL 在**每张**指数卡片（不论市场）渲染一行"多周期动量"，以 4 列徽章形式展示近 1 月 / 3 月 / 6 月 / 1 年涨跌幅。
+
+#### Scenario: A 股卡片显示 4 列动量徽章
+
+- **GIVEN** `/api/indices/quotes` 返回沪深 300 `momentum1m=2.50`、`momentum3m=-1.20`、`momentum6m=8.30`、`momentum1y=15.50`
+- **WHEN** 渲染指数卡片
+- **THEN** 卡片显示 `1月 +2.50%`、`3月 -1.20%`、`6月 +8.30%`、`1年 +15.50%` 四列徽章
+
+#### Scenario: 港股卡片显示 4 列动量徽章
+
+- **GIVEN** 恒生科技返回 `momentum1m=3.10`、`momentum3m=null`、`momentum6m=null`、`momentum1y=null`
+- **WHEN** 渲染卡片
+- **THEN** 显示 `1月 +3.10%`、`3月 --`、`6月 --`、`1年 --`
+
+#### Scenario: 红涨绿跌配色一致
+
+- **GIVEN** `momentum1m > 0`
+- **WHEN** 渲染徽章
+- **THEN** 数字文字颜色使用 CSS 变量 `--color-rise`（红）；`< 0` 使用 `--color-fall`（绿）；`= 0` 使用次级文本色
+
+#### Scenario: null 值显示横线
+
+- **GIVEN** 任一周期值为 `null`
+- **WHEN** 渲染该列
+- **THEN** 显示 `--`，颜色使用次级文本色（不进入红/绿配色）
+
+#### Scenario: 移动端纵向自适应
+
+- **GIVEN** 屏幕宽度 ≤ 480px
+- **WHEN** 渲染指数卡片
+- **THEN** 4 列动量徽章自适应为 2×2 网格，不溢出卡片宽度
+
+---
+
+### Requirement: 多周期动量与现有美股展示元素并存
+
+新增的"多周期动量徽章"行 SHALL 不替换或破坏现有美股卡片上的 52 周区间条、Sparkline 与原有 3 列动量徽章；A 股 / 港股卡片仍不显示美股专属元素。
+
+#### Scenario: 美股卡片同时显示新旧元素
+
+- **GIVEN** SPX.US 卡片
+- **WHEN** 渲染
+- **THEN** 同时包含：52 周区间水位条、原 3 列动量徽章（近1月 / 近3月 / 今年以来）、30 天 Sparkline、**以及**新增的 4 列多周期动量行
+
+#### Scenario: A 股卡片仅显示新增多周期动量
+
+- **GIVEN** 沪深 300 卡片
+- **WHEN** 渲染
+- **THEN** 包含基础信息 + 新增 4 列多周期动量行，**不**包含 52 周区间条 / Sparkline / 原 3 列美股动量徽章
