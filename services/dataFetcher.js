@@ -173,9 +173,17 @@ const FULL_INDEX_POOL = [
         category: 'broad-us', desc: '美国500家大型上市公司',
     },
     {
-        name: '纳斯达克100', code: 'NDX', secid: '100.NDX', market: 'US',
+        // 注意：东方财富内部 `100.NDX` 实际指向"纳斯达克综合指数(IXIC)"而非纳斯达克 100，
+        // 真正的纳斯达克 100 在东财体系中代码为 `NDX100`(MktNum=100, UniversalIndex)。
+        // 经实测 https://push2.eastmoney.com/api/qt/stock/get?secid=100.NDX100 返回 f58='纳斯达克100'。
+        name: '纳斯达克100', code: 'NDX', secid: '100.NDX100', market: 'US',
         djCode: null, csCode: null,
-        txCode: 'usNDX', txKlineCode: 'us.NDX', sinaCode: 'gb_$ndx',
+        // 旧 secid 保留为 altSecids，以便东财下线 NDX100 时兜底（搭配 fetchRealtimeQuotesEastmoney 的 name 自检拒绝错位值）
+        altSecids: ['100.NDX'],
+        // 注意：腾讯 K 线接口的 `us.NDX`（带点）2026-06 起被错误绑定到德尼克斯投资 (DX.N)，
+        // 必须使用 `usNDX`（不带点）才能拿到真正的纳斯达克 100 K 线（29446.18 范围）。
+        // 实时行情 txCode='usNDX' 一直正确，未受影响。
+        txCode: 'usNDX', txKlineCode: 'usNDX', sinaCode: 'gb_$ndx',
         yahooCode: '^NDX',
         icon: 'NDX', iconBg: 'linear-gradient(135deg, #00d2ff, #3a7bd5)', iconColor: '#fff',
         usValuation: {
@@ -809,29 +817,68 @@ async function fetchCSIndexValuation(csCode) {
 // ============================================================
 // 3a. 东方财富 push2 实时行情（批量）
 // ============================================================
+/**
+ * 检查东财响应的 f14（中文名）与请求 cfg.name 是否吻合（仅对美股启用，避免误伤别名）。
+ * 容忍策略：cfg.name 中去除尾部数字后的核心字串必须出现在 f14 中，或 f14 完全等于 cfg.name。
+ *   '纳斯达克100' → 核心 '纳斯达克' → f14='纳斯达克100' OK；f14='纳斯达克' OK 但需进一步看
+ *   实际：要求 f14 包含 cfg.name 完整字串（'纳斯达克100' must be substring of f14），
+ *   防止"纳斯达克"被错误接受为"纳斯达克100"。
+ * @returns {boolean} true 表示通过校验，false 表示不匹配（应丢弃）
+ */
+function checkUsQuoteNameMatch(cfg, actualName) {
+    if (!cfg || cfg.market !== 'US' || !cfg.name || !actualName) return true;
+    const expected = String(cfg.name).trim();
+    const actual = String(actualName).trim();
+    if (expected === actual) return true;
+    // 严格规则：cfg.name 必须是 actualName 的子串（如 '标普500' ⊂ '标普500指数' OK；'纳斯达克100' ⊄ '纳斯达克' 拒绝）
+    return actual.includes(expected);
+}
+
 async function fetchRealtimeQuotesEastmoney(allConfigs) {
     const secids = allConfigs.map(c => buildIndexKlineProfile(c).primarySecid || c.secid).join(',');
     const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&invt=2&fields=f2,f3,f4,f12,f14,f15,f16,f17,f18&secids=${secids}`;
+
+    // 构建 code → cfg 映射，用于响应名称自检
+    const cfgByCode = {};
+    for (const c of allConfigs) {
+        if (c && c.code) cfgByCode[c.code] = c;
+    }
 
     const res = await safeFetch(url, { headers: { ...HEADERS, 'Referer': 'https://quote.eastmoney.com/' } });
     const data = await res.json();
     if (data?.data?.diff) {
         const quotes = {};
+        let mismatchCount = 0;
         data.data.diff.forEach(item => {
-            if (item.f2 !== '-') {
-                quotes[item.f12] = {
-                    price: parseFloat(item.f2),
-                    changePercent: parseFloat(item.f3),
-                    changeAmount: parseFloat(item.f4),
-                    high: parseFloat(item.f15),
-                    low: parseFloat(item.f16),
-                    open: parseFloat(item.f17),
-                    prevClose: parseFloat(item.f18),
-                    name: item.f14,
+            if (item.f2 === '-') return;
+            const code = item.f12;
+            const cfg = cfgByCode[code];
+            // 美股专用：name 一致性自检（拒绝 secid 错位返回的不同指数）
+            if (cfg && cfg.market === 'US' && !checkUsQuoteNameMatch(cfg, item.f14)) {
+                console.warn(`[美股映射] ${code} 期望"${cfg.name}"但东财返回"${item.f14}"，secid 可能漂移，丢弃该条`);
+                // 不写入 quotes（让上游 fallback 链继续尝试腾讯/新浪）
+                // 通过模块级别 sideband 让 fetchRealtimeQuotes 的美股段感知发生过 mismatch
+                _eastmoneyMismatchNotes[code] = {
+                    expected: cfg.name,
+                    actual: item.f14,
+                    at: new Date().toISOString(),
                 };
+                mismatchCount++;
+                return;
             }
+            quotes[code] = {
+                price: parseFloat(item.f2),
+                changePercent: parseFloat(item.f3),
+                changeAmount: parseFloat(item.f4),
+                high: parseFloat(item.f15),
+                low: parseFloat(item.f16),
+                open: parseFloat(item.f17),
+                prevClose: parseFloat(item.f18),
+                name: item.f14,
+            };
         });
-        console.log(`  [行情] 东方财富批量接口获取 ${Object.keys(quotes).length} 条`);
+        const successCount = Object.keys(quotes).length - mismatchCount;
+        console.log(`  [行情] 东方财富批量接口获取 ${successCount} 条${mismatchCount > 0 ? `（含 ${mismatchCount} 条名称错位被丢弃）` : ''}`);
         return quotes;
     }
     return {};
@@ -1098,23 +1145,111 @@ async function fetchSingleQuoteSina(cfg) {
 //    东方财富(批量) → 腾讯 → 新浪
 // ============================================================
 let _lastQuoteSource = 'eastmoney';
+// 模块级 sideband：fetchRealtimeQuotesEastmoney 在美股 name 自检失败时写入此处，
+// 由 fetchRealtimeQuotes 的美股段读取后挂到 quote._quoteSource='eastmoney-mismatch' / staleNote。
+const _eastmoneyMismatchNotes = {};
 
 async function fetchRealtimeQuotes(allConfigs) {
     let quotes = {};
 
+    // ── 美股优先腾讯通道 ──
+    // 原因：东方财富 push2 对美股部分 secid 存在语义错位（如 100.NDX 实际指向纳斯达克综合指数 IXIC）
+    // 且常滞后 15+ 分钟。腾讯 qt.gtimg.cn/q=us.SPX,us.NDX 数据更准确、字段更全（含 52w 高/低）。
+    // A 股 / 港股 / CSI 链路完全不变（美股从 allConfigs 剥离后，原有逻辑零回归）。
+    const usConfigs = allConfigs.filter(c => c && c.market === 'US');
+    const otherConfigs = allConfigs.filter(c => !c || c.market !== 'US');
+    const nowIso = () => new Date().toISOString();
+
+    if (usConfigs.length > 0) {
+        try {
+            const usQuotes = await fetchRealtimeQuotesTencent(usConfigs);
+            for (const cfg of usConfigs) {
+                if (usQuotes[cfg.code]) {
+                    usQuotes[cfg.code]._quoteSource = 'tencent';
+                    usQuotes[cfg.code]._quoteFetchedAt = nowIso();
+                    quotes[cfg.code] = usQuotes[cfg.code];
+                }
+            }
+            const got = Object.keys(usQuotes).length;
+            if (got > 0) {
+                console.log(`  [美股] 腾讯主源获取 ${got}/${usConfigs.length} 条`);
+            }
+        } catch (err) {
+            console.warn('  [美股] 腾讯主源失败:', err.message);
+        }
+
+        // 美股漏掉的 → 东财兜底（带 name 自检，见 fetchRealtimeQuotesEastmoney）
+        const usMissing = usConfigs.filter(cfg => !quotes[cfg.code]);
+        if (usMissing.length > 0) {
+            console.log(`  [美股] 东财兜底 ${usMissing.length} 条: ${usMissing.map(c => c.code).join(',')}`);
+            try {
+                const fb = await fetchRealtimeQuotesEastmoney(usMissing);
+                for (const cfg of usMissing) {
+                    if (fb[cfg.code]) {
+                        // _quoteSource 可能是 'eastmoney' 或 'eastmoney-mismatch'（自检失败时不会写 quotes）
+                        fb[cfg.code]._quoteSource = fb[cfg.code]._quoteSource || 'eastmoney';
+                        fb[cfg.code]._quoteFetchedAt = nowIso();
+                        quotes[cfg.code] = fb[cfg.code];
+                    }
+                }
+            } catch (err) {
+                console.warn('  [美股] 东财兜底失败:', err.message);
+            }
+        }
+
+        // 美股仍缺失 → 新浪兜底
+        const stillMissing = usConfigs.filter(cfg => !quotes[cfg.code]);
+        for (const cfg of stillMissing) {
+            try {
+                const q = await fetchSingleQuoteSina(cfg);
+                if (q) {
+                    q._quoteSource = 'sina';
+                    q._quoteFetchedAt = nowIso();
+                    quotes[cfg.code] = q;
+                    console.log(`  [美股] 新浪兜底成功: ${cfg.code}`);
+                }
+            } catch (e) { /* skip */ }
+        }
+
+        // 仍缺失但东财发现过 mismatch → 至少给一个占位 quote 以便上层透出 staleNote
+        for (const cfg of usConfigs) {
+            if (quotes[cfg.code]) continue;
+            const note = _eastmoneyMismatchNotes[cfg.code];
+            if (note) {
+                quotes[cfg.code] = {
+                    name: cfg.name,
+                    _quoteSource: 'eastmoney-mismatch',
+                    _quoteFetchedAt: note.at,
+                    _staleNote: `数据源映射可能漂移：期望"${note.expected}"，东财返回"${note.actual}"`,
+                };
+            }
+        }
+        // 消费完 sideband 后清理
+        for (const cfg of usConfigs) delete _eastmoneyMismatchNotes[cfg.code];
+    }
+
+    // 若全部 configs 仅含美股，直接返回（不再走原 A 股 / 港股链路）
+    if (otherConfigs.length === 0) {
+        if (Object.keys(quotes).length > 0) _lastQuoteSource = 'eastmoney';
+        return quotes;
+    }
+
+    // ── A 股 / 港股 / CSI 原链路（零变更）──
     // 第一级：东方财富批量
     try {
-        quotes = await fetchRealtimeQuotesEastmoney(allConfigs);
-        if (Object.keys(quotes).length > 0) {
+        const otherQuotes = await fetchRealtimeQuotesEastmoney(otherConfigs);
+        Object.assign(quotes, otherQuotes);
+        if (Object.keys(otherQuotes).length > 0) {
             _lastQuoteSource = 'eastmoney';
         }
     } catch (err) {
         console.warn('  [行情] 东方财富批量接口失败:', err.message);
     }
 
-    // 补漏：检查是否有缺失的指数（东方财富批量接口不支持港股 secid 100.x，港股必定丢失）
-    const missingConfigs = allConfigs.filter(cfg => !quotes[cfg.code]);
-    if (missingConfigs.length > 0 && Object.keys(quotes).length > 0) {
+    // 补漏：检查 A 股 / 港股 中是否有缺失（东方财富批量接口不支持港股 secid 100.x，港股必定丢失）
+    const missingConfigs = otherConfigs.filter(cfg => !quotes[cfg.code]);
+    const otherEastmoneyHasResults = otherConfigs.some(cfg => quotes[cfg.code]);
+    if (missingConfigs.length > 0 && otherEastmoneyHasResults) {
         console.log(`  [行情] 东方财富缺失 ${missingConfigs.length} 个指数(${missingConfigs.map(c => c.code).join(',')}), 用腾讯补漏`);
         try {
             const patchQuotes = await fetchRealtimeQuotesTencent(missingConfigs);
@@ -1142,14 +1277,16 @@ async function fetchRealtimeQuotes(allConfigs) {
         }
     }
 
-    if (Object.keys(quotes).length > 0) {
+    // 至此美股已在前段处理；若 otherConfigs 中有任意一条获取到数据，整体即视为"主链路 OK"
+    if (otherEastmoneyHasResults || otherConfigs.every(cfg => quotes[cfg.code])) {
         return quotes;
     }
 
-    // 完全降级：东方财富完全没有数据时，整体切腾讯
+    // 完全降级：A 股 / 港股 链路东方财富完全没有数据时，仅对 otherConfigs 整体切腾讯
     try {
-        quotes = await fetchRealtimeQuotesTencent(allConfigs);
-        if (Object.keys(quotes).length > 0) {
+        const fallbackQuotes = await fetchRealtimeQuotesTencent(otherConfigs);
+        if (Object.keys(fallbackQuotes).length > 0) {
+            Object.assign(quotes, fallbackQuotes);
             console.log('  [行情] 已切换腾讯备用源');
             _lastQuoteSource = 'tencent';
             return quotes;
@@ -1160,8 +1297,9 @@ async function fetchRealtimeQuotes(allConfigs) {
 
     // 第三级：新浪备用源
     try {
-        quotes = await fetchRealtimeQuotesSina(allConfigs);
-        if (Object.keys(quotes).length > 0) {
+        const sinaQuotes = await fetchRealtimeQuotesSina(otherConfigs);
+        if (Object.keys(sinaQuotes).length > 0) {
+            Object.assign(quotes, sinaQuotes);
             console.log('  [行情] 已切换新浪备用源');
             _lastQuoteSource = 'sina';
             return quotes;
@@ -1170,8 +1308,10 @@ async function fetchRealtimeQuotes(allConfigs) {
         console.warn('  [行情] 新浪备用源也失败:', err.message);
     }
 
-    _lastQuoteSource = 'none';
-    return {};
+    if (Object.keys(quotes).length === 0) {
+        _lastQuoteSource = 'none';
+    }
+    return quotes;
 }
 
 // ============================================================
@@ -1740,6 +1880,13 @@ async function fetchAllIndexData(selectedCodes, options = {}) {
                 kline: klineStatus,
             },
         };
+
+        // 美股专属时效性透出（A股/港股不输出，避免字段噪声）
+        if (cfg.market === 'US') {
+            if (quote._quoteSource) result.quoteSource = quote._quoteSource;
+            if (quote._quoteFetchedAt) result.quoteFetchedAt = quote._quoteFetchedAt;
+            if (quote._staleNote) result.staleNote = quote._staleNote;
+        }
 
         console.log(`  [${cfg.name}] 完成: price=${result.price}, PE=${pe}, PE%=${pePercentile}%, temp=${yzyxTemp ? yzyxTemp.temperature + '°' : 'N/A'}, src=${peSource}`);
         return result;
@@ -2484,6 +2631,24 @@ function loadIndicesCacheMap() {
         const indices = wrapper?.data?.indices || wrapper?.indices || [];
         const cacheTime = typeof wrapper?.time === 'number' ? wrapper.time : 0;
         if (!Array.isArray(indices)) return { map: new Map(), cacheTime };
+
+        // 美股一致性体检：若 indices.json 中美股 historySeries.tail.close 与 cache 中 price 严重背离（>5%），
+        // 标记 _needsForceRefresh=true，让上层在使用前异步触发刷新（不阻塞本次响应）。
+        // 触发场景：本次修复将 NDX 的 secid 从错位的 '100.NDX'(IXIC) 改为 '100.NDX100'(真纳指 100)，
+        // 历史磁盘缓存中 NDX 数据仍是 IXIC 的值，需要重新拉取。
+        for (const idx of indices) {
+            if (!idx || !String(idx.code).endsWith('.US')) continue;
+            const hs = idx.historySeries;
+            if (!Array.isArray(hs) || hs.length === 0) continue;
+            const tailClose = hs[hs.length - 1]?.close;
+            const cachedPrice = typeof idx.price === 'number' ? idx.price : null;
+            if (!tailClose || !cachedPrice || tailClose <= 0) continue;
+            const drift = Math.abs(tailClose - cachedPrice) / cachedPrice;
+            if (drift > 0.05) {
+                idx._needsForceRefresh = true;
+                console.warn(`  [美股映射] ${idx.code} 缓存自检：historySeries.tail=${tailClose} 与 price=${cachedPrice} 偏差 ${(drift * 100).toFixed(1)}% > 5%，将异步刷新 K 线`);
+            }
+        }
         return { map: new Map(indices.map(i => [i.code, i])), cacheTime };
     } catch (e) {
         console.warn('  [行情] 读取 indices.json 失败，跳过美股增强:', e.message);
@@ -2577,6 +2742,17 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
         }
     }
 
+    // 启动一致性体检：loadIndicesCacheMap 标记了 _needsForceRefresh 的美股条目（如 NDX 错位历史数据），
+    // 立即异步刷新（不阻塞当前响应）
+    const needsRefreshUs = indices.filter(i => {
+        if (i.market !== 'US') return false;
+        const enriched = indicesByCode.get(`${i.code}.${i.market}`);
+        return enriched && enriched._needsForceRefresh;
+    });
+    if (needsRefreshUs.length > 0) {
+        triggerLazyUSKlineRefresh(needsRefreshUs);
+    }
+
     const results = indices.map(idx => {
         const q = quotes[idx.code] || {};
         const poolKey = `${idx.code}.${idx.market}`;
@@ -2625,7 +2801,9 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
         if (idx.market === 'US') {
             const fullCode = `${idx.code}.${idx.market}`;
             const enriched = indicesByCode.get(fullCode);
-            if (enriched) {
+            // 关键：若 enriched 被启动体检标记为需要刷新（说明其 historySeries 与实时价严重背离，
+            // 一般是 secid 错位的旧数据），不要再用其陈旧字段污染本次响应。
+            if (enriched && !enriched._needsForceRefresh) {
                 // 用 indices.json 的 K 线统计覆盖（quotes 接口对美股一般拿不到这些字段）
                 if (enriched.high52w && (!q.high52w || q.high52w <= 0)) q.high52w = enriched.high52w;
                 if (enriched.low52w && (!q.low52w || q.low52w <= 0)) q.low52w = enriched.low52w;
@@ -2663,7 +2841,8 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
         } else {
             const fullCodeForMomentum = `${idx.code}.${idx.market}`;
             const enrichedAny = indicesByCode.get(fullCodeForMomentum);
-            if (enrichedAny) {
+            // 同样：陈旧错位的缓存不参与 momentum 计算
+            if (enrichedAny && !enrichedAny._needsForceRefresh) {
                 if (enrichedAny.momentum1m != null || enrichedAny.momentum3m != null || enrichedAny.momentum6m != null || enrichedAny.momentum1y != null) {
                     momentumAll = {
                         momentum1m: enrichedAny.momentum1m ?? null,
@@ -2694,8 +2873,8 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
         }
 
         // 构造完整代码（含市场后缀），与 fetchAllIndexData() 返回的 code 格式保持一致
-            const fullCode = `${idx.code}.${idx.market}`;
-            return {
+        const fullCode = `${idx.code}.${idx.market}`;
+        const result = {
             name: idx.name,
             code: fullCode,
             market: idx.market,
@@ -2733,6 +2912,15 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             // 美股估值参考
             usValuation: usValuationInfo,
         };
+
+        // 美股专属时效性透出（A股/港股不输出，避免字段噪声）
+        if (idx.market === 'US') {
+            if (q._quoteSource) result.quoteSource = q._quoteSource;
+            if (q._quoteFetchedAt) result.quoteFetchedAt = q._quoteFetchedAt;
+            if (q._staleNote) result.staleNote = q._staleNote;
+        }
+
+        return result;
     });
 
     return {

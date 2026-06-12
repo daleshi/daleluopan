@@ -84,7 +84,7 @@
       "name": "纳斯达克100",
       "code": "NDX",
       "market": "US",
-      "secid": "100.NDX",
+      "secid": "100.NDX100",
       "icon": "NDX",
       "iconBg": "linear-gradient(135deg, #00d2ff, #3a7bd5)",
       "iconColor": "#fff",

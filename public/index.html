@@ -10809,6 +10809,35 @@
             </div>`;
         }
 
+        // 美股专属：数据源透出（quoteSource + quoteFetchedAt + 错位告警）
+        if (isUS && (idx.quoteSource || idx.staleNote)) {
+            const sourceLabelMap = {
+                tencent: '腾讯',
+                eastmoney: '东方财富',
+                'eastmoney-mismatch': '东财（错位）',
+                sina: '新浪',
+                'stale-cache': '历史缓存',
+            };
+            const sourceLabel = sourceLabelMap[idx.quoteSource] || idx.quoteSource || '未知';
+            let timeBadge = '';
+            if (idx.quoteFetchedAt) {
+                try {
+                    const d = new Date(idx.quoteFetchedAt);
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const mm = String(d.getMinutes()).padStart(2, '0');
+                    timeBadge = ` · ${hh}:${mm}`;
+                } catch (e) { /* ignore */ }
+            }
+            const isMismatch = idx.quoteSource === 'eastmoney-mismatch' || !!idx.staleNote;
+            const staleBadge = isMismatch
+                ? `<span class="thermo-stale-badge" style="margin-left:6px" title="${escapeHtml(idx.staleNote || '')}">⚠️ 数据可能不准</span>`
+                : '';
+            html += `<div class="idx-temp-wrap" style="background:transparent;padding:4px 0">
+                <span class="yzyx-fetched-at" style="margin-left:0">来源 ${escapeHtml(sourceLabel)}${timeBadge}</span>
+                ${staleBadge}
+            </div>`;
+        }
+
         html += '</div>'; // end idx-card-detail
 
         html += `<button class="idx-quote-remove-btn" onclick="event.stopPropagation();removeIndexFromPanel('${idx.code}','${escapeHtml(idx.name)}')" title="移除">×</button>`;
