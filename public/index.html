@@ -522,6 +522,39 @@
             background: var(--overlay-02); padding: 4px;
         }
 
+        /* ===== 股票卡片：52 周水位条 ===== */
+        .stock-52w-row {
+            display: flex; align-items: center; gap: 8px;
+            margin: 0 0 12px 0; padding: 6px 8px;
+            background: var(--overlay-02); border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+        }
+        .stock-52w-label {
+            font-size: 11px; font-family: var(--font-mono);
+            color: var(--text-muted); white-space: nowrap;
+        }
+        .stock-52w-bar {
+            flex: 1; min-width: 80px; height: 5px; position: relative;
+            background: var(--overlay-06); border-radius: 3px;
+        }
+        .stock-52w-fill {
+            position: absolute; inset: 0; height: 100%; border-radius: 3px;
+            background: linear-gradient(90deg, var(--green-value), var(--accent-gold), var(--red-danger));
+        }
+        .stock-52w-cursor {
+            position: absolute; top: -4px; width: 12px; height: 12px;
+            border-radius: 50%; background: var(--accent-blue);
+            border: 2px solid var(--bg-card);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+            transform: translateX(-50%);
+            transition: left 0.4s ease;
+        }
+        .stock-52w-badge {
+            font-size: 11px; padding: 1px 6px; border-radius: 4px;
+            background: var(--accent-blue-dim); color: var(--accent-blue);
+            white-space: nowrap; flex-shrink: 0;
+        }
+
         .stock-metrics {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
         }
@@ -4075,6 +4108,9 @@
 
             .stock-price { font-size: 22px; }
             .stock-metrics { grid-template-columns: repeat(2, 1fr); }
+            .stock-52w-row { gap: 6px; padding: 5px 6px; }
+            .stock-52w-label { font-size: 10px; }
+            .stock-52w-badge { font-size: 10px; padding: 1px 4px; }
             .etf-price { font-size: 20px; }
             .etf-metrics { grid-template-columns: repeat(2, 1fr); }
 
@@ -12381,6 +12417,16 @@
                 <div class="stock-sparkline-wrap">
                     <canvas id="stock-spark-${idx}" width="300" height="32"></canvas>
                 </div>
+                ${(s.pricePosition52w != null && s.high52w != null && s.low52w != null) ? `
+                <div class="stock-52w-row" title="当前价在过去 52 周高低区间内的位置">
+                    <span class="stock-52w-label">${s.low52w.toFixed(2)}</span>
+                    <div class="stock-52w-bar">
+                        <div class="stock-52w-fill"></div>
+                        <div class="stock-52w-cursor" style="left:${s.pricePosition52w}%"></div>
+                    </div>
+                    <span class="stock-52w-label">${s.high52w.toFixed(2)}</span>
+                    <span class="stock-52w-badge">水位 ${s.pricePosition52w.toFixed(1)}%</span>
+                </div>` : ''}
                 <div class="stock-metrics">
                     <div class="stock-metric">
                         <div class="stock-metric-label">今开</div>

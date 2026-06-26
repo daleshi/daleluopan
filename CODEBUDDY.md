@@ -345,6 +345,7 @@ ETF 数据采集：
 - Watchlist JSON 结构: `{ stocks: [...] }` / `{ etfs: [...] }` / `{ funds: [...] }`
 - 每个 watchlist 项包含: `code`, `name`, `icon`, `iconBg`, `iconColor`, `market`, `secid`
 - 缓存 JSON: 直接序列化完整响应对象
+- `/api/stocks` 响应字段含 `high52w` / `low52w`（基于近 252 个交易日 ≈ 52 周 K 线高低点）与 `pricePosition52w`（0–100，1 位小数；当前价在 52w 区间内的水位百分位；区间退化或字段缺失为 `null`）
 
 ---
 

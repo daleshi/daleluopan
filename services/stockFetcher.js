@@ -341,9 +341,10 @@ async function fetchStockQuotes(stocks) {
 }
 
 // ============================================================
-// 东方财富个股日K线（最近60个交易日，用于迷你走势图）
+// 东方财富个股日K线（默认拉取 252 个交易日 ≈ 52 周，
+// 用于支撑 high52w / low52w / pricePosition52w 计算与 30 日 sparkline 切片）
 // ============================================================
-async function fetchStockKlinesDetailed(secid, limit = 60, options = {}) {
+async function fetchStockKlinesDetailed(secid, limit = 252, options = {}) {
     const timeout = options.timeout ?? 3500;
     const retries = options.retries ?? 0;
     const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=${limit}`;
@@ -383,7 +384,7 @@ async function fetchStockKlinesDetailed(secid, limit = 60, options = {}) {
     }
 }
 
-async function fetchStockKlines(secid, limit = 60, options = {}) {
+async function fetchStockKlines(secid, limit = 252, options = {}) {
     const result = await fetchStockKlinesDetailed(secid, limit, options);
     if (result.klines.length === 0 && result.errorMessage) {
         console.warn(`  [股票K线] ${secid} 获取失败: ${result.errorMessage}`);
@@ -391,7 +392,7 @@ async function fetchStockKlines(secid, limit = 60, options = {}) {
     return result.klines;
 }
 
-async function fetchTencentStockKlines(code, market, limit = 60) {
+async function fetchTencentStockKlines(code, market, limit = 252) {
     const txCode = market === 'SZ'
         ? `sz${code}`
         : market === 'SH'
@@ -427,7 +428,7 @@ async function fetchTencentStockKlines(code, market, limit = 60) {
     return [];
 }
 
-async function fetchResilientStockKlinesDetailed(stock, limit = 60) {
+async function fetchResilientStockKlinesDetailed(stock, limit = 252) {
     const cacheKey = `${stock.code}.${stock.market}`;
     const freshEntry = getFreshStockKlineEntry(cacheKey);
     if (freshEntry) {
@@ -535,9 +536,23 @@ async function fetchResilientStockKlinesDetailed(stock, limit = 60) {
     };
 }
 
-async function fetchResilientStockKlines(stock, limit = 60) {
+async function fetchResilientStockKlines(stock, limit = 252) {
     const result = await fetchResilientStockKlinesDetailed(stock, limit);
     return result.klines;
+}
+
+// ============================================================
+// 价格水位计算（当前价在 52 周高低区间内的百分位）
+// 返回 null（任一字段缺失或区间退化 high===low）或 [0, 100] 的 number（保留 1 位小数）
+// 价格突破上界 → 100，跌破下界 → 0（避免越界值传到前端 CSS）
+// ============================================================
+function computePricePosition52w(price, low52w, high52w) {
+    if (price == null || !Number.isFinite(price) || price <= 0) return null;
+    if (low52w == null || high52w == null) return null;
+    if (!(high52w > low52w)) return null;
+    const raw = ((price - low52w) / (high52w - low52w)) * 100;
+    const clamped = Math.max(0, Math.min(100, raw));
+    return Number(clamped.toFixed(1));
 }
 
 // ============================================================
@@ -585,17 +600,23 @@ async function fetchAllStockData(forceRefresh = false) {
         };
         const quoteFallbackUsed = !hasLiveQuote && !!prev;
 
-        const klineResult = await fetchResilientStockKlinesDetailed(stock, 60);
+        // 拉取约 252 个交易日（≈ 52 周）K 线，用于真正的 52w 高低与 30 日 sparkline 切片
+        const klineResult = await fetchResilientStockKlinesDetailed(stock, 252);
         const klines = klineResult.klines || [];
         const klineStatus = klineResult.status || createStockRefreshStatus();
-        const sparkData = klines.map(k => k.close);
+        // sparkline 仅用近 30 日收盘价，保持迷你走势图视觉与改造前一致
+        const sparkData = klines.slice(-30).map(k => k.close);
 
-        // 52周高低（优先使用 K 线的高低点，避免只按收盘价计算偏差）
+        // 52周高低（基于全部 252 条 K 线的高低点，优先使用日内高低；K 线不足时按实际可得数据计算）
         let high52w = null, low52w = null;
         if (klines.length > 0) {
             high52w = Math.max(...klines.map(k => Number.isFinite(k.high) ? k.high : k.close));
             low52w = Math.min(...klines.map(k => Number.isFinite(k.low) ? k.low : k.close));
         }
+
+        // 当前价在 52 周区间内的水位百分位（0–100，1 位小数；区间退化或字段缺失返回 null）
+        const livePrice = quote.price || 0;
+        const pricePosition52w = computePricePosition52w(livePrice, low52w, high52w);
 
         return {
             name: quote.name || stock.name,
@@ -627,6 +648,7 @@ async function fetchAllStockData(forceRefresh = false) {
             sparkData,
             high52w,
             low52w,
+            pricePosition52w,
             dataStatus: {
                 quote: quoteFallbackUsed ? 'previous-cache' : (hasLiveQuote ? 'eastmoney-live' : 'none'),
                 quoteFallbackUsed,
