@@ -263,6 +263,12 @@ Express Server (server.js)
 | GET/POST | `/api/strategy/dca-plans` | 温度计定投策略 CRUD |
 | GET/POST | `/api/position/benchmarks` | 加仓基准管理 |
 | GET/POST | `/api/position/records` | 加仓记录管理 |
+| GET/POST | `/api/strategy/etf-grid-plans` | ETF 网格策略 CRUD（等比对称网格）|
+| POST | `/api/strategy/etf-grid-plans/delete` | 删除网格策略（管理员）|
+| POST | `/api/strategy/etf-grid-plans/reset-base-price` | 重置网格中线（管理员）|
+| GET/POST | `/api/strategy/etf-grid-holdings` | ETF 网格成交记录 CRUD |
+| POST | `/api/strategy/etf-grid-holdings/delete` | 删除网格成交记录（管理员）|
+| GET | `/api/strategy/etf-grid-recommendations` | 网格实时推荐视图（缓存交易 30s / 休市 30min）|
 
 ### 运维
 | 方法 | 路径 | 说明 |

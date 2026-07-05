@@ -277,6 +277,7 @@ function getCacheTTL(key) {
     if (key === 'active-fund-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
     if (key === 'gold-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
     if (key === 'etf-recommendations') return trading ? 30 * 1000 : 30 * 60 * 1000;
+    if (key === 'etf-grid-recommendations') return trading ? 30 * 1000 : 30 * 60 * 1000;
     if (key === 'sp500-recommendations') return trading ? 5 * 60 * 1000 : 30 * 60 * 1000;
     return trading ? CACHE_TTL_TRADING : CACHE_TTL_CLOSED;
 }
@@ -3571,6 +3572,441 @@ app.post('/api/strategy/etf-holdings/delete', requireAdmin, (req, res) => {
     } catch (err) {
         console.error('[API] /api/strategy/etf-holdings/delete 错误:', err.message);
         res.status(500).json({ success: false, error: '删除记录失败: ' + err.message });
+    }
+});
+
+// ============================================================
+// ETF 网格交易策略 API（etf-grid-strategy）
+// 等比对称网格：P_n = basePrice × (1 + gridStep)^n
+// 首次启动数据文件为空，所有策略由用户在 UI 内手动配置
+// ============================================================
+const ETF_GRID_STRATEGY_FILE = path.join(__dirname, 'data', 'etf-grid-strategy.json');
+const ETF_GRID_HOLDINGS_FILE = path.join(__dirname, 'data', 'etf-grid-holdings.json');
+
+const {
+    buildRecommendation: gridBuildRecommendation,
+    DEFAULT_FEE_RATE: GRID_DEFAULT_FEE_RATE,
+} = require('./services/etfGridEngine');
+
+function readEtfGridStrategies() {
+    try {
+        ensureDataDir();
+        if (fs.existsSync(ETF_GRID_STRATEGY_FILE)) {
+            const raw = fs.readFileSync(ETF_GRID_STRATEGY_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data.strategies)) return data.strategies;
+        }
+    } catch (err) {
+        console.warn('[ETF网格] 读取策略配置失败:', err.message);
+    }
+    return [];
+}
+
+function writeEtfGridStrategies(strategies) {
+    ensureDataDir();
+    fs.writeFileSync(ETF_GRID_STRATEGY_FILE, JSON.stringify({ strategies }, null, 2), 'utf8');
+}
+
+function readEtfGridHoldings() {
+    try {
+        ensureDataDir();
+        if (fs.existsSync(ETF_GRID_HOLDINGS_FILE)) {
+            const raw = fs.readFileSync(ETF_GRID_HOLDINGS_FILE, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data.records)) return data.records;
+        }
+    } catch (err) {
+        console.warn('[ETF网格] 读取持仓记录失败:', err.message);
+    }
+    return [];
+}
+
+function writeEtfGridHoldings(records) {
+    ensureDataDir();
+    fs.writeFileSync(ETF_GRID_HOLDINGS_FILE, JSON.stringify({ records }, null, 2), 'utf8');
+}
+
+// 首次启动：创建空文件（不预置任何策略数据）
+function ensureEtfGridDataFiles() {
+    try {
+        ensureDataDir();
+        if (!fs.existsSync(ETF_GRID_STRATEGY_FILE)) {
+            writeEtfGridStrategies([]);
+            console.log('[ETF网格] 首次启动，已创建空策略配置文件（用户可在 UI 内手动添加策略）');
+        }
+        if (!fs.existsSync(ETF_GRID_HOLDINGS_FILE)) {
+            writeEtfGridHoldings([]);
+            console.log('[ETF网格] 首次启动，已创建空持仓记录文件');
+        }
+    } catch (err) {
+        console.warn('[ETF网格] 数据文件初始化失败:', err.message);
+    }
+}
+ensureEtfGridDataFiles();
+
+/** 清空 ETF 网格推荐缓存 */
+function clearEtfGridRecommendationCache() {
+    try {
+        const cacheFile = path.join(CACHE_DIR, 'etf-grid-recommendations.json');
+        if (fs.existsSync(cacheFile)) fs.unlinkSync(cacheFile);
+    } catch (e) { /* ignore */ }
+    if (_smartCache && _smartCache['etf-grid-recommendations']) {
+        delete _smartCache['etf-grid-recommendations'];
+    }
+}
+
+/** 校验策略字段，返回 { ok, error, processed, warnings } */
+function validateEtfGridStrategy(input) {
+    if (!input || typeof input !== 'object') {
+        return { ok: false, error: 'body 必须是 JSON 对象' };
+    }
+    const required = ['fundCode', 'fundName', 'gridStep', 'gridLevels', 'basePrice', 'totalBudget', 'baseAmount', 'amountPerGrid'];
+    for (const f of required) {
+        if (input[f] == null) {
+            return { ok: false, error: `缺少字段 ${f}` };
+        }
+    }
+    const fundCode = String(input.fundCode).trim();
+    if (!fundCode) return { ok: false, error: 'fundCode 不能为空' };
+
+    const gridStep = Number(input.gridStep);
+    if (!Number.isFinite(gridStep) || gridStep <= 0 || gridStep > 0.5) {
+        return { ok: false, error: '步长必须在 (0, 50%] 范围（如 0.05 表示 5%）' };
+    }
+    const gridLevels = Number(input.gridLevels);
+    if (!Number.isInteger(gridLevels) || gridLevels < 1 || gridLevels > 20) {
+        return { ok: false, error: '单侧网数必须是 1-20 的整数' };
+    }
+    const basePrice = Number(input.basePrice);
+    if (!Number.isFinite(basePrice) || basePrice <= 0) {
+        return { ok: false, error: '中线价格 basePrice 必须 > 0' };
+    }
+    const totalBudget = Number(input.totalBudget);
+    if (!Number.isFinite(totalBudget) || totalBudget <= 0) {
+        return { ok: false, error: '总预算 totalBudget 必须 > 0' };
+    }
+    const baseAmount = Number(input.baseAmount);
+    if (!Number.isFinite(baseAmount) || baseAmount < 0) {
+        return { ok: false, error: '底仓金额 baseAmount 必须 ≥ 0' };
+    }
+    if (baseAmount > totalBudget) {
+        return { ok: false, error: '底仓金额不能超过总预算' };
+    }
+    const amountPerGrid = Number(input.amountPerGrid);
+    if (!Number.isFinite(amountPerGrid) || amountPerGrid <= 0) {
+        return { ok: false, error: '每格金额 amountPerGrid 必须 > 0' };
+    }
+
+    // 可选字段
+    let feeRate = null;
+    if (input.feeRate != null && input.feeRate !== '') {
+        feeRate = Number(input.feeRate);
+        if (!Number.isFinite(feeRate) || feeRate < 0 || feeRate > 0.02) {
+            return { ok: false, error: '手续费率 feeRate 必须在 [0, 2%] 范围' };
+        }
+    }
+    let pauseWhenTempAbove = null;
+    if (input.pauseWhenTempAbove != null && input.pauseWhenTempAbove !== '') {
+        pauseWhenTempAbove = Number(input.pauseWhenTempAbove);
+        if (!Number.isFinite(pauseWhenTempAbove) || pauseWhenTempAbove < 0 || pauseWhenTempAbove > 100) {
+            return { ok: false, error: '温度阈值必须在 [0, 100] 范围' };
+        }
+    }
+    let cooldownAfterConsecutiveBuys = null;
+    if (input.cooldownAfterConsecutiveBuys && typeof input.cooldownAfterConsecutiveBuys === 'object') {
+        const n = Number(input.cooldownAfterConsecutiveBuys.n);
+        const days = Number(input.cooldownAfterConsecutiveBuys.days);
+        if (Number.isFinite(n) && Number.isFinite(days) && n > 0 && days > 0) {
+            cooldownAfterConsecutiveBuys = { n: Math.round(n), days: Math.round(days) };
+        }
+    }
+
+    const status = input.status && ['running', 'paused', 'archived'].includes(input.status)
+        ? input.status
+        : 'running';
+
+    const processed = {
+        fundCode,
+        fundName: String(input.fundName || '').trim() || fundCode,
+        shortName: String(input.shortName || input.fundName || fundCode).trim(),
+        secid: input.secid ? String(input.secid) : null,
+        gridStep,
+        gridLevels,
+        basePrice,
+        totalBudget,
+        baseAmount,
+        amountPerGrid,
+        feeRate,
+        pauseWhenTempAbove,
+        cooldownAfterConsecutiveBuys,
+        status,
+    };
+
+    // 软警告：资金超配
+    const warnings = [];
+    const maxRequired = baseAmount + amountPerGrid * gridLevels;
+    if (maxRequired > totalBudget) {
+        warnings.push(`满仓资金 ${maxRequired.toFixed(2)} 元超出总预算 ${totalBudget.toFixed(2)} 元`);
+    }
+    return { ok: true, processed, warnings };
+}
+
+// === GET /api/strategy/etf-grid-plans（公开）===
+app.get('/api/strategy/etf-grid-plans', (req, res) => {
+    const strategies = readEtfGridStrategies();
+    res.json({ success: true, data: { strategies } });
+});
+
+// === POST /api/strategy/etf-grid-plans（管理员，upsert）===
+app.post('/api/strategy/etf-grid-plans', requireAdmin, (req, res) => {
+    try {
+        const v = validateEtfGridStrategy(req.body);
+        if (!v.ok) return res.status(400).json({ success: false, error: v.error });
+        const entry = v.processed;
+        const strategies = readEtfGridStrategies();
+        const idx = strategies.findIndex(s => s.fundCode === entry.fundCode);
+        const nowIso = new Date().toISOString();
+        if (idx >= 0) {
+            // 更新：保留 createdAt，更新 updatedAt（updatedAt 变化视为新一轮）
+            strategies[idx] = {
+                ...strategies[idx],
+                ...entry,
+                createdAt: strategies[idx].createdAt || nowIso,
+                updatedAt: nowIso,
+            };
+        } else {
+            entry.createdAt = nowIso;
+            entry.updatedAt = nowIso;
+            strategies.push(entry);
+        }
+        writeEtfGridStrategies(strategies);
+        clearEtfGridRecommendationCache();
+        console.log(`[ETF网格] 配置更新: ${entry.fundName} (${entry.fundCode})`);
+        res.json({ success: true, data: { strategies }, warnings: v.warnings });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-grid-plans 错误:', err.message);
+        res.status(500).json({ success: false, error: '保存策略失败: ' + err.message });
+    }
+});
+
+// === POST /api/strategy/etf-grid-plans/delete（管理员）===
+app.post('/api/strategy/etf-grid-plans/delete', requireAdmin, (req, res) => {
+    try {
+        const { fundCode } = req.body || {};
+        if (!fundCode) return res.status(400).json({ success: false, error: '缺少 fundCode' });
+        let strategies = readEtfGridStrategies();
+        const before = strategies.length;
+        strategies = strategies.filter(s => s.fundCode !== fundCode);
+        if (strategies.length === before) {
+            return res.status(404).json({ success: false, error: '策略不存在' });
+        }
+        writeEtfGridStrategies(strategies);
+        clearEtfGridRecommendationCache();
+        console.log(`[ETF网格] 配置删除: ${fundCode}`);
+        res.json({ success: true, data: { strategies } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-grid-plans/delete 错误:', err.message);
+        res.status(500).json({ success: false, error: '删除策略失败: ' + err.message });
+    }
+});
+
+// === POST /api/strategy/etf-grid-plans/reset-base-price（管理员）===
+app.post('/api/strategy/etf-grid-plans/reset-base-price', requireAdmin, async (req, res) => {
+    try {
+        const { fundCode, newBasePrice } = req.body || {};
+        if (!fundCode) return res.status(400).json({ success: false, error: '缺少 fundCode' });
+        const strategies = readEtfGridStrategies();
+        const idx = strategies.findIndex(s => s.fundCode === fundCode);
+        if (idx < 0) return res.status(404).json({ success: false, error: '策略不存在' });
+
+        let target = null;
+        if (newBasePrice != null && newBasePrice !== '') {
+            target = Number(newBasePrice);
+            if (!Number.isFinite(target) || target <= 0) {
+                return res.status(400).json({ success: false, error: 'newBasePrice 必须 > 0' });
+            }
+        } else {
+            // 未指定 → 使用实时价
+            const s = strategies[idx];
+            if (!s.secid) return res.status(400).json({ success: false, error: '策略缺少 secid，无法自动获取实时价，请手动指定 newBasePrice' });
+            try {
+                const qr = await etfFetchQuotes([{ secid: s.secid, code: s.fundCode, market: s.secid.startsWith('1.') ? 'SH' : 'SZ' }]);
+                const rawQuotes = (qr && qr.quotes) || {};
+                const q = rawQuotes[s.fundCode];
+                if (q && Number.isFinite(q.price) && q.price > 0) {
+                    target = q.price;
+                }
+            } catch (e) { /* ignore */ }
+            if (!target) return res.status(400).json({ success: false, error: '无法获取实时价，请手动指定 newBasePrice' });
+        }
+
+        strategies[idx].basePrice = target;
+        strategies[idx].updatedAt = new Date().toISOString();
+        writeEtfGridStrategies(strategies);
+        clearEtfGridRecommendationCache();
+        console.log(`[ETF网格] 重置中线: ${fundCode} → ${target}`);
+        res.json({ success: true, data: { strategy: strategies[idx] } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-grid-plans/reset-base-price 错误:', err.message);
+        res.status(500).json({ success: false, error: '重置中线失败: ' + err.message });
+    }
+});
+
+// === GET /api/strategy/etf-grid-holdings（公开）===
+app.get('/api/strategy/etf-grid-holdings', (req, res) => {
+    const records = readEtfGridHoldings();
+    const sorted = [...records].sort((a, b) => {
+        if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+    res.json({ success: true, data: { records: sorted } });
+});
+
+// === POST /api/strategy/etf-grid-holdings（管理员，追加）===
+app.post('/api/strategy/etf-grid-holdings', requireAdmin, (req, res) => {
+    try {
+        const { fundCode, type, gridLevel, date, price, shares, amount, note } = req.body || {};
+        if (!fundCode) return res.status(400).json({ success: false, error: '缺少 fundCode' });
+        if (!type || !['base', 'buy', 'sell'].includes(type)) {
+            return res.status(400).json({ success: false, error: 'type 必须是 base / buy / sell' });
+        }
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ success: false, error: 'date 格式必须是 YYYY-MM-DD' });
+        }
+        const p = Number(price), sh = Number(shares), amt = Number(amount);
+        if (!Number.isFinite(p) || p <= 0) return res.status(400).json({ success: false, error: 'price 必须 > 0' });
+        if (!Number.isFinite(sh) || sh <= 0) return res.status(400).json({ success: false, error: 'shares 必须 > 0' });
+        if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ success: false, error: 'amount 必须 > 0' });
+
+        const gl = Number(gridLevel);
+        if (!Number.isInteger(gl)) return res.status(400).json({ success: false, error: 'gridLevel 必须是整数' });
+
+        // 校验 gridLevel 与 type 一致性
+        if (type === 'base' && gl !== 0) return res.status(400).json({ success: false, error: 'base 类型的 gridLevel 必须为 0' });
+        if (type === 'buy' && gl >= 0) return res.status(400).json({ success: false, error: 'buy 类型的 gridLevel 必须 < 0' });
+        if (type === 'sell' && gl <= 0) return res.status(400).json({ success: false, error: 'sell 类型的 gridLevel 必须 > 0' });
+
+        // 校验 |gridLevel| 不超过策略配置的 gridLevels
+        const strategies = readEtfGridStrategies();
+        const strat = strategies.find(s => s.fundCode === fundCode);
+        if (strat && Math.abs(gl) > strat.gridLevels) {
+            return res.status(400).json({ success: false, error: `gridLevel |${gl}| 超过策略配置的 ${strat.gridLevels}` });
+        }
+
+        const records = readEtfGridHoldings();
+        const record = {
+            id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            fundCode,
+            type,
+            gridLevel: gl,
+            date,
+            price: p,
+            shares: sh,
+            amount: amt,
+            note: note ? String(note).slice(0, 200) : null,
+            createdAt: new Date().toISOString(),
+        };
+        records.push(record);
+        writeEtfGridHoldings(records);
+        clearEtfGridRecommendationCache();
+        console.log(`[ETF网格] 持仓记录新增: ${fundCode} ${type} L${gl} ${amt}元/${sh}份 @${date}`);
+        res.json({ success: true, data: { record } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-grid-holdings 错误:', err.message);
+        res.status(500).json({ success: false, error: '新增持仓记录失败: ' + err.message });
+    }
+});
+
+// === POST /api/strategy/etf-grid-holdings/delete（管理员）===
+app.post('/api/strategy/etf-grid-holdings/delete', requireAdmin, (req, res) => {
+    try {
+        const { id } = req.body || {};
+        if (!id) return res.status(400).json({ success: false, error: '缺少 id' });
+        const records = readEtfGridHoldings();
+        const idx = records.findIndex(r => r.id === id);
+        if (idx < 0) return res.status(404).json({ success: false, error: '记录不存在' });
+        const removed = records[idx];
+        records.splice(idx, 1);
+        writeEtfGridHoldings(records);
+        clearEtfGridRecommendationCache();
+        console.log(`[ETF网格] 持仓记录删除: ${id}`);
+        res.json({ success: true, data: { removed } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-grid-holdings/delete 错误:', err.message);
+        res.status(500).json({ success: false, error: '删除记录失败: ' + err.message });
+    }
+});
+
+// === GET /api/strategy/etf-grid-recommendations（公开，带缓存）===
+app.get('/api/strategy/etf-grid-recommendations', async (req, res) => {
+    try {
+        const forceRefresh = req.query.refresh === '1';
+        const result = await smartCacheGet(
+            'etf-grid-recommendations',
+            async () => {
+                const strategies = readEtfGridStrategies();
+                const allRecords = readEtfGridHoldings();
+
+                if (strategies.length === 0) {
+                    return { strategies: [], updateTime: new Date().toISOString() };
+                }
+
+                // 拉取所有策略 ETF 的实时行情
+                const etfsForQuote = strategies
+                    .filter(s => s.secid)
+                    .map(s => ({
+                        secid: s.secid,
+                        code: s.fundCode,
+                        market: s.secid.startsWith('1.') ? 'SH' : (s.secid.startsWith('0.') ? 'SZ' : 'SH'),
+                    }));
+                let quotesByCode = {};
+                let quoteSource = null;
+                let quoteStale = false;
+                if (etfsForQuote.length > 0) {
+                    try {
+                        const qr = await etfFetchQuotes(etfsForQuote);
+                        const rawQuotes = (qr && qr.quotes) || {};
+                        quoteSource = (qr && qr.source) || 'eastmoney';
+                        for (const code of Object.keys(rawQuotes)) {
+                            quotesByCode[code] = rawQuotes[code];
+                        }
+                    } catch (e) {
+                        console.warn('[ETF网格] 拉取实时行情失败:', e.message);
+                        quoteStale = true;
+                    }
+                }
+
+                // 拉取当前市场温度（用于保护机制判定）
+                let marketTemperature = null;
+                try {
+                    const yzyx = await fetchYZYXThermometer();
+                    if (yzyx && Number.isFinite(yzyx.marketTemperature)) {
+                        marketTemperature = yzyx.marketTemperature;
+                    }
+                } catch (e) { /* ignore */ }
+
+                const recommendations = strategies.map(s => {
+                    const q = quotesByCode[s.fundCode];
+                    const currentPrice = q && Number.isFinite(q.price) && q.price > 0 ? q.price : null;
+                    const fundRecords = allRecords.filter(r => r.fundCode === s.fundCode);
+                    return gridBuildRecommendation(s, fundRecords, currentPrice, marketTemperature, {
+                        quoteSource,
+                        stale: !currentPrice || quoteStale,
+                    });
+                });
+
+                return {
+                    strategies: recommendations,
+                    marketTemperature,
+                    updateTime: new Date().toISOString(),
+                };
+            },
+            forceRefresh
+        );
+        res.json({ success: true, data: result || { strategies: [] } });
+    } catch (err) {
+        console.error('[API] /api/strategy/etf-grid-recommendations 错误:', err.message);
+        res.status(500).json({ success: false, error: '网格推荐计算失败: ' + err.message });
     }
 });
 

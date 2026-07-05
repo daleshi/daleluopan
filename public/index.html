@@ -1908,6 +1908,162 @@
             .gold-holdings-table th, .gold-holdings-table td { padding: 6px 8px; font-size: 11px; }
         }
 
+        /* ============================================================
+           ETF Grid (ETF 网格策略) — 等比对称网格 UI
+           ============================================================ */
+        .grid-card {
+            background: var(--bg-card); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+        .grid-card-header {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 12px; padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .grid-card-icon {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700; color: #fff;
+            background: linear-gradient(135deg, #4fd1c5, #319795);
+            flex-shrink: 0;
+        }
+        .grid-card-title { flex: 1; }
+        .grid-card-name {
+            font-size: 16px; font-weight: 600; color: var(--text-primary);
+        }
+        .grid-card-code {
+            font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);
+        }
+        .grid-status-badge {
+            font-size: 11px; padding: 2px 8px; border-radius: 4px;
+            font-weight: 600;
+        }
+        .grid-status-badge.running { color: var(--green-value); background: var(--green-dim); }
+        .grid-status-badge.paused { color: var(--orange-warn); background: var(--orange-dim); }
+        .grid-status-badge.archived { color: var(--text-muted); background: var(--overlay-03); }
+        .grid-card-actions {
+            display: flex; gap: 6px; flex-wrap: wrap;
+        }
+        .grid-card-btn {
+            font-size: 11px; padding: 4px 10px; border-radius: 4px;
+            background: var(--overlay-03); color: var(--text-secondary);
+            border: 1px solid var(--border-subtle); cursor: pointer;
+            transition: all 0.2s;
+        }
+        .grid-card-btn:hover { background: var(--overlay-06); color: var(--text-primary); }
+        .grid-card-btn.danger:hover { border-color: var(--red-danger); color: var(--red-danger); }
+
+        .grid-protection-banner {
+            padding: 8px 12px; margin-bottom: 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px; font-weight: 600;
+            color: #b7791f; background: rgba(246, 173, 85, 0.15);
+            border: 1px solid rgba(246, 173, 85, 0.35);
+        }
+
+        .grid-stale-badge {
+            font-size: 11px; padding: 2px 8px; border-radius: 4px;
+            color: var(--text-muted); background: var(--overlay-03);
+        }
+
+        .grid-summary-row {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+            padding: 12px; background: var(--overlay-02); border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+        }
+        .grid-summary-item {
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .grid-summary-label { font-size: 11px; color: var(--text-muted); }
+        .grid-summary-value {
+            font-size: 15px; font-weight: 700; color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+        .grid-summary-value.up { color: var(--red-danger); }
+        .grid-summary-value.down { color: var(--green-value); }
+        .grid-summary-value.hint { font-size: 12px; font-weight: 400; }
+
+        .grid-config-block, .grid-status-block {
+            padding: 10px 12px; background: var(--overlay-02);
+            border-radius: var(--radius-sm); margin-bottom: 12px;
+        }
+        .grid-kv-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+            font-size: 12px;
+        }
+        .grid-kv-row {
+            display: flex; justify-content: space-between; align-items: baseline;
+        }
+        .grid-kv-label { color: var(--text-muted); }
+        .grid-kv-value { color: var(--text-primary); font-weight: 600; font-family: var(--font-mono); }
+
+        .grid-price-table {
+            width: 100%; border-collapse: collapse; font-size: 12px;
+            margin-top: 8px;
+        }
+        .grid-price-table th, .grid-price-table td {
+            padding: 6px 8px; text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .grid-price-table th {
+            font-weight: 600; color: var(--text-muted); font-size: 11px;
+        }
+        .grid-price-table td.mono {
+            font-family: var(--font-mono); font-weight: 600;
+        }
+        .grid-price-row-base { background: rgba(99, 179, 237, 0.08); font-weight: 700; }
+        .grid-price-row-current-price {
+            background: rgba(99, 179, 237, 0.12);
+        }
+        .grid-price-row-current-price td {
+            border-top: 2px dashed var(--accent-blue);
+            border-bottom: 2px dashed var(--accent-blue);
+            color: var(--accent-blue); font-weight: 700;
+            padding: 8px;
+        }
+        .grid-cell-status {
+            font-size: 11px; padding: 1px 6px; border-radius: 4px; font-weight: 600;
+        }
+        .grid-cell-status-waiting { color: var(--text-muted); background: var(--overlay-03); }
+        .grid-cell-status-filled-buy { color: var(--green-value); background: var(--green-dim); }
+        .grid-cell-status-filled-sell { color: var(--red-danger); background: var(--red-dim); }
+        .grid-cell-status-paused { color: var(--orange-warn); background: var(--orange-dim); }
+        .grid-cell-status-base { color: var(--accent-blue); background: var(--accent-blue-dim); }
+
+        .grid-fill-btn {
+            font-size: 10px; padding: 2px 8px; border-radius: 3px;
+            background: var(--accent-blue-dim); color: var(--accent-blue);
+            border: 1px solid var(--accent-blue); cursor: pointer;
+        }
+        .grid-fill-btn:hover { background: var(--accent-blue); color: #fff; }
+
+        .grid-collapsible {
+            margin-top: 12px; border-top: 1px solid var(--border-subtle);
+            padding-top: 10px;
+        }
+        .grid-collapsible-title {
+            font-size: 12px; font-weight: 600; color: var(--text-secondary);
+            cursor: pointer; user-select: none;
+        }
+
+        .grid-holdings-table {
+            width: 100%; border-collapse: collapse; font-size: 11px;
+            margin-top: 8px;
+        }
+        .grid-holdings-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        @media (max-width: 480px) {
+            .grid-card { padding: 14px; }
+            .grid-summary-row { grid-template-columns: 1fr; }
+            .grid-kv-grid { grid-template-columns: repeat(2, 1fr); }
+            .grid-price-table { font-size: 11px; }
+            .grid-price-table th, .grid-price-table td { padding: 4px 6px; }
+        }
+
         /* ETF DCA (ETF 投资策略) */
         /* 投资策略子 tab 导航 */
         .strategy-subtabs {
@@ -4826,6 +4982,7 @@
             <!-- 子 tab 导航 -->
             <div class="strategy-subtabs" id="strategySubtabs">
                 <button class="strategy-subtab active" data-substrat="etf">💰 ETF 投资</button>
+                <button class="strategy-subtab" data-substrat="etf-grid">🕸️ ETF 网格</button>
                 <button class="strategy-subtab" data-substrat="gold">🥇 黄金投资</button>
                 <button class="strategy-subtab" data-substrat="active-fund">💼 主动基金</button>
                 <button class="strategy-subtab" data-substrat="sp500">📈 标普500</button>
@@ -5124,6 +5281,58 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- ETF 网格策略（等比对称网格：涨 X% 卖 / 跌 X% 买） -->
+            <div class="section" style="margin-top:36px">
+                <div class="section-header">
+                    <div class="section-line"></div>
+                    <div class="section-title">ETF 网格策略</div>
+                    <div class="section-badge">ETF Grid</div>
+                    <button class="dca-add-btn" id="etfGridAddBtn" onclick="openEtfGridForm()" style="display:none">＋ 添加网格策略</button>
+                </div>
+                <p class="chart-desc" style="margin-bottom:16px">
+                    等比对称网格交易：<strong>基准价 × (1 + 步长)^档位</strong>。触及买入网线时手动补录建仓、触及卖出网线时手动补录减仓。
+                    震荡市场吃波动，每完整闭环单轮净利 = <strong>(1 + 步长)² − 1 − 双边手续费</strong>。
+                </p>
+
+                <!-- 策略配置表单（默认隐藏） -->
+                <div class="pos-form" id="etfGridFormWrap" style="display:none">
+                    <div class="pos-form-title" id="etfGridFormTitle">添加 ETF 网格策略</div>
+                    <div class="pos-form-row">
+                        <label>基金 <select id="etfGridFundCode" onchange="onEtfGridFundChange()"></select></label>
+                        <label>手续费率(%) <input id="etfGridFeeRate" type="number" step="0.01" placeholder="0.15" /></label>
+                    </div>
+                    <div class="pos-form-row">
+                        <label>每格步长(%) <input id="etfGridStep" type="number" step="0.1" placeholder="5" /></label>
+                        <label>单侧网数 <input id="etfGridLevels" type="number" step="1" placeholder="5" /></label>
+                        <label>网格中线
+                            <input id="etfGridBasePrice" type="number" step="0.001" placeholder="基准价" />
+                        </label>
+                    </div>
+                    <div class="pos-form-row" style="align-items:flex-end">
+                        <button type="button" class="pos-form-btn secondary" onclick="etfGridUseCurrentPrice()" style="margin-right:8px">使用当前价</button>
+                        <span id="etfGridCurrentPriceHint" style="font-size:12px;color:var(--text-muted)"></span>
+                    </div>
+                    <div class="pos-form-row">
+                        <label>总预算(元) <input id="etfGridTotalBudget" type="number" step="100" placeholder="100000" /></label>
+                        <label>底仓金额(元) <input id="etfGridBaseAmount" type="number" step="100" placeholder="40000" /></label>
+                        <label>每格金额(元) <input id="etfGridAmountPerGrid" type="number" step="100" placeholder="5000" /></label>
+                    </div>
+                    <div class="pos-form-row">
+                        <label>温度阈值暂停买入（可选） <input id="etfGridPauseTemp" type="number" step="1" placeholder="留空=关闭，如 70" /></label>
+                        <label>连续 N 网买入 <input id="etfGridCooldownN" type="number" step="1" placeholder="留空=关闭" /></label>
+                        <label>冷却 M 天 <input id="etfGridCooldownDays" type="number" step="1" placeholder="留空=关闭" /></label>
+                    </div>
+                    <div id="etfGridFormPreview" style="margin-top:12px;padding:12px;background:var(--overlay-02);border-radius:6px;font-size:13px"></div>
+                    <div class="pos-form-actions">
+                        <button type="button" class="pos-form-btn" onclick="saveEtfGridStrategy()">保存策略</button>
+                        <button type="button" class="pos-form-btn secondary" onclick="closeEtfGridForm()">取消</button>
+                    </div>
+                </div>
+
+                <!-- 卡片列表 -->
+                <div id="etfGridCardList" class="afund-list"></div>
             </div>
 
             <!-- 标普500投资策略（场外定投 + 场内加仓 双卡片） -->
@@ -7739,6 +7948,7 @@
     const STRATEGY_SUBTAB_MAP = {
         '黄金投资策略': 'gold',
         'ETF 投资策略': 'etf',
+        'ETF 网格策略': 'etf-grid',
         '主动基金定投策略': 'active-fund',
         '标普500投资策略': 'sp500',
         '温度计定投策略': 'thermometer',
@@ -8313,6 +8523,557 @@
             tierId,
             note: '止盈卖出 - ' + tierId,
         });
+    }
+
+    // ================================================================
+    // ETF GRID — ETF 网格策略（等比对称网格）
+    // ================================================================
+    let etfGridStrategies = [];     // 原始策略配置列表
+    let etfGridRecommendations = null; // 综合推荐视图 { strategies:[...], marketTemperature }
+    let etfGridHoldings = [];       // 所有持仓记录（跨策略）
+    let etfGridEditingCode = null;  // 当前编辑中的 fundCode（null = 新建）
+
+    async function loadEtfGridAll() {
+        try {
+            const [plansRes, recRes, holdRes] = await Promise.all([
+                fetch('/api/strategy/etf-grid-plans'),
+                fetch('/api/strategy/etf-grid-recommendations'),
+                fetch('/api/strategy/etf-grid-holdings'),
+            ]);
+            const plansJson = await plansRes.json();
+            const recJson = await recRes.json();
+            const holdJson = await holdRes.json();
+            etfGridStrategies = plansJson.success ? (plansJson.data?.strategies || []) : [];
+            etfGridRecommendations = recJson.success ? recJson.data : { strategies: [] };
+            etfGridHoldings = holdJson.success ? (holdJson.data?.records || []) : [];
+            renderEtfGridCards();
+        } catch (err) {
+            console.error('[ETF网格] 加载失败:', err);
+        }
+    }
+
+    function _gridFmt(v, digits) {
+        if (v == null || !isFinite(v)) return '--';
+        return Number(v).toFixed(digits != null ? digits : 4);
+    }
+    function _gridFmtPct(v, digits) {
+        if (v == null || !isFinite(v)) return '--';
+        const sign = v > 0 ? '+' : '';
+        return sign + Number(v).toFixed(digits != null ? digits : 2) + '%';
+    }
+    function _gridFmtMoney(v) {
+        if (v == null || !isFinite(v)) return '--';
+        const abs = Math.abs(v);
+        const sign = v < 0 ? '-' : '';
+        if (abs >= 10000) return sign + '¥' + (abs / 10000).toFixed(2) + '万';
+        return sign + '¥' + abs.toFixed(2);
+    }
+    function _gridReturnClass(v) {
+        if (v == null || !isFinite(v)) return '';
+        if (v > 0) return 'up';
+        if (v < 0) return 'down';
+        return '';
+    }
+
+    function renderEtfGridCards() {
+        const container = document.getElementById('etfGridCardList');
+        if (!container) return;
+        const isAdmin = !!(authUser && authUser.role === 'admin');
+        const addBtn = document.getElementById('etfGridAddBtn');
+        if (addBtn) addBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+        const recs = (etfGridRecommendations && etfGridRecommendations.strategies) || [];
+        if (recs.length === 0) {
+            container.innerHTML = '<div class="afund-empty">暂无网格策略' + (isAdmin ? '，点击右上角"＋ 添加网格策略"开始配置' : '') + '</div>';
+            return;
+        }
+
+        container.innerHTML = recs.map(rec => buildEtfGridCardHtml(rec, isAdmin)).join('');
+    }
+
+    function buildEtfGridCardHtml(rec, isAdmin) {
+        const staleTag = rec.stale ? '<span class="grid-stale-badge">⚠ 行情数据陈旧</span>' : '';
+        const statusText = rec.status === 'paused' ? '已暂停' : (rec.status === 'archived' ? '已归档' : '运行中');
+        const protectionBanner = (rec.protection && rec.protection.paused)
+            ? `<div class="grid-protection-banner">🚧 ${escapeHtml(rec.protection.reason || '已暂停')}</div>` : '';
+
+        // 下一步动作提示
+        let nextAction = '<span style="color:var(--text-muted)">暂无</span>';
+        if (rec.nearestGrid) {
+            const dir = rec.nearestGrid.action === 'buy' ? '跌至' : '涨至';
+            const cls = rec.nearestGrid.action === 'buy' ? 'down' : 'up';
+            nextAction = `<span class="${cls}">${dir} ${rec.nearestGrid.price} ${rec.nearestGrid.action === 'buy' ? '买入' : '卖出'}</span>`;
+        }
+
+        const distanceStr = rec.distanceToBasePct != null
+            ? `<span class="${_gridReturnClass(rec.distanceToBasePct)}">${_gridFmtPct(rec.distanceToBasePct, 1)}</span>` : '--';
+
+        const priceTable = buildEtfGridPriceTable(rec, isAdmin);
+        const holdingsSection = buildEtfGridHoldingsSection(rec, isAdmin);
+
+        const actionButtons = isAdmin ? `
+            <button class="grid-card-btn" onclick="openEtfGridForm('${rec.fundCode}')">编辑</button>
+            <button class="grid-card-btn" onclick="resetEtfGridBasePrice('${rec.fundCode}')">重置中线</button>
+            <button class="grid-card-btn danger" onclick="deleteEtfGridStrategy('${rec.fundCode}')">删除</button>
+        ` : '';
+
+        return `<div class="grid-card">
+            <div class="grid-card-header">
+                <div class="grid-card-icon">🕸️</div>
+                <div class="grid-card-title">
+                    <div class="grid-card-name">${escapeHtml(rec.fundName)} <span class="grid-status-badge ${rec.status}">${statusText}</span> ${staleTag}</div>
+                    <div class="grid-card-code">${escapeHtml(rec.fundCode)}</div>
+                </div>
+                <div class="grid-card-actions">${actionButtons}</div>
+            </div>
+            ${protectionBanner}
+
+            <div class="grid-summary-row">
+                <div class="grid-summary-item">
+                    <span class="grid-summary-label">当前价</span>
+                    <span class="grid-summary-value">${rec.currentPrice != null ? _gridFmt(rec.currentPrice, 4) : '--'}</span>
+                </div>
+                <div class="grid-summary-item">
+                    <span class="grid-summary-label">距中线</span>
+                    <span class="grid-summary-value">${distanceStr}</span>
+                </div>
+                <div class="grid-summary-item">
+                    <span class="grid-summary-label">下一步</span>
+                    <span class="grid-summary-value hint">${nextAction}</span>
+                </div>
+            </div>
+
+            <div class="grid-config-block">
+                <div class="grid-kv-grid">
+                    <div class="grid-kv-row"><span class="grid-kv-label">步长</span><span class="grid-kv-value">${_gridFmtPct(rec.gridStep * 100, 2)}</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">单侧网数</span><span class="grid-kv-value">${rec.gridLevels}</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">中线</span><span class="grid-kv-value">${_gridFmt(rec.basePrice, 4)}</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">总预算</span><span class="grid-kv-value">${_gridFmtMoney(rec.totalBudget)}</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">底仓</span><span class="grid-kv-value">${_gridFmtMoney(rec.baseAmount)}</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">每格</span><span class="grid-kv-value">${_gridFmtMoney(rec.amountPerGrid)}</span></div>
+                </div>
+            </div>
+
+            <div class="grid-status-block">
+                <div class="grid-kv-grid">
+                    <div class="grid-kv-row"><span class="grid-kv-label">已建底仓</span><span class="grid-kv-value">${rec.holdings.baseFilled ? _gridFmtMoney(rec.holdings.baseFilled.cost) : '未建仓'}</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">已触发买入</span><span class="grid-kv-value">${rec.holdings.gridBuysFilledCount} 网</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">已卖出</span><span class="grid-kv-value">${rec.holdings.gridSellsExecutedCount} 次</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">已实现利润</span><span class="grid-kv-value ${_gridReturnClass(rec.pnl.realized)}">${_gridFmtMoney(rec.pnl.realized)}</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">浮动盈亏</span><span class="grid-kv-value ${_gridReturnClass(rec.pnl.unrealizedFloat)}">${_gridFmtMoney(rec.pnl.unrealizedFloat)}</span></div>
+                    <div class="grid-kv-row"><span class="grid-kv-label">总收益率</span><span class="grid-kv-value ${_gridReturnClass(rec.pnl.totalReturnPct)}">${_gridFmtPct(rec.pnl.totalReturnPct)}</span></div>
+                </div>
+            </div>
+
+            ${priceTable}
+            ${holdingsSection}
+        </div>`;
+    }
+
+    function buildEtfGridPriceTable(rec, isAdmin) {
+        const gt = rec.gridTable || [];
+        const currentPrice = rec.currentPrice;
+
+        // 找当前价应插入的位置（在哪两档之间）
+        let currentPriceInsertIdx = -1;
+        if (currentPrice != null) {
+            for (let i = 0; i < gt.length; i++) {
+                if (gt[i].targetPrice <= currentPrice) {
+                    currentPriceInsertIdx = i;
+                    break;
+                }
+            }
+        }
+
+        const rows = [];
+        rows.push(`<tr>
+            <th>档位</th><th>目标价</th><th>状态</th>
+            <th>成本 / 单轮净利</th>
+            ${isAdmin ? '<th>操作</th>' : ''}
+        </tr>`);
+
+        gt.forEach((g, idx) => {
+            // 在当前价对应位置插入一行标注
+            if (currentPriceInsertIdx === idx && currentPrice != null) {
+                rows.push(`<tr class="grid-price-row-current-price">
+                    <td colspan="${isAdmin ? 5 : 4}">🎯 当前价 ${_gridFmt(currentPrice, 4)}</td>
+                </tr>`);
+            }
+            let statusCls = 'grid-cell-status-' + (g.status === 'base' ? 'base'
+                : g.status === 'paused' ? 'paused'
+                : g.status === 'filled'
+                    ? (g.action === 'buy' ? 'filled-buy' : 'filled-sell')
+                    : 'waiting');
+            const statusText = g.status === 'base' ? '底仓'
+                : g.status === 'paused' ? '暂停'
+                : g.status === 'filled' ? '✓ 已触发' : '待触发';
+            const actionText = g.action === 'buy' ? '买入' : (g.action === 'sell' ? '卖出' : '底仓');
+            const levelText = g.level === 0 ? '═' : (g.level > 0 ? `+${g.level}` : g.level);
+            let costOrProfit = '';
+            if (g.status === 'filled') {
+                costOrProfit = `${_gridFmtMoney(g.filledCost)} · ${_gridFmt(g.filledShares, 0)} 份`;
+            } else if (g.status === 'base') {
+                costOrProfit = rec.holdings.baseFilled
+                    ? `${_gridFmtMoney(rec.holdings.baseFilled.cost)} · ${_gridFmt(rec.holdings.baseFilled.shares, 0)} 份`
+                    : `建议投入 ${_gridFmtMoney(rec.baseAmount)}`;
+            } else if (g.expectedNetPct != null) {
+                costOrProfit = `预期 ${_gridFmtPct(g.expectedNetPct, 2)}`;
+            }
+            const opBtn = isAdmin ? `<td><button class="grid-fill-btn" onclick="openEtfGridFillForm('${rec.fundCode}',${g.level},${g.targetPrice})">补录</button></td>` : '';
+            const rowCls = g.status === 'base' ? 'grid-price-row-base' : '';
+            rows.push(`<tr class="${rowCls}">
+                <td class="mono">${levelText} ${actionText}</td>
+                <td class="mono">${_gridFmt(g.targetPrice, 4)}</td>
+                <td><span class="grid-cell-status ${statusCls}">${statusText}</span></td>
+                <td class="mono">${costOrProfit}</td>
+                ${opBtn}
+            </tr>`);
+        });
+
+        // 若当前价低于所有网线（下侧极限外），在最底部标注
+        if (currentPriceInsertIdx === -1 && currentPrice != null && gt.length > 0) {
+            rows.push(`<tr class="grid-price-row-current-price">
+                <td colspan="${isAdmin ? 5 : 4}">🎯 当前价 ${_gridFmt(currentPrice, 4)}（低于下侧极限）</td>
+            </tr>`);
+        }
+
+        return `<div class="grid-collapsible">
+            <div class="grid-collapsible-title">📊 网格价位表</div>
+            <table class="grid-price-table">${rows.join('')}</table>
+        </div>`;
+    }
+
+    function buildEtfGridHoldingsSection(rec, isAdmin) {
+        const fundRecs = etfGridHoldings
+            .filter(r => r.fundCode === rec.fundCode)
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        if (fundRecs.length === 0) {
+            return '<div class="grid-collapsible"><div class="grid-collapsible-title">📝 成交记录（暂无）</div></div>';
+        }
+        const showList = fundRecs.slice(0, 5);
+        const rows = showList.map(r => {
+            const typeText = r.type === 'base' ? '底仓' : (r.type === 'buy' ? '买入' : '卖出');
+            const levelText = r.gridLevel === 0 ? '═' : (r.gridLevel > 0 ? `+${r.gridLevel}` : r.gridLevel);
+            const delBtn = isAdmin ? ` <button class="grid-card-btn danger" style="padding:1px 6px;font-size:10px" onclick="deleteEtfGridHolding('${r.id}')">✕</button>` : '';
+            return `<tr>
+                <td class="mono">${r.date}</td>
+                <td>${typeText} ${levelText}</td>
+                <td class="mono">${_gridFmt(r.price, 4)}</td>
+                <td class="mono">${_gridFmt(r.shares, 0)}</td>
+                <td class="mono">${_gridFmtMoney(r.amount)}${delBtn}</td>
+            </tr>`;
+        }).join('');
+        const moreHint = fundRecs.length > 5 ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">共 ${fundRecs.length} 条，显示最近 5 条</div>` : '';
+        return `<div class="grid-collapsible">
+            <div class="grid-collapsible-title">📝 成交记录（${fundRecs.length} 条）</div>
+            <table class="grid-holdings-table">
+                <tr><th style="text-align:left;font-size:11px;color:var(--text-muted)">日期</th><th style="text-align:left;font-size:11px;color:var(--text-muted)">类型</th><th style="text-align:left;font-size:11px;color:var(--text-muted)">价格</th><th style="text-align:left;font-size:11px;color:var(--text-muted)">份数</th><th style="text-align:left;font-size:11px;color:var(--text-muted)">金额</th></tr>
+                ${rows}
+            </table>
+            ${moreHint}
+        </div>`;
+    }
+
+    // ─── 策略配置表单 ───
+
+    function openEtfGridForm(fundCode) {
+        if (!authUser || authUser.role !== 'admin') { window.location.href = '/admin'; return; }
+        etfGridEditingCode = fundCode || null;
+        const wrap = document.getElementById('etfGridFormWrap');
+        const title = document.getElementById('etfGridFormTitle');
+
+        // 初始化 ETF 下拉：合并（策略池 + ETF watchlist）
+        const select = document.getElementById('etfGridFundCode');
+        const existingCodes = etfGridStrategies.map(s => s.fundCode);
+        const etfList = (typeof etfData !== 'undefined' && Array.isArray(etfData)) ? etfData : [];
+        // 已配置策略的 ETF 允许编辑（下拉锁定）；新增时排除已配置的
+        let options = [];
+        if (fundCode) {
+            const strat = etfGridStrategies.find(s => s.fundCode === fundCode);
+            if (strat) options = [{ code: strat.fundCode, name: strat.fundName, secid: strat.secid }];
+        } else {
+            options = etfList
+                .filter(e => !existingCodes.includes(e.code))
+                .map(e => ({ code: e.code, name: e.name, secid: e.secid || `1.${e.code}` }));
+            // 如果 ETF watchlist 为空，允许手动输入 fundCode（fallback）
+        }
+        select.innerHTML = options.map(o =>
+            `<option value="${o.code}" data-secid="${o.secid || ''}" data-name="${escapeHtml(o.name)}">${escapeHtml(o.name)} (${o.code})</option>`
+        ).join('') || '<option value="">-- 请先在 ETF 总览关注 ETF --</option>';
+        select.disabled = !!fundCode;
+
+        if (fundCode) {
+            const s = etfGridStrategies.find(x => x.fundCode === fundCode);
+            if (s) {
+                title.textContent = '编辑网格策略：' + s.fundName;
+                select.value = s.fundCode;
+                document.getElementById('etfGridStep').value = (s.gridStep * 100).toFixed(2);
+                document.getElementById('etfGridLevels').value = s.gridLevels;
+                document.getElementById('etfGridBasePrice').value = s.basePrice;
+                document.getElementById('etfGridTotalBudget').value = s.totalBudget;
+                document.getElementById('etfGridBaseAmount').value = s.baseAmount;
+                document.getElementById('etfGridAmountPerGrid').value = s.amountPerGrid;
+                document.getElementById('etfGridFeeRate').value = s.feeRate != null ? (s.feeRate * 100).toFixed(2) : '0.15';
+                document.getElementById('etfGridPauseTemp').value = s.pauseWhenTempAbove != null ? s.pauseWhenTempAbove : '';
+                document.getElementById('etfGridCooldownN').value = s.cooldownAfterConsecutiveBuys ? s.cooldownAfterConsecutiveBuys.n : '';
+                document.getElementById('etfGridCooldownDays').value = s.cooldownAfterConsecutiveBuys ? s.cooldownAfterConsecutiveBuys.days : '';
+            }
+        } else {
+            title.textContent = '添加 ETF 网格策略';
+            ['etfGridStep','etfGridLevels','etfGridBasePrice','etfGridTotalBudget','etfGridBaseAmount','etfGridAmountPerGrid','etfGridPauseTemp','etfGridCooldownN','etfGridCooldownDays'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('etfGridFeeRate').value = '0.15';
+        }
+        onEtfGridFundChange();
+        updateEtfGridPreview();
+        wrap.style.display = 'block';
+
+        // 绑定实时预览
+        ['etfGridStep','etfGridLevels','etfGridBasePrice','etfGridTotalBudget','etfGridBaseAmount','etfGridAmountPerGrid','etfGridFeeRate'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el._gridPreviewBound) {
+                el.addEventListener('input', updateEtfGridPreview);
+                el._gridPreviewBound = true;
+            }
+        });
+    }
+
+    function closeEtfGridForm() {
+        document.getElementById('etfGridFormWrap').style.display = 'none';
+        etfGridEditingCode = null;
+    }
+
+    function onEtfGridFundChange() {
+        const select = document.getElementById('etfGridFundCode');
+        const opt = select.options[select.selectedIndex];
+        if (!opt) return;
+        const code = opt.value;
+        const etf = (typeof etfData !== 'undefined' && Array.isArray(etfData))
+            ? etfData.find(e => e.code === code) : null;
+        const hint = document.getElementById('etfGridCurrentPriceHint');
+        if (etf && etf.price != null) {
+            hint.textContent = `当前价 ${etf.price.toFixed(4)}  ·  52w 高 ${etf.high52w != null ? etf.high52w.toFixed(4) : '--'}  ·  52w 低 ${etf.low52w != null ? etf.low52w.toFixed(4) : '--'}`;
+        } else {
+            hint.textContent = '';
+        }
+    }
+
+    function etfGridUseCurrentPrice() {
+        const select = document.getElementById('etfGridFundCode');
+        const code = select.value;
+        const etf = (typeof etfData !== 'undefined' && Array.isArray(etfData))
+            ? etfData.find(e => e.code === code) : null;
+        if (etf && etf.price != null) {
+            document.getElementById('etfGridBasePrice').value = etf.price;
+            updateEtfGridPreview();
+        } else {
+            alert('无法获取当前价，请手动输入');
+        }
+    }
+
+    function updateEtfGridPreview() {
+        const previewEl = document.getElementById('etfGridFormPreview');
+        if (!previewEl) return;
+        const step = Number(document.getElementById('etfGridStep').value) / 100;
+        const levels = Number(document.getElementById('etfGridLevels').value);
+        const basePrice = Number(document.getElementById('etfGridBasePrice').value);
+        const amountPerGrid = Number(document.getElementById('etfGridAmountPerGrid').value);
+        const baseAmount = Number(document.getElementById('etfGridBaseAmount').value);
+        const totalBudget = Number(document.getElementById('etfGridTotalBudget').value);
+        const feeRate = Number(document.getElementById('etfGridFeeRate').value) / 100;
+
+        if (!(step > 0 && levels > 0 && basePrice > 0)) {
+            previewEl.innerHTML = '<span style="color:var(--text-muted)">请填入 步长/单侧网数/中线 以查看网格价位预览</span>';
+            return;
+        }
+        const netPct = (Math.pow(1 + step, 2) - 1 - 2 * feeRate) * 100;
+        const maxRequired = baseAmount + amountPerGrid * levels;
+
+        const rows = [];
+        for (let n = levels; n >= 1; n--) {
+            rows.push(`<tr><td class="mono">+${n} 卖</td><td class="mono">${(basePrice * Math.pow(1 + step, n)).toFixed(4)}</td></tr>`);
+        }
+        rows.push(`<tr class="grid-price-row-base"><td class="mono">═ 底仓</td><td class="mono">${basePrice.toFixed(4)}</td></tr>`);
+        for (let n = 1; n <= levels; n++) {
+            rows.push(`<tr><td class="mono">-${n} 买</td><td class="mono">${(basePrice * Math.pow(1 + step, -n)).toFixed(4)}</td></tr>`);
+        }
+
+        const warning = maxRequired > totalBudget && totalBudget > 0
+            ? `<div style="color:var(--orange-warn);margin-top:6px">⚠ 满仓资金 ${maxRequired.toFixed(2)} 元超出总预算 ${totalBudget.toFixed(2)} 元</div>` : '';
+
+        previewEl.innerHTML = `
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                <div><strong>单轮预期净利：</strong>${netPct.toFixed(2)}%（步长 ${(step*100).toFixed(2)}%，已扣双边手续费）</div>
+                <div><strong>满仓资金：</strong>${maxRequired.toFixed(2)} 元 / ${totalBudget || '?'}</div>
+            </div>
+            <table class="grid-price-table" style="margin-top:8px">
+                <tr><th>档位</th><th>目标价</th></tr>
+                ${rows.join('')}
+            </table>
+            ${warning}
+        `;
+    }
+
+    async function saveEtfGridStrategy() {
+        const select = document.getElementById('etfGridFundCode');
+        const opt = select.options[select.selectedIndex];
+        if (!opt || !opt.value) return alert('请选择 ETF');
+
+        const fundCode = opt.value;
+        const fundName = opt.dataset.name || fundCode;
+        const secid = opt.dataset.secid || `1.${fundCode}`;
+        const gridStep = Number(document.getElementById('etfGridStep').value) / 100;
+        const gridLevels = parseInt(document.getElementById('etfGridLevels').value, 10);
+        const basePrice = Number(document.getElementById('etfGridBasePrice').value);
+        const totalBudget = Number(document.getElementById('etfGridTotalBudget').value);
+        const baseAmount = Number(document.getElementById('etfGridBaseAmount').value);
+        const amountPerGrid = Number(document.getElementById('etfGridAmountPerGrid').value);
+        const feeRateInput = Number(document.getElementById('etfGridFeeRate').value);
+        const feeRate = isFinite(feeRateInput) ? feeRateInput / 100 : 0.0015;
+
+        const pauseTempInput = document.getElementById('etfGridPauseTemp').value.trim();
+        const pauseWhenTempAbove = pauseTempInput !== '' ? Number(pauseTempInput) : null;
+        const cooldownN = document.getElementById('etfGridCooldownN').value.trim();
+        const cooldownDays = document.getElementById('etfGridCooldownDays').value.trim();
+        const cooldownAfterConsecutiveBuys = (cooldownN !== '' && cooldownDays !== '')
+            ? { n: parseInt(cooldownN, 10), days: parseInt(cooldownDays, 10) } : null;
+
+        // 编辑模式提示"新一轮"
+        if (etfGridEditingCode) {
+            if (!confirm('修改配置将开启新一轮网格计算，历史成交记录会锁定到旧版本。继续？')) return;
+        }
+
+        const body = {
+            fundCode, fundName, shortName: fundName, secid,
+            gridStep, gridLevels, basePrice, totalBudget, baseAmount, amountPerGrid,
+            feeRate, pauseWhenTempAbove, cooldownAfterConsecutiveBuys,
+        };
+        try {
+            const res = await fetch('/api/strategy/etf-grid-plans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error);
+            if (json.warnings && json.warnings.length > 0) {
+                alert('⚠ 已保存，但有警告：\n' + json.warnings.join('\n'));
+            }
+            closeEtfGridForm();
+            await loadEtfGridAll();
+        } catch (err) {
+            alert('保存失败：' + err.message);
+        }
+    }
+
+    async function deleteEtfGridStrategy(fundCode) {
+        if (!authUser || authUser.role !== 'admin') return;
+        if (!confirm('确定删除该网格策略？（已有的成交记录保留）')) return;
+        try {
+            const res = await fetch('/api/strategy/etf-grid-plans/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fundCode }),
+            });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error);
+            await loadEtfGridAll();
+        } catch (err) {
+            alert('删除失败：' + err.message);
+        }
+    }
+
+    async function resetEtfGridBasePrice(fundCode) {
+        if (!authUser || authUser.role !== 'admin') return;
+        const input = prompt('输入新的中线价格（留空则使用当前价）：', '');
+        if (input === null) return; // 用户取消
+        const body = { fundCode };
+        if (input.trim() !== '') {
+            const v = Number(input);
+            if (!isFinite(v) || v <= 0) return alert('中线价格必须 > 0');
+            body.newBasePrice = v;
+        }
+        if (!confirm('重置中线将开启新一轮网格计算，历史成交记录会锁定到旧版本。继续？')) return;
+        try {
+            const res = await fetch('/api/strategy/etf-grid-plans/reset-base-price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error);
+            await loadEtfGridAll();
+        } catch (err) {
+            alert('重置失败：' + err.message);
+        }
+    }
+
+    // ─── 成交补录 ───
+
+    function openEtfGridFillForm(fundCode, gridLevel, targetPrice) {
+        if (!authUser || authUser.role !== 'admin') return;
+        const type = gridLevel === 0 ? 'base' : (gridLevel < 0 ? 'buy' : 'sell');
+        const typeText = type === 'base' ? '底仓建仓' : (type === 'buy' ? `买入 -${Math.abs(gridLevel)} 网` : `卖出 +${gridLevel} 网`);
+        const today = new Date().toISOString().slice(0, 10);
+        const priceStr = prompt(`补录成交（${typeText}）\n\n目标价 ${targetPrice}，请输入实际成交价：`, String(targetPrice));
+        if (priceStr === null || priceStr.trim() === '') return;
+        const price = Number(priceStr);
+        if (!isFinite(price) || price <= 0) return alert('价格必须 > 0');
+
+        const strat = etfGridStrategies.find(s => s.fundCode === fundCode);
+        const suggestAmount = type === 'base' ? (strat ? strat.baseAmount : 0) : (strat ? strat.amountPerGrid : 0);
+        const amountStr = prompt('实际成交金额（元）：', String(suggestAmount));
+        if (amountStr === null || amountStr.trim() === '') return;
+        const amount = Number(amountStr);
+        if (!isFinite(amount) || amount <= 0) return alert('金额必须 > 0');
+
+        const suggestShares = price > 0 ? Math.round(amount / price) : 0;
+        const sharesStr = prompt('实际成交份数：', String(suggestShares));
+        if (sharesStr === null || sharesStr.trim() === '') return;
+        const shares = Number(sharesStr);
+        if (!isFinite(shares) || shares <= 0) return alert('份数必须 > 0');
+
+        // 金额与价格×份数一致性软警告
+        const impliedAmount = price * shares;
+        const drift = Math.abs(amount - impliedAmount) / impliedAmount;
+        if (drift > 0.01) {
+            if (!confirm(`⚠ 金额 ${amount.toFixed(2)} 与价格×份数 ${impliedAmount.toFixed(2)} 相差 ${(drift * 100).toFixed(2)}%，是否仍保存？`)) return;
+        }
+
+        submitEtfGridHolding({ fundCode, type, gridLevel, date: today, price, shares, amount });
+    }
+
+    async function submitEtfGridHolding(body) {
+        try {
+            const res = await fetch('/api/strategy/etf-grid-holdings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error);
+            await loadEtfGridAll();
+        } catch (err) {
+            alert('补录失败：' + err.message);
+        }
+    }
+
+    async function deleteEtfGridHolding(id) {
+        if (!authUser || authUser.role !== 'admin') return;
+        if (!confirm('确定删除该条成交记录？')) return;
+        try {
+            const res = await fetch('/api/strategy/etf-grid-holdings/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+            });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error);
+            await loadEtfGridAll();
+        } catch (err) {
+            alert('删除失败：' + err.message);
+        }
     }
 
     // ================================================================
@@ -10345,6 +11106,7 @@
             }
             if (tab.dataset.tab === 'strategy') {
                 loadEtfData();
+                loadEtfGridAll();
                 loadGoldData();
                 loadActiveFundRecommendations();
                 loadSp500Strategy();
