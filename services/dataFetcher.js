@@ -277,6 +277,13 @@ const KLINE_SOURCE_CACHE_TTL = {
     tencent: 20 * 60 * 1000,
 };
 const KLINE_FAILURE_COOLDOWN = 10 * 60 * 1000;
+// 腾讯 K 线 fallback 的"最小条数"校验阈值：仅对配置了 yahooCode 的指数（美股）生效。
+// 背景：腾讯对部分美股指数会返回"非空但残缺"的日 K（如 usNDX 请求 2000 条仅返回 1 条），
+// 若仅凭 length > 0 判定成功，会中断降级链导致 Yahoo 兜底永不触发。
+// 取值依据：52 周高低需约 252 个交易日，200 足以识别明显残缺，同时容忍合理偏少。
+const MIN_TENCENT_US_INDEX_KLINES = 200;
+// Yahoo 免费接口存在间歇性限流（HTTP 429），换域名重试前的退避时长
+const YAHOO_RETRY_DELAY_MS = 1500;
 const _klineCache = new Map();
 let _eastmoneyKlineCooldownUntil = 0;
 
@@ -1468,7 +1475,15 @@ async function fetchIndexHistory(cfg, options = {}) {
 
     if (profile.allowTencentFallback) {
         const tencentKlines = await fetchTencentKlines(cfg.code, cfg.market, cfg);
-        if (tencentKlines.length > 0) {
+        // 完整性校验：仅对配置了 yahooCode 的指数（美股）生效，其余指数沿用 length > 0。
+        // 腾讯对部分美股指数会返回"非空但残缺"的日 K（如 usNDX 请求 2000 条仅返回 1 条），
+        // 若直接采用会中断降级链，导致已配置的 Yahoo 兜底永远无法触发。
+        const minTencentKlines = cfg.yahooCode ? MIN_TENCENT_US_INDEX_KLINES : 1;
+        if (tencentKlines.length > 0 && tencentKlines.length < minTencentKlines) {
+            console.warn(`  [K线-腾讯] ${cfg.name}(${cfg.txKlineCode || cfg.txCode || cfg.code}) 仅返回 ${tencentKlines.length} 条，低于阈值 ${minTencentKlines}，判定数据无效并继续降级`);
+            recordKlineSourceFailure('tencent', cfg.txKlineCode || cfg.txCode || cfg.code, `数据异常，仅返回 ${tencentKlines.length} 条`);
+        }
+        if (tencentKlines.length >= minTencentKlines) {
             setCachedKlines(cacheKey, tencentKlines, 'tencent');
             const klines = sliceByRange(tencentKlines, options?.range);
             return {
@@ -1605,7 +1620,33 @@ async function fetchTencentKlines(code, market, cfg) {
 async function fetchYahooKlines(cfg) {
     const yahooCode = cfg?.yahooCode;
     if (!yahooCode) return [];
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooCode)}?interval=1d&range=10y`;
+    // Yahoo 免费接口对高频请求会间歇性返回 HTTP 429（限流）。若单次请求失败即放弃，
+    // 美股指数（如 NDX）在腾讯返回残缺数据时会失去最后一层兜底，导致 52 周高低/动量全部为 null。
+    // 因此依次尝试 query1 / query2 两个域名，失败后退避重试。
+    const endpoints = [
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooCode)}?interval=1d&range=10y`,
+        `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooCode)}?interval=1d&range=10y`,
+    ];
+    let lastErr = null;
+    for (let attempt = 0; attempt < endpoints.length; attempt++) {
+        try {
+            const klines = await fetchYahooKlinesOnce(endpoints[attempt], yahooCode);
+            if (klines.length > 0) return klines;
+            lastErr = new Error('接口返回空 K 线');
+        } catch (err) {
+            lastErr = err;
+        }
+        if (attempt < endpoints.length - 1) {
+            console.warn(`  [K线-Yahoo] ${yahooCode} 第 ${attempt + 1} 次尝试失败(${lastErr?.message})，${YAHOO_RETRY_DELAY_MS}ms 后换备用域名重试`);
+            await new Promise(r => setTimeout(r, YAHOO_RETRY_DELAY_MS));
+        }
+    }
+    console.warn(`  [K线-Yahoo] ${yahooCode} 失败:`, lastErr?.message || '未知错误');
+    recordKlineSourceFailure('yahoo', yahooCode, lastErr?.message || '未知错误');
+    return [];
+}
+
+async function fetchYahooKlinesOnce(url, yahooCode) {
     try {
         const res = await safeFetch(url, {
             headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
@@ -1641,14 +1682,11 @@ async function fetchYahooKlines(cfg) {
         if (klines.length > 0) {
             console.log(`  [K线-Yahoo] ${yahooCode} 获取成功, ${klines.length} 条`);
             recordKlineSourceSuccess('yahoo', yahooCode);
-        } else {
-            recordKlineSourceFailure('yahoo', yahooCode, '接口返回空 K 线');
         }
         return klines;
     } catch (err) {
-        console.warn(`  [K线-Yahoo] ${yahooCode} 失败:`, err.message);
-        recordKlineSourceFailure('yahoo', yahooCode, err.message);
-        return [];
+        // 失败埋点交由 fetchYahooKlines 在所有尝试结束后统一记录，避免重试期间重复计数
+        throw err;
     }
 }
 
@@ -1683,7 +1721,10 @@ async function fetchAllIndexData(selectedCodes, options = {}) {
         console.log(`  [${cfg.name}] 开始获取数据...`);
 
         // 2a. 历史K线（优先主源，失败时快速降级并复用缓存）
-        const historyResult = await fetchIndexHistory(cfg);
+        // 必须显式传 range='10y'：sliceByRange 在 range 缺省时按 1y(252 条) 切片，
+        // 若不指定，historySeries 将只有 1 年数据，导致前端趋势图的 3y/5y/10y 按钮
+        // 因"数据不足"被禁用，同时 high10y/low10y 会退化为 1 年口径。
+        const historyResult = await fetchIndexHistory(cfg, { range: '10y' });
         const klines = historyResult.klines || [];
         const klineStatus = historyResult.status || createKlineRefreshStatus();
 
@@ -2035,6 +2076,9 @@ async function fetchYZYXThermometer(options = {}) {
             console.log(`  [知有行] (${path}) 获取 ${result.indices.length} 个指数温度数据, 全市场温度: ${result.marketTemperature}°`);
             return result;
         }
+        // 解析为空时告警：本故障正是因该分支静默返回 null 而长期未被发现（日志无任何"知有行"记录）。
+        // 输出页面关键特征，便于快速判断是页面改版还是抓到了风控页。
+        console.warn(`  [知有行] 解析为空(${path}): HTML长度=${html.length}, 含/data/indices/=${/\/data\/indices\//i.test(html)}, 含温度数值=${/\d+°/.test(html)}, 含data-event-params=${/data-event-params/i.test(html)}`);
         return null;
     };
 
@@ -2159,38 +2203,46 @@ function parseYZYXPage(html) {
             }).filter(item => item.label);
         }
 
-        // 4. 按列解析指数观察表，保留空值占位，避免数值错列
-        const rowRegex = /<tr[^>]*data-event-params="idx_code:\s*([^"]+)"[\s\S]*?<\/tr>/gi;
-        const rows = [...html.matchAll(rowRegex)];
-        for (const rowMatch of rows) {
-            const rowHtml = rowMatch[0];
-            const code = rowMatch[1].trim();
-            const cells = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(cell => cell[1]);
-            if (cells.length < 4) {
+        // 4. 按列解析指数观察表
+        // 旧实现依赖 <tr data-event-params="idx_code:XXX"> 埋点属性定位指数行；
+        // 2026-09 起有知有行已移除该属性（实测页面出现 0 次），导致 indices 恒为空、
+        // 温度计长期无数据。改为以 /data/indices/{code} 详情链接为锚点——
+        // 该链接自带规范化指数代码（如 000932.SH、H11136.CSI），比埋点属性稳定。
+        const allRows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(m => m[0]);
+        for (const rowHtml of allRows) {
+            const detailPathMatch = rowHtml.match(/href="(\/data\/indices\/[^"]+)"/i);
+            if (!detailPathMatch) {
+                continue;
+            }
+            const code = decodeURIComponent(detailPathMatch[1].replace(/^\/data\/indices\//i, '')).trim();
+            if (!code) {
                 continue;
             }
 
-            const nameCell = cells[0];
-            const tempCell = cells[1];
-            const internalYieldCell = cells[2];
-            const dividendYieldCell = cells[3];
+            const cells = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(cell => cell[1]);
+            if (cells.length < 2) {
+                continue;
+            }
 
+            const nameCell = cells[0] || '';
             const nameMatch = nameCell.match(/tw-block tw-text-t-normal tw-leading-snug">\s*([\s\S]*?)\s*<\/span>/i);
-            const detailPathMatch = rowHtml.match(/href="(\/data\/indices\/[^"]+)"/i);
-            const tempMatch = tempCell.match(/(\d+)°/);
+            // 名称类名若失效，降级为剥离标签后的整格文本
+            const name = nameMatch ? stripHtmlContent(nameMatch[1]) : stripHtmlContent(nameCell);
+            // 温度优先取第 2 列，缺失时降级取整行首个温度值
+            const tempMatch = (cells[1] || '').match(/(\d+)°/) || rowHtml.match(/(\d+)°/);
 
-            if (!nameMatch || !tempMatch) {
+            if (!name || !tempMatch) {
                 continue;
             }
 
             result.indices.push({
-                name: stripHtmlContent(nameMatch[1]),
+                name,
                 code,
                 shortCode: code.split('.')[0].toUpperCase(),
                 temperature: parseInt(tempMatch[1], 10),
-                internalYield: parsePercentFromCell(internalYieldCell),
-                dividendYield: parsePercentFromCell(dividendYieldCell),
-                detailPath: detailPathMatch ? detailPathMatch[1] : null,
+                internalYield: parsePercentFromCell(cells[2] || ''),
+                dividendYield: parsePercentFromCell(cells[3] || ''),
+                detailPath: detailPathMatch[1],
             });
         }
 

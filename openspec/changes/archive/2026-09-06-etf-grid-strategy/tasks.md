@@ -92,8 +92,8 @@
 
 ## 10. 部署与文档
 
-- [ ] 10.1 `npm run package:deploy` 生成发布包（用户在确认后自行触发）
-- [ ] 10.2 上传服务器并 PM2 重启，观察日志无异常（用户部署后验证）
-- [ ] 10.3 线上抽样 `curl /api/strategy/etf-grid-plans` 返回 `{ strategies: [] }`（用户部署后验证）
+- [x] 10.1 `npm run package:deploy` 生成发布包 → `dist/dale-compass-20260906-172157.tar.gz`（含 `.sha256` 校验文件）
+- [x] 10.2 上传服务器并 PM2 重启：已部署至 `43.136.122.239:/data/dale-compass`（备份 data → 解压排除 data → pm2 restart），PM2 状态 online（pid 4417），启动日志无 Error 级异常
+- [x] 10.3 线上抽样：服务器本地 `curl /api/strategy/etf-grid-plans` 返回 `{"success":true,"data":{"strategies":[]}}`，`etf-grid-holdings` 返回 `{"records":[]}`，与预期一致
 - [x] 10.4 在 `CODEBUDDY.md` "API 路由结构 → 投资策略" 表新增 6 行（`etf-grid-plans` × 3、`etf-grid-holdings` × 2、`etf-grid-recommendations` × 1）
 - [x] 10.5 数据文件说明在 CODEBUDDY.md 顶部 data 目录已含（无需额外补充）

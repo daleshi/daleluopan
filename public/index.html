@@ -6049,6 +6049,8 @@
 
     // 完整指数数据缓存（含historySeries），用于趋势图
     let _fullIndexDataLoaded = false;
+    // 是否已发起过懒加载请求（避免 renderAll 轮询时重复请求 detail=1 大响应体）
+    let _fullIndexDataRequested = false;
 
     async function loadData(forceRefresh = false) {
         const btn = document.getElementById('refreshBtn');
@@ -6460,6 +6462,12 @@
                 (json.data.dashboardIndices || []).forEach(idx => { fullMap[idx.code] = idx; });
                 indexData = indexData.map(idx => fullMap[idx.code] ? { ...idx, historySeries: fullMap[idx.code].historySeries } : idx);
                 dashboardData = dashboardData.map(idx => fullMap[idx.code] ? { ...idx, historySeries: fullMap[idx.code].historySeries } : idx);
+                // 关键：指数实时行情面板由 indexQuotesData 渲染，而 /api/indices/quotes
+                // 的响应字段中不含 historySeries。若不在此回填，该面板各指数趋势图的
+                // 时间范围按钮（近3年/近5年/近10年）会因"数据不足"被永久禁用。
+                if (Array.isArray(indexQuotesData)) {
+                    indexQuotesData = indexQuotesData.map(idx => fullMap[idx.code] ? { ...idx, historySeries: fullMap[idx.code].historySeries } : idx);
+                }
                 _fullIndexDataLoaded = true;
                 console.log('[懒加载] 完整指数趋势数据已加载');
             }
@@ -7120,6 +7128,23 @@
 
         if (featuredIndex && featuredDetailOpen) {
             setTimeout(() => renderFeaturedTrendView(featuredIndex), 60);
+        }
+
+        // 趋势图的时间范围（1y/3y/5y/10y）切换依赖 historySeries，该字段只有
+        // /api/indices?detail=1 才返回，精简模式（默认）不含。若不主动懒加载：
+        //   ① range 按钮会因"数据不足"被永久禁用（按钮可用性在卡片 HTML 渲染时即确定）；
+        //   ② 默认详情收起（featuredDetailOpen=false）时，懒加载不会被任何交互触发，
+        //      形成"按钮禁用 → 无法切换 → 不触发加载 → 按钮仍禁用"的死锁。
+        // 加载完成后必须重绘卡片与行情网格，否则按钮停留在加载前的 disabled 状态。
+        if (!_fullIndexDataLoaded && !_fullIndexDataRequested) {
+            _fullIndexDataRequested = true;
+            ensureFullIndexData().then(() => {
+                if (!_fullIndexDataLoaded) return; // 加载失败则不重绘，避免无效渲染
+                renderIndexCards();
+                if (typeof indexQuotesData !== 'undefined' && typeof renderIndexQuotesGrid === 'function') {
+                    renderIndexQuotesGrid({ indices: indexQuotesData, updateTime: _lastIndexUpdateTime });
+                }
+            });
         }
     }
 
