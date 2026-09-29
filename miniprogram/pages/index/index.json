@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "大乐罗盘",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "sparkline": "/components/sparkline/index"
+  }
+}

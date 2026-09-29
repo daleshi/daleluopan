@@ -1,0 +1,13 @@
+page {
+  background: #fbf9f6;
+  color: #1f2430;
+  font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+view,
+text,
+input {
+  box-sizing: border-box;
+}

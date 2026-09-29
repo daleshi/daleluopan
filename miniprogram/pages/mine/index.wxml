@@ -1,0 +1,44 @@
+<view class="page">
+
+  <view class="user-card">
+    <block wx:if="{{user}}">
+      <view class="avatar">{{user.nickname || user.username}}</view>
+      <view class="uinfo">
+        <view class="uname">{{user.nickname || user.username}}</view>
+        <view class="urole">{{user.role === 'admin' ? '管理员' : '普通用户'}}</view>
+      </view>
+      <view class="logout" bindtap="onLogout">退出</view>
+    </block>
+    <block wx:else>
+      <view class="uinfo">
+        <view class="uname">未登录</view>
+        <view class="urole">估值与温度数据无需登录即可查看</view>
+      </view>
+      <view class="login-btn" bindtap="goLogin">登录</view>
+    </block>
+  </view>
+
+  <view class="group">
+    <view class="row" bindtap="onCopyUrl">
+      <text class="rl">服务地址</text>
+      <text class="rv">{{baseUrl}}</text>
+    </view>
+    <view class="row">
+      <text class="rl">数据来源</text>
+      <text class="rv">东方财富 / 雪球基金(Wind) / 有知有行</text>
+    </view>
+    <view class="row">
+      <text class="rl">小程序主体</text>
+      <text class="rv">个人主体（无 web-view 权限）</text>
+    </view>
+  </view>
+
+  <view class="group">
+    <view class="col">
+      <text class="col-title">关于登录</text>
+      <text class="col-text">登录后可使用自选股、加仓记录等需鉴权的功能。若登录提示「未返回 token」，说明线上后端尚未部署 token 返回改动，估值与温度功能不受影响。</text>
+    </view>
+  </view>
+
+  <view class="foot">仅供个人投研记录，不构成投资建议</view>
+</view>

@@ -1,0 +1,14 @@
+<view class="page">
+  <view class="form">
+    <view class="field">
+      <text class="fl">账号</text>
+      <input class="fi" placeholder="请输入账号" value="{{username}}" bindinput="onUser" />
+    </view>
+    <view class="field">
+      <text class="fl">密码</text>
+      <input class="fi" password placeholder="请输入密码" value="{{password}}" bindinput="onPwd" />
+    </view>
+    <button class="submit" type="primary" loading="{{loading}}" bindtap="onSubmit">登录</button>
+    <view class="tip">账号与网页版通用，登录信息仅保存在本机</view>
+  </view>
+</view>

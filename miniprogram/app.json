@@ -1,0 +1,39 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/thermometer/index",
+    "pages/mine/index",
+    "pages/login/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "大乐罗盘",
+    "navigationBarBackgroundColor": "#1a1d24",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#fbf9f6",
+    "backgroundTextStyle": "light",
+    "enablePullDownRefresh": false
+  },
+  "tabBar": {
+    "color": "#78809a",
+    "selectedColor": "#d2601a",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "估值"
+      },
+      {
+        "pagePath": "pages/thermometer/index",
+        "text": "温度"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

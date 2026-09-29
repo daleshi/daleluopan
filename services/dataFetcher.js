@@ -224,7 +224,32 @@ function buildIndexConfig(selectedCodes) {
     const codes = Array.isArray(selectedCodes) && selectedCodes.length > 0
         ? selectedCodes
         : DEFAULT_SELECTED_CODES;
-    return codes.map(key => POOL_MAP[key]).filter(Boolean);
+    let watchlistMap = null; // 惰性读取：仅当出现池外 code 时才读 watchlist
+    return codes.map(key => {
+        const pooled = POOL_MAP[key];
+        if (pooled) return pooled;
+        // 池外指数：从 watchlist 条目动态构造最小配置，纳入历史数据构建
+        // （无 djCode/csCode 映射，估值类字段自然为空，K线/52w/动量正常采集）
+        if (!watchlistMap) {
+            watchlistMap = {};
+            try {
+                for (const item of readIndexWatchlist()) {
+                    watchlistMap[`${item.code}.${item.market}`] = item;
+                }
+            } catch (err) {
+                console.warn('[指数] 构建动态配置读取 watchlist 失败:', err.message);
+            }
+        }
+        const wl = watchlistMap[key];
+        if (!wl || !wl.secid) return null;
+        return {
+            name: wl.name, code: wl.code, secid: wl.secid, market: wl.market,
+            djCode: null, csCode: null,
+            icon: wl.icon, iconBg: wl.iconBg, iconColor: wl.iconColor,
+            category: wl.category || 'custom', desc: wl.desc || '',
+            dynamic: true,
+        };
+    }).filter(Boolean);
 }
 
 function buildDashboardOnlyConfig(selectedCodes) {
@@ -2847,35 +2872,39 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             if (yzyxTemp) temperature = yzyxTemp.temperature;
         }
 
-        // 美股卡片增强：从 indices.json 合并 K 线衍生字段（high52w/low52w/sparkData + 动量）
+        // 全市场 52w 高低回填：行情源（东财/腾讯）未提供 high52w/low52w 时，
+        // 统一从 indices.json 的 K 线统计回填（A股/港股/美股一致）
+        // 美股卡片 additionally 合并 K 线衍生字段（sparkData + 动量）
         // 必须放在 usValuationInfo 处理之前，使其使用增强后的 q.high52w/q.low52w 触发水位推导
         let usEnrich = null;
-        if (idx.market === 'US') {
+        {
             const fullCode = `${idx.code}.${idx.market}`;
             const enriched = indicesByCode.get(fullCode);
             // 关键：若 enriched 被启动体检标记为需要刷新（说明其 historySeries 与实时价严重背离，
             // 一般是 secid 错位的旧数据），不要再用其陈旧字段污染本次响应。
             if (enriched && !enriched._needsForceRefresh) {
-                // 用 indices.json 的 K 线统计覆盖（quotes 接口对美股一般拿不到这些字段）
+                // 用 indices.json 的 K 线统计回填（东财主源不返回 52w 字段，腾讯仅备用时才有）
                 if (enriched.high52w && (!q.high52w || q.high52w <= 0)) q.high52w = enriched.high52w;
                 if (enriched.low52w && (!q.low52w || q.low52w <= 0)) q.low52w = enriched.low52w;
-                // 关键：动量计算优先用实时价 q.price 作为 last，避免 historySeries 末尾陈旧
-                // （东财 K 线对美股可能滞后，但腾讯实时 quotes 一般是准确的）
-                // q.high52w 也参与回撤的 max 比较，避免历史 K 线缺最新高点时 dd=0 的假象
-                const momentum = computeUSMomentum(enriched.historySeries, q.price || null, q.high52w || null);
-                // sparkData 末尾追加实时价（若不重复且实时价有效），让 sparkline 与卡片头部价格连续
-                let sparkData = Array.isArray(enriched.sparkData) ? enriched.sparkData.slice() : null;
-                if (sparkData && sparkData.length > 0 && q.price && q.price > 0) {
-                    const lastSpark = sparkData[sparkData.length - 1];
-                    if (Math.abs(lastSpark - q.price) > 0.01) {
-                        sparkData.push(q.price);
-                        if (sparkData.length > 31) sparkData = sparkData.slice(-31);
+                if (idx.market === 'US') {
+                    // 关键：动量计算优先用实时价 q.price 作为 last，避免 historySeries 末尾陈旧
+                    // （东财 K 线对美股可能滞后，但腾讯实时 quotes 一般是准确的）
+                    // q.high52w 也参与回撤的 max 比较，避免历史 K 线缺最新高点时 dd=0 的假象
+                    const momentum = computeUSMomentum(enriched.historySeries, q.price || null, q.high52w || null);
+                    // sparkData 末尾追加实时价（若不重复且实时价有效），让 sparkline 与卡片头部价格连续
+                    let sparkData = Array.isArray(enriched.sparkData) ? enriched.sparkData.slice() : null;
+                    if (sparkData && sparkData.length > 0 && q.price && q.price > 0) {
+                        const lastSpark = sparkData[sparkData.length - 1];
+                        if (Math.abs(lastSpark - q.price) > 0.01) {
+                            sparkData.push(q.price);
+                            if (sparkData.length > 31) sparkData = sparkData.slice(-31);
+                        }
                     }
+                    usEnrich = {
+                        sparkData,
+                        ...momentum,
+                    };
                 }
-                usEnrich = {
-                    sparkData,
-                    ...momentum,
-                };
             }
         }
 
@@ -2943,7 +2972,7 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             low: q.low || null,
             open: q.open || null,
             prevClose: q.prevClose || null,
-            // 52周高低（美股从腾讯扩展字段获取，兜底来自 indices.json K线统计）
+            // 52周高低（优先行情源原生字段如腾讯扩展字段，兜底来自 indices.json K线统计，全市场适用）
             high52w: q.high52w || null,
             low52w: q.low52w || null,
             // 涨幅区间（美股专属，旧字段保留向后兼容）

@@ -1,0 +1,7 @@
+<view class="ring-wrap">
+  <canvas type="2d" class="ring-canvas"></canvas>
+  <view class="ring-meta">
+    <text class="ring-status">{{status}}</text>
+    <text class="ring-label">{{label}}</text>
+  </view>
+</view>

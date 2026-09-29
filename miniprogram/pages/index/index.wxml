@@ -1,0 +1,73 @@
+<view class="page">
+
+  <view wx:if="{{mkt}}" class="mkt-card">
+    <view class="mkt-left">
+      <view class="mkt-temp" style="color:{{mkt.temperature<30?'#2f9e5e':(mkt.temperature<50?'#d2601a':'#b3352c')}}">
+        {{mkt.temperature}}<text class="mkt-unit">°</text>
+      </view>
+      <view class="mkt-status">{{mkt.status}}</view>
+    </view>
+    <view class="mkt-right">
+      <view class="mkt-trend">{{mkt.trend}}</view>
+      <view class="mkt-time">{{mkt.updateTime}}</view>
+      <view class="mkt-time">更新 {{updateTime}}</view>
+    </view>
+  </view>
+
+  <view class="sec-head">
+    <text class="sec-title">指数估值</text>
+    <text class="sec-hint">点击卡片查看温度详情</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="state">
+    <text>加载中…</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="state state-err">
+    <text>{{error}}</text>
+    <button class="retry-btn" size="mini" bindtap="load">重试</button>
+  </view>
+
+  <view wx:else class="list">
+    <view class="card" wx:for="{{list}}" wx:key="code" data-code="{{item.code}}" bindtap="onTapCard">
+      <view class="card-head">
+        <view class="idx-icon" style="background:{{item.iconBg}};color:{{item.iconColor}}">{{item.icon}}</view>
+        <view class="idx-title">
+          <text class="idx-name">{{item.name}}</text>
+          <text class="idx-code">{{item.code}}</text>
+        </view>
+        <view class="spark-box">
+          <sparkline data="{{item.sparkData}}" color="{{item._sparkColor}}"></sparkline>
+        </view>
+      </view>
+
+      <view class="price-row">
+        <text class="price" style="color:{{item._chgColor}}">{{item._priceText}}</text>
+        <text class="chg" style="color:{{item._chgColor}}">{{item._chgText}}</text>
+        <text class="amt" style="color:{{item._chgColor}}">{{item._amtText}}</text>
+        <view class="tag {{item._evaCls}}">{{item._evaText}}</view>
+      </view>
+
+      <view class="metrics">
+        <view class="metric"><text class="ml">PE</text><text class="mv">{{item._pe}}</text></view>
+        <view class="metric"><text class="ml">PB</text><text class="mv">{{item._pb}}</text></view>
+        <view class="metric"><text class="ml">ROE</text><text class="mv">{{item._roe}}</text></view>
+        <view class="metric"><text class="ml">股息</text><text class="mv">{{item._div}}</text></view>
+        <view class="metric"><text class="ml">温度</text><text class="mv" style="color:{{item._tempColor}}">{{item._tempText}}</text></view>
+      </view>
+
+      <view class="water">
+        <view class="water-top">
+          <text class="wl">PE 百分位</text>
+          <text class="wv">{{item._pePct}}</text>
+        </view>
+        <view class="water-bar">
+          <view class="water-fill" style="width:{{item._pePctW}}%"></view>
+          <view class="water-dot" style="left:{{item._pePctW}}%"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="foot">数据来自东方财富 / 雪球基金(Wind) / 有知有行，仅供个人投研参考</view>
+</view>

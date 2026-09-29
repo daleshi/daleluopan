@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "温度计",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "temp-ring": "/components/temp-ring/index"
+  }
+}

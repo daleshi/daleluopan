@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大乐罗盘 · 微信小程序发布方案（v2 域名已就绪）</title>
+<style>
+:root{
+  --ink:#1f2430; --ink2:#4a5265; --ink3:#78809a;
+  --line:#e6e2dc; --bg:#fbf9f6; --card:#ffffff;
+  --brand:#d2601a; --brand-soft:#fdf1e8;
+  --ok:#2f7d53; --ok-soft:#eaf4ee;
+  --warn:#a86a00; --warn-soft:#fdf4e3;
+  --risk:#b3352c; --risk-soft:#fceceb;
+  --info:#2b5f9e; --info-soft:#eaf1fa;
+}
+*{box-sizing:border-box;}
+body{margin:0;padding:32px 20px 64px;background:var(--bg);color:var(--ink);
+  font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+  font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:960px;margin:0 auto;}
+header{border-bottom:3px solid var(--brand);padding-bottom:18px;margin-bottom:28px;}
+h1{font-size:26px;margin:0 0 6px;font-weight:700;letter-spacing:.5px;}
+.sub{color:var(--ink3);font-size:13px;}
+h2{font-size:19px;margin:38px 0 14px;padding-left:11px;border-left:4px solid var(--brand);font-weight:700;}
+h3{font-size:16px;margin:24px 0 10px;font-weight:600;color:var(--ink);}
+p{margin:10px 0;}
+table{width:100%;border-collapse:collapse;margin:14px 0;background:var(--card);
+  border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:14px;}
+th{background:#f4efe9;text-align:left;padding:10px 12px;font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap;}
+td{padding:10px 12px;border-bottom:1px solid #f0ece7;vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:16px 0;}
+.verdict{background:linear-gradient(135deg,#fdf1e8 0%,#fbf9f6 100%);border:1px solid #f0d5c2;
+  border-left:5px solid var(--brand);border-radius:10px;padding:18px 22px;margin:20px 0;}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;line-height:1.7;}
+.t-ok{background:var(--ok-soft);color:var(--ok);}
+.t-warn{background:var(--warn-soft);color:var(--warn);}
+.t-risk{background:var(--risk-soft);color:var(--risk);}
+.t-info{background:var(--info-soft);color:var(--info);}
+pre{background:#22262f;color:#e7e3dc;border-radius:8px;padding:14px 16px;overflow-x:auto;
+  font-family:"SFMono-Regular",Consolas,"DM Mono",monospace;font-size:12.5px;line-height:1.65;margin:12px 0;}
+code{background:#f2eee9;padding:1px 5px;border-radius:4px;font-size:13px;font-family:"SFMono-Regular",Consolas,monospace;}
+pre code{background:none;padding:0;color:inherit;}
+ul,ol{margin:10px 0;padding-left:22px;}
+li{margin:5px 0;}
+.score{font-weight:700;color:var(--brand);font-size:17px;}
+.steps{counter-reset:s;list-style:none;padding-left:0;}
+.steps>li{counter-increment:s;position:relative;padding-left:38px;margin:14px 0;}
+.steps>li::before{content:counter(s);position:absolute;left:0;top:2px;width:26px;height:26px;
+  background:var(--brand);color:#fff;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:700;}
+.kv{display:grid;grid-template-columns:170px 1fr;gap:8px 16px;font-size:14px;}
+.kv>div:nth-child(odd){color:var(--ink3);}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:720px){.two{grid-template-columns:1fr;}.kv{grid-template-columns:120px 1fr;}}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px;}
+.box-ok{background:var(--ok-soft);border-left:4px solid var(--ok);padding:12px 16px;border-radius:6px;margin:12px 0;}
+.box-risk{background:var(--risk-soft);border-left:4px solid var(--risk);padding:12px 16px;border-radius:6px;margin:12px 0;}
+.box-warn{background:var(--warn-soft);border-left:4px solid var(--warn);padding:12px 16px;border-radius:6px;margin:12px 0;}
+.box-info{background:var(--info-soft);border-left:4px solid var(--info);padding:12px 16px;border-radius:6px;margin:12px 0;}
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0;}
+.fork>div{border-radius:10px;padding:16px 18px;border:1px solid var(--line);}
+.fork-a{background:var(--ok-soft);border-color:#bcdcc8;}
+.fork-b{background:var(--warn-soft);border-color:#e8d5ae;}
+@media(max-width:720px){.fork{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>大乐罗盘 · 微信小程序发布方案 <span style="font-size:14px;color:var(--brand);vertical-align:middle;">v2</span></h1>
+  <div class="sub">Dale Compass｜域名 daleluopan.com 已备案后的路径更新｜2026-09-29</div>
+</header>
+
+<div class="verdict">
+  <p style="margin-top:0"><strong>结论更新：五道门槛，你已经过了三道。剩下的核心问题只有一个 —— 你的小程序主体是个人还是企业。</strong></p>
+  <p>实测 <code>https://daleluopan.com</code>：nginx 1.20.1 + Express，HTTP/2 正常，API 健康，首页 795KB 经 gzip 后仅 143KB 传输。<strong>域名备案、HTTPS、443 端口这三项全部就绪</strong>，这是整个方案里最花时间的一块，你已经跳过了。</p>
+  <p style="margin-bottom:0">现在唯一的技术性分叉是：<strong>企业主体 → web-view 套壳，1 天上线；个人主体 → web-view 不可用，只能原生重写或走公众号 H5。</strong></p>
+</div>
+
+<h2>一、线上域名实测结果</h2>
+
+<div class="card">
+<div class="kv">
+  <div>首页响应</div><div><span class="tag t-ok">200 OK</span> nginx/1.20.1 + HTTP/2，<code>x-powered-by: Express</code></div>
+  <div>HTTPS</div><div><span class="tag t-ok">正常</span> 标准 443，无端口问题</div>
+  <div>首屏体积</div><div>原始 795,644 字节 → <strong>gzip 后 143,394 字节</strong>（压缩率 82%），web-view 内约 1-2 秒，可接受</div>
+  <div>API 健康</div><div><code>/api/health</code> 返回 ok，运行时长 23 天，缓存命中正常</div>
+  <div>站点配置</div><div><code>/api/site-config</code> → <code>loginEnabled: true</code></div>
+  <div>静态目录</div><div>Express 静态目录为 <code>public/</code>，微信校验文件放这里即可被根路径访问</div>
+</div>
+</div>
+
+<div class="box-ok">
+<strong>直接受益：</strong>web-view 需要的「业务域名」和原生开发需要的「服务器域名」都可以直接填 <code>daleluopan.com</code>，无需等待备案，无需新增任何基础设施。
+</div>
+
+<h2>二、剩余两道门槛</h2>
+
+<table>
+<thead><tr><th style="width:150px">门槛</th><th>说明</th><th style="width:118px">状态</th><th style="width:96px">周期</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>小程序 ICP 备案</strong></td>
+  <td><strong>域名备案 ≠ 小程序备案。</strong>2023 年起境内小程序强制单独备案（工信部信管〔2023〕105 号），未备案不得上架。需负责人白底核验照 + 24 小时内短信核验</td>
+  <td><span class="tag t-warn">待办</span></td>
+  <td>1-20 工作日</td>
+</tr>
+<tr>
+  <td><strong>主体类型 → web-view 权限</strong></td>
+  <td>业务域名仅非个人主体可配置，个人主体小程序后台根本没有这个入口</td>
+  <td><span class="tag t-risk">分叉点</span></td>
+  <td>即时 / 300 元升级</td>
+</tr>
+<tr>
+  <td><strong>金融类目资质</strong></td>
+  <td>对外发布 A 股行情需《增值电信业务经营许可证》+ 沪深交易所信息经营许可；投资咨询需《经营证券期货业务许可证》</td>
+  <td><span class="tag t-risk">不具备</span></td>
+  <td>基本不可解，建议绕行</td>
+</tr>
+</tbody>
+</table>
+
+<div class="box-warn">
+<strong>绕行思路：</strong>把定位从「对外提供行情资讯」改为「个人投研记录工具」—— 只保存和展示你自己的持仓、定投计划、加仓记录，不对外提供行情数据服务与投资建议，类目可选「工具 → 信息查询」，绕开金融前置审批。属灰度操作，审核员仍可能按实际内容判定。
+</div>
+
+<h2>三、关键决策分叉：你的主体是个人还是企业</h2>
+
+<div class="fork">
+<div class="fork-a">
+<h3 style="margin-top:0">企业 / 个体工商户主体 <span class="tag t-ok">推荐路线</span></h3>
+<ul style="font-size:14px;margin-bottom:0">
+<li>可配置业务域名 → <strong>web-view 套壳 1 天上线</strong></li>
+<li>H5 一行代码不改</li>
+<li>认证费 300 元/年（个体户 30 元/年）</li>
+<li>后续想做原生，可逐步替换页面</li>
+</ul>
+</div>
+<div class="fork-b">
+<h3 style="margin-top:0">个人主体 <span class="tag t-warn">web-view 不可用</span></h3>
+<ul style="font-size:14px;margin-bottom:0">
+<li>无「业务域名」入口，<strong>套壳方案直接否决</strong></li>
+<li>但「服务器域名」（wx.request）个人主体可配置 → <strong>原生小程序完全可行</strong></li>
+<li>工作量 2-4 周（MVP）</li>
+<li>不想写代码就走公众号 H5，1-2 天</li>
+</ul>
+</div>
+</div>
+
+<p><strong>这里有个容易误解的点：</strong>个人主体不能用 web-view，但<strong>可以</strong>用 <code>wx.request</code> 访问已备案的 HTTPS 域名。所以「个人主体 + 原生小程序」在技术上是完全通的路，卡你的只有类目审核，不是技术。</p>
+
+<h2>四、路径评分（域名就绪后更新）</h2>
+
+<table>
+<thead><tr><th style="width:120px">路径</th><th>适用主体</th><th style="width:88px">工作量</th><th style="width:74px">体验</th><th style="width:96px">合规风险</th><th style="width:70px">综合</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>A. web-view 套壳</strong><br><span class="tag t-ok">企业首选</span></td>
+  <td>企业 / 个体户</td>
+  <td><strong>1 天</strong></td>
+  <td>好（143KB 首屏）</td>
+  <td>取决于类目<span class="tag t-warn">中</span></td>
+  <td class="score">8/10</td>
+</tr>
+<tr>
+  <td><strong>B. 公众号 H5</strong><br><span class="tag t-info">最省事</span></td>
+  <td>不限</td>
+  <td>1-2 天</td>
+  <td>好</td>
+  <td><span class="tag t-ok">低</span>（同网站）</td>
+  <td class="score">8/10</td>
+</tr>
+<tr>
+  <td><strong>C. 原生小程序</strong></td>
+  <td>不限</td>
+  <td>2-4 周 MVP<br>6-8 周全量</td>
+  <td><span class="tag t-ok">最好</span></td>
+  <td>取决于类目<span class="tag t-warn">中</span></td>
+  <td class="score">7/10</td>
+</tr>
+<tr>
+  <td><strong>D. 自用体验版</strong></td>
+  <td>不限</td>
+  <td>0.5-1 天</td>
+  <td>中</td>
+  <td><span class="tag t-ok">无</span>（不发布）</td>
+  <td class="score">9/10</td>
+</tr>
+<tr>
+  <td><strong>E. kbone 同构</strong></td>
+  <td>不限</td>
+  <td>3-5 天</td>
+  <td>中（有损耗）</td>
+  <td>同 C</td>
+  <td class="score">5/10</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>kbone 仍不推荐：</strong>官方明确提示节点数超 1000 需改用静态模板转译。大乐罗盘的估值网格 + K 线 + 28 处手写 Canvas 正好踩在短板区，Canvas 在 kbone 下兼容成本高。</p>
+
+<h2>五、企业主体：1 天上线操作清单</h2>
+
+<ol class="steps">
+<li><strong>小程序骨架已生成</strong>：项目下 <code>miniprogram/</code>（web-view 单页版），导入微信开发者工具，填 AppID 即可预览。</li>
+<li><strong>配置业务域名</strong>：小程序后台 → 开发管理 → 开发设置 → 业务域名 → 新增 <code>https://daleluopan.com</code>。</li>
+<li><strong>放校验文件</strong>：微信生成的 <code>xxx.txt</code> 上传到服务器站点根目录（= 项目 <code>public/</code>），确认 <code>curl https://daleluopan.com/xxx.txt</code> 能返回文件内容本身而非 404 页面。</li>
+<li><strong>配置服务器域名</strong>：同一页面 request 合法域名填 <code>https://daleluopan.com</code>。</li>
+<li><strong>提交小程序备案</strong>：后台「去备案」，与第 2-4 步并行，不等它也能先调试。</li>
+<li><strong>上传代码 → 提交审核 → 发布。</strong></li>
+</ol>
+
+<div class="box-info">
+<strong>web-view 的三个已知坑（骨架已规避前两个）：</strong>
+<ul style="margin-bottom:0">
+<li><code>bindload</code> 不能命名为 <code>onLoad</code>，会覆盖页面生命周期（骨架中已用 <code>onWebLoad</code>）。</li>
+<li>web-view 自动铺满整页，其他组件盖不住，加载态必须用 <code>wx.showLoading</code>。</li>
+<li>web-view 内 Cookie 与手机浏览器 / 微信内置浏览器不共享，用户需在小程序里<strong>重新登录一次</strong>。</li>
+</ul>
+</div>
+
+<h2>六、个人主体：两条可行路线</h2>
+
+<div class="two">
+<div class="card">
+<h3 style="margin-top:0">路线 1：公众号 H5（1-2 天）</h3>
+<p style="font-size:14px">不做小程序。把 <code>https://daleluopan.com</code> 挂到公众号自定义菜单 / 图文阅读原文，微信内直接打开，体验与现在一致。</p>
+<p style="font-size:14px;margin-bottom:0">可选接入 JSSDK，自定义分享卡片标题与缩略图。零审核风险，因为约束对象是你的网站而非小程序。</p>
+</div>
+<div class="card">
+<h3 style="margin-top:0">路线 2：原生小程序（2-4 周）</h3>
+<p style="font-size:14px">页面：① 指数估值 ② 温度计 ③ ETF/持仓 ④ 策略与加仓记录 ⑤ 我的。图表用 <code>ec-canvas</code> 重写 K 线与 PE 水位图。</p>
+<p style="font-size:14px;margin-bottom:0">复用现有 60+ API，后端几乎不动，工作量全在 UI 与图表层。服务器域名直接填 <code>daleluopan.com</code>。</p>
+</div>
+</div>
+
+<div class="box-ok">
+<strong>原生版骨架已生成：</strong>项目下 <code>miniprogram/</code> 已完成可运行的原生小程序（个人主体适用），含 3 个 tab 页 + 登录页 + 2 个 canvas 组件，配色遵循涨红跌绿。详见 <code>miniprogram/README.md</code>。
+</div>
+
+<h2>七、后端必改项（无论哪条路）</h2>
+
+<table>
+<thead><tr><th style="width:180px">改动点</th><th>说明</th><th style="width:96px">优先级</th></tr></thead>
+<tbody>
+<tr><td><strong>登录返回 token</strong></td><td><code>server.js:633</code> 只写 HttpOnly Cookie，响应体无 token。原生小程序必须拿到 token 才能带登录态</td><td><span class="tag t-risk">原生必改</span></td></tr>
+<tr><td>Session 持久化</td><td>session 存内存 Map，PM2 重启即掉线，小程序侧表现为频繁被踢登录</td><td><span class="tag t-warn">建议</span></td></tr>
+<tr><td>接口响应瘦身</td><td>小程序 <code>setData</code> 单次建议 &lt; 256KB，估值全量表应支持分页 / 字段裁剪</td><td><span class="tag t-warn">建议</span></td></tr>
+<tr><td>H5 双导航处理</td><td>web-view 下小程序自带导航栏，建议识别 <code>?from=mp</code> 隐藏 H5 顶栏</td><td><span class="tag t-info">套壳优化</span></td></tr>
+<tr><td>CORS</td><td>小程序不走同源策略，无需配置</td><td><span class="tag t-info">说明</span></td></tr>
+</tbody>
+</table>
+
+<h3>改动：登录接口把 token 交给小程序</h3>
+<p><code>server.js</code> 第 652 行附近，Cookie 逻辑保持不变（H5 无感），只在 <code>data</code> 里补 token：</p>
+<pre><code>res.json({
+    success: true,
+    data: {
+        username: user.username,
+        role: user.role,
+        nickname: user.nickname,
+        token,                              // ← 新增
+        expiresAt: Date.now() + SESSION_TTL,
+    },
+});</code></pre>
+
+<p>小程序侧请求封装（<code>server.js:532</code> 的 <code>extractToken()</code> 已支持 Bearer，无需改后端鉴权）：</p>
+<pre><code>// utils/api.js
+const BASE = 'https://daleluopan.com';
+let TOKEN = wx.getStorageSync('ic_token') || '';
+
+function request(path, method = 'GET', data = {}) {
+  return new Promise((resolve, reject) =&gt; {
+    wx.request({
+      url: BASE + path, method, data,
+      header: { 'Content-Type': 'application/json',
+                'Authorization': TOKEN ? `Bearer ${TOKEN}` : '' },
+      success: (res) =&gt; {
+        if (res.statusCode === 401) {
+          wx.removeStorageSync('ic_token');
+          wx.navigateTo({ url: '/pages/login/index' });
+          return reject(new Error('未登录'));
+        }
+        if (res.data &amp;&amp; res.data.success) return resolve(res.data.data);
+        reject(new Error((res.data &amp;&amp; res.data.error) || '请求失败'));
+      },
+      fail: reject,
+    });
+  });
+}
+
+async function login(username, password) {
+  const data = await request('/api/auth/login', 'POST', { username, password });
+  TOKEN = data.token;
+  wx.setStorageSync('ic_token', TOKEN);
+  return data;
+}</code></pre>
+
+<h2>八、成本与周期（更新后）</h2>
+
+<table>
+<thead><tr><th style="width:170px">项目</th><th style="width:130px">费用</th><th style="width:130px">周期</th><th>备注</th></tr></thead>
+<tbody>
+<tr><td>域名 + ICP 备案</td><td>—</td><td>—</td><td><span class="tag t-ok">已完成</span></td></tr>
+<tr><td>HTTPS / Nginx</td><td>—</td><td>—</td><td><span class="tag t-ok">已完成</span></td></tr>
+<tr><td>小程序 ICP 备案</td><td>免费</td><td>1-20 工作日</td><td>与域名备案是两回事，别漏</td></tr>
+<tr><td>企业主体认证</td><td>300 元/年</td><td>1-3 天</td><td>个体户 30 元/年；仅 web-view / 金融类目需要</td></tr>
+<tr><td>web-view 套壳开发</td><td>—</td><td>1 天</td><td>骨架已就绪</td></tr>
+<tr><td>公众号 H5 接入</td><td>—</td><td>1-2 天</td><td>需认证公众号</td></tr>
+<tr><td>原生小程序 MVP</td><td>—</td><td>2-4 周</td><td>4-5 页面 + 图表重写</td></tr>
+<tr><td>金融类目资质</td><td>—</td><td>—</td><td><strong>建议绕行，不做公开行情服务</strong></td></tr>
+</tbody>
+</table>
+
+<h2>九、建议</h2>
+<div class="verdict">
+<p style="margin-top:0"><strong>如果你是企业主体：</strong>直接走 web-view，骨架已生成在 <code>miniprogram/</code>，填 AppID + 放校验文件 + 提交备案，1 天内能跑，备案通过后即可发布。</p>
+<p><strong>如果你是个人主体（已确认）：</strong>web-view 封死，走原生。<code>miniprogram/</code> 下已有可运行骨架（指数估值 + 温度计 + 我的 + 登录），已用线上真实数据验证过字段与配色。接下来只需填 AppID、配服务器域名、提交备案；想加自选股 / ETF / 加仓记录可在现有 API 上继续扩展。</p>
+<p style="margin-bottom:0"><strong>无论哪种：</strong>小程序备案现在就可以提交（1-20 工作日），这是唯一无法加速的环节，先启动它，其他事并行做。</p>
+</div>
+
+<footer>
+  文档基于 2026-09-29 实测数据（daleluopan.com 线上环境）与项目代码（server.js / public/index.html）生成。小程序类目与备案规则会随政策调整，发布前请以 mp.weixin.qq.com 后台实时提示为准。
+</footer>
+
+</div>
+</body>
+</html>

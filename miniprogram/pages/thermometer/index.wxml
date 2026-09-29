@@ -1,0 +1,85 @@
+<view class="page">
+
+  <view wx:if="{{detail}}" class="detail-card">
+    <block wx:if="{{detail.unsupported}}">
+      <view class="d-name">{{detail.name}}</view>
+      <view class="d-desc">{{detail.message}}</view>
+    </block>
+    <block wx:else>
+      <view class="d-head">
+        <view>
+          <view class="d-name">{{detail.name}}</view>
+          <view class="d-code">{{detail.code}}</view>
+        </view>
+        <view class="d-temp" style="color:{{detail.tempColor}}">{{detail.temperature}}°</view>
+      </view>
+      <view class="d-metrics">
+        <view class="dm"><text class="dml">内在收益率</text><text class="dmv">{{detail.internalYield}}</text></view>
+        <view class="dm"><text class="dml">股息率</text><text class="dmv">{{detail.dividendYield}}</text></view>
+      </view>
+      <view class="d-tags">
+        <text class="dtag" wx:for="{{detail.tags}}" wx:key="*this">{{item}}</text>
+      </view>
+      <view wx:if="{{detail.description}}" class="d-desc">{{detail.description}}</view>
+      <view wx:if="{{detail.industries.length}}" class="d-ind">
+        <view class="d-ind-title">主要行业</view>
+        <view class="ind-row" wx:for="{{detail.industries}}" wx:key="name">
+          <text class="ind-name">{{item.name}}</text>
+          <text class="ind-w">{{item.weight}}%</text>
+        </view>
+      </view>
+      <view wx:if="{{detail.riskNote}}" class="d-risk">{{detail.riskNote}}</view>
+    </block>
+  </view>
+
+  <view wx:if="{{loading}}" class="state">加载中…</view>
+
+  <view wx:elif="{{error}}" class="state state-err">
+    <text>{{error}}</text>
+    <button class="retry-btn" size="mini" bindtap="load">重试</button>
+  </view>
+
+  <block wx:else>
+    <view class="ring-card">
+      <view class="ring-box">
+        <temp-ring value="{{temperature}}" status="{{status}}" label="{{trend}}"></temp-ring>
+      </view>
+      <view class="ring-side">
+        <view class="rs-title">全市场温度</view>
+        <view class="rs-time">{{updateTime}}</view>
+        <view class="rs-trend">{{trend}}</view>
+      </view>
+    </view>
+
+    <view class="bands">
+      <view class="band" wx:for="{{bands}}" wx:key="label">
+        <view class="b-label">{{item.label}}</view>
+        <view class="b-range">{{item.range}}</view>
+        <view class="b-prob">区间概率 {{item.probability}}</view>
+        <view class="b-profit">盈利概率 {{item.profitProbability}}</view>
+      </view>
+    </view>
+
+    <view class="sec-head">
+      <text class="sec-title">指数温度</text>
+      <text class="sec-hint">由低到高</text>
+    </view>
+
+    <view class="tlist">
+      <view class="trow" wx:for="{{list}}" wx:key="code">
+        <view class="t-name">{{item.name}}</view>
+        <view class="t-bar">
+          <view class="t-fill" style="width:{{item.tempW}}%;background:{{item.tempColor}}"></view>
+        </view>
+        <view class="t-val" style="color:{{item.tempColor}}">{{item.tempText}}</view>
+        <view class="t-yield">{{item.internalYield}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{notes.length}}" class="notes">
+      <view class="note" wx:for="{{notes}}" wx:key="*this">{{item}}</view>
+    </view>
+  </block>
+
+  <view class="foot">温度数据来源：有知有行</view>
+</view>

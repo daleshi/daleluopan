@@ -1,7 +1,7 @@
 # watchlist-drag-reorder
 
 ## Requirement: 管理员可拖拽调整 watchlist 卡片顺序
-系统 SHALL 在管理员登录状态下，允许用户通过拖拽方式调整基金总览、ETF 总览、股票总览中的卡片顺序，调整结果 SHALL 持久化到服务端 watchlist。
+系统 SHALL 在管理员登录状态下，允许用户通过拖拽方式调整指数行情、ETF、股票三个页面中的卡片顺序，调整结果 SHALL 持久化到服务端 watchlist。
 
 ### Scenario: 管理员拖拽卡片
 - **WHEN** 用户以管理员身份登录，并在基金/ETF/股票 Tab 中拖拽某张卡片到新位置

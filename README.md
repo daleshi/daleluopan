@@ -15,10 +15,8 @@
 - **严选基金** — 指数基金与主动基金净值、收益率分析
 
 ### 📈 投资决策支持
-- **每日估值** — 基于 Wind 数据的全量指数每日估值表，按低估/适中/高估三档分类
-- **温度计** — 知有行温度计数据，展示全市场温度与各指数温度详情
-- **PE 分析** — PE 百分位全景可视化（10年百分位水位图）+ 估值详细分析
-- **投资策略** — 操作策略表、温度计定投策略、加仓基准与加仓记录管理
+- **估值温度** — 每日估值（Wind 数据，低估/适中/高估三档分类）与有知有行温度计融合的统一页面，支持指数温度详情展开
+- **全市场温度** — 有知有行全市场温度标尺、温带概率与宏观数据（债市温度、国债收益率、GDP、CPI）
 
 ### 🎨 UI 设计
 - 暗色/亮色主题一键切换
@@ -86,9 +84,9 @@ dale-compass/
 │   ├── etf-watchlist.json      #   ETF 关注列表
 │   ├── fund-watchlist.json     #   基金关注列表
 │   ├── datasource-config.json  #   数据源配置
-│   ├── dca-plan.json           #   温度计定投策略
-│   ├── position-benchmark.json #   加仓基准
-│   ├── position-records.json   #   加仓记录
+│   ├── dca-plan.json           #   （已闲置）历史定投策略数据，代码不再读写
+│   ├── position-benchmark.json #   （已闲置）历史加仓基准数据，代码不再读写
+│   ├── position-records.json   #   （已闲置）历史加仓记录数据，代码不再读写
 │   └── users.json              #   用户账户数据
 ├── scripts/
 │   └── package-deploy.sh       #   打包发布脚本
@@ -214,20 +212,6 @@ npm start
 |---|---|---|
 | GET | `/api/daily-eval` | 每日估值全量数据（Wind） |
 | GET | `/api/thermometer/detail?code=` | 单指数温度详情 |
-
-### 投资策略
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/strategy/dca-plans` | 获取定投策略 |
-| POST | `/api/strategy/dca-plans` | 新增/更新策略 |
-| POST | `/api/strategy/dca-plans/delete` | 删除策略 |
-| GET | `/api/position/benchmarks` | 获取加仓基准 |
-| POST | `/api/position/benchmarks` | 新增/更新基准 |
-| POST | `/api/position/benchmarks/delete` | 删除基准 |
-| GET | `/api/position/records` | 获取加仓记录 |
-| POST | `/api/position/records` | 新增记录 |
-| POST | `/api/position/records/delete` | 删除记录 |
 
 ### 运维
 

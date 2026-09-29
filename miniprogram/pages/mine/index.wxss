@@ -1,0 +1,121 @@
+.page {
+  min-height: 100vh;
+  background: #fbf9f6;
+  padding: 20rpx 24rpx 40rpx;
+  box-sizing: border-box;
+}
+
+.user-card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  display: flex;
+  align-items: center;
+  border: 1rpx solid #efeae2;
+}
+
+.avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: #d2601a;
+  color: #ffffff;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+}
+
+.uinfo {
+  flex: 1;
+}
+
+.uname {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #1f2430;
+}
+
+.urole {
+  font-size: 22rpx;
+  color: #a0a6b8;
+  margin-top: 6rpx;
+  line-height: 1.6;
+}
+
+.login-btn {
+  background: #d2601a;
+  color: #ffffff;
+  font-size: 26rpx;
+  padding: 14rpx 34rpx;
+  border-radius: 30rpx;
+  flex-shrink: 0;
+}
+
+.logout {
+  color: #b3352c;
+  font-size: 26rpx;
+  padding: 14rpx 20rpx;
+  flex-shrink: 0;
+}
+
+.group {
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 1rpx solid #efeae2;
+  margin-top: 20rpx;
+  padding: 0 32rpx;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid #f5f2ec;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rl {
+  font-size: 27rpx;
+  color: #1f2430;
+  flex-shrink: 0;
+}
+
+.rv {
+  font-size: 24rpx;
+  color: #78809a;
+  text-align: right;
+  margin-left: 24rpx;
+}
+
+.col {
+  padding: 26rpx 0;
+}
+
+.col-title {
+  font-size: 27rpx;
+  font-weight: 500;
+  color: #1f2430;
+  display: block;
+}
+
+.col-text {
+  font-size: 24rpx;
+  color: #78809a;
+  line-height: 1.8;
+  display: block;
+  margin-top: 12rpx;
+}
+
+.foot {
+  text-align: center;
+  font-size: 21rpx;
+  color: #b8bdcc;
+  padding: 40rpx 20rpx 10rpx;
+}

@@ -1,0 +1,44 @@
+.page {
+  min-height: 100vh;
+  background: #fbf9f6;
+  padding: 40rpx 32rpx;
+  box-sizing: border-box;
+}
+
+.form {
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 1rpx solid #efeae2;
+  padding: 32rpx 32rpx 40rpx;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f2ec;
+}
+
+.fl {
+  width: 110rpx;
+  font-size: 28rpx;
+  color: #1f2430;
+  flex-shrink: 0;
+}
+
+.fi {
+  flex: 1;
+  font-size: 28rpx;
+}
+
+.submit {
+  margin-top: 44rpx;
+  background: #d2601a;
+}
+
+.tip {
+  font-size: 22rpx;
+  color: #a0a6b8;
+  text-align: center;
+  margin-top: 28rpx;
+}

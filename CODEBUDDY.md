@@ -36,7 +36,7 @@ npm run package:deploy  # 生成 dist/dale-compass-YYYYMMDD-HHMMSS.tar.gz
 
 ## 项目概述
 
-**大乐罗盘 (Dale Compass)** 是一个面向个人投资者的 A 股价值分析系统，提供指数估值、股票行情、ETF 跟踪、基金管理和投资策略等一站式分析工具。
+**大乐罗盘 (Dale Compass)** 是一个面向个人投资者的 A 股价值分析系统，提供指数估值、股票行情、ETF 跟踪和基金管理等一站式分析工具。
 
 - **项目名称**: `dale-compass`
 - **版本**: 1.0.0
@@ -65,7 +65,7 @@ npm run package:deploy  # 生成 dist/dale-compass-YYYYMMDD-HHMMSS.tar.gz
 
 ```
 daleluopan/
-├── server.js                    # 主入口（~1979行）Express 服务 + 全部 API 路由 + 认证系统 + 缓存层
+├── server.js                    # 主入口（~1972行）Express 服务 + 全部 API 路由 + 认证系统 + 缓存层
 ├── package.json                 # 项目配置（5 个依赖）
 ├── ecosystem.config.js          # PM2 进程管理配置
 ├── CODEBUDDY.md                 # 本文件 — 项目规范说明
@@ -76,7 +76,7 @@ daleluopan/
 │   ├── fundFetcher.js          #   基金数据采集（~712行）
 │   └── etfFetcher.js           #   ETF 数据采集（~600行）
 ├── public/                      # 前端静态资源
-│   ├── index.html              #   单文件 SPA（~9509行，包含全部 HTML+CSS+JS）
+│   ├── index.html              #   单文件 SPA（~9894行，包含全部 HTML+CSS+JS）
 │   ├── about/                  #   关于页面图片资源
 │   ├── favicon.svg             #   SVG 图标
 │   ├── favicon-32.png          #   32x32 图标
@@ -90,9 +90,9 @@ daleluopan/
 │   ├── etf-watchlist.json      #   ETF 关注列表
 │   ├── fund-watchlist.json     #   基金关注列表
 │   ├── datasource-config.json  #   数据源启用/禁用配置
-│   ├── dca-plan.json           #   温度计定投策略
-│   ├── position-benchmark.json #   加仓基准
-│   ├── position-records.json   #   加仓记录
+│   ├── dca-plan.json           #   （已闲置）历史定投策略数据，代码不再读写
+│   ├── position-benchmark.json #   （已闲置）历史加仓基准数据，代码不再读写
+│   ├── position-records.json   #   （已闲置）历史加仓记录数据，代码不再读写
 │   ├── site-config.json        #   站点配置（登录开关等）
 │   ├── site-stats.json         #   站点访问统计
 │   ├── users.json              #   用户账户数据
@@ -162,10 +162,11 @@ Express Server (server.js)
 
 ### 前端架构
 
-- **单文件 SPA**: `public/index.html`（~9509 行）包含全部 HTML 结构 + CSS 样式 + JavaScript 逻辑
+- **单文件 SPA**: `public/index.html`（~9894 行）包含全部 HTML 结构 + CSS 样式 + JavaScript 逻辑
 - **零构建依赖**: 无 React/Vue/Webpack，纯原生实现
-- **Tab 导航**: 通过 `data-tab` 属性控制页面切换
-- **页面模块**: 基金总览 / ETF 总览 / 股票总览 / 每日估值 / 温度计 / PE 分析 / 投资策略 / 数据源管理 / 用户管理
+- **Tab 导航**: 通过 `data-tab` 属性控制页面切换；桌面顶部导航与移动端菜单由 `NAV_TABS` 注册表统一渲染
+- **页面模块**: 基金总览 / ETF 总览 / 股票总览 / 估值温度（每日估值 + 有知有行温度计合并页）/ 公众号 / 数据源管理 / 用户管理
+- **统一页面骨架**: 各主 tab 采用 page-header（标题 + 副标题 + 操作区）+ 卡片化内容区
 - **状态管理**: 模块级全局变量（如 `indexData`, `stockData`, `etfData`, `activeFundLoaded` 等）
 - **主题系统**: CSS 变量 + `data-theme` 属性（深色/浅色一键切换）
 - **实时刷新**: 交易时段内自动轮询（3-5 秒随机间隔），基于 `isTradingHours()` 判断
@@ -257,19 +258,6 @@ Express Server (server.js)
 | GET | `/api/thermometer/detail?code=` | 单指数温度详情 |
 | POST | `/api/thermometer/refresh` | 强制刷新有知有行温度计缓存（管理员）|
 
-### 投资策略
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET/POST | `/api/strategy/dca-plans` | 温度计定投策略 CRUD |
-| GET/POST | `/api/position/benchmarks` | 加仓基准管理 |
-| GET/POST | `/api/position/records` | 加仓记录管理 |
-| GET/POST | `/api/strategy/etf-grid-plans` | ETF 网格策略 CRUD（等比对称网格）|
-| POST | `/api/strategy/etf-grid-plans/delete` | 删除网格策略（管理员）|
-| POST | `/api/strategy/etf-grid-plans/reset-base-price` | 重置网格中线（管理员）|
-| GET/POST | `/api/strategy/etf-grid-holdings` | ETF 网格成交记录 CRUD |
-| POST | `/api/strategy/etf-grid-holdings/delete` | 删除网格成交记录（管理员）|
-| GET | `/api/strategy/etf-grid-recommendations` | 网格实时推荐视图（缓存交易 30s / 休市 30min）|
-
 ### 运维
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -282,14 +270,14 @@ Express Server (server.js)
 
 ## 关键文件说明
 
-### `server.js`（~1979 行）
+### `server.js`（~1972 行）
 后端核心，包含：
 - Express 中间件配置（compression、静态文件、JSON 解析）
 - 站点 PV/UV 访问统计（内存缓存 + 30 秒定期磁盘持久化）
 - 数据源配置读写（JSON 文件 + 白名单校验）
 - 智能缓存层（内存→磁盘→异步刷新，交易时段感知 TTL）
 - PBKDF2 密码认证系统
-- 全部 API 路由（指数/基金/股票/ETF/估值/策略/管理）
+- 全部 API 路由（指数/基金/股票/ETF/估值/管理）
 - SPA fallback（非 API 路径均返回 index.html）
 - 两阶段启动（快速磁盘缓存 + 后台并行刷新）
 
@@ -321,11 +309,11 @@ ETF 数据采集：
 - 分时数据 + 多周期 K 线（1y/3y/5y）
 - 冷却机制 + 并发限制
 
-### `public/index.html`（~9509 行）
+### `public/index.html`（~9894 行）
 纯原生单文件 SPA，包含：
-- CSS 样式（~4050 行）: 暗色/亮色主题、渐变卡片、毛玻璃效果、响应式设计
-- HTML 结构: Tab 导航、数据面板、弹窗、搜索框、表单
-- JavaScript 逻辑（~5450 行）: 数据获取、UI 渲染、图表绘制、交易时段轮询、认证流程
+- CSS 样式（~3400 行）: 暗色/亮色主题、渐变卡片、毛玻璃效果、响应式设计、统一页面骨架与组件规范
+- HTML 结构: 统一页头（page-header）、Tab 导航（注册表渲染）、数据面板、弹窗、搜索框
+- JavaScript 逻辑（~5400 行）: 数据获取、UI 渲染、图表绘制、交易时段轮询、认证流程、NAV_TABS 导航注册表
 
 ---
 
@@ -388,7 +376,7 @@ bash deploy.sh <安装包路径>
 1. **网络要求**: 服务器需访问外网金融数据源（eastmoney、danjuanfunds、youzhiyouxing 等）
 2. **端口放行**: 确保防火墙和安全组已放行 3200 端口
 3. **数据备份**: `data/` 目录下的 JSON 文件是运行态数据，升级时务必备份
-4. **各类上限**: 关注列表最多 20 项，用户数上限 100，加仓记录上限 500 条
-5. **单文件前端**: `index.html` 约 9500 行，修改时建议按模块注释定位目标区域
+4. **各类上限**: 关注列表最多 20 项，用户数上限 100
+5. **单文件前端**: `index.html` 约 9900 行，修改时建议按模块注释定位目标区域
 6. **无数据库**: 所有持久化通过 JSON 文件，并发写入场景需注意文件锁
 7. **美股指数 secid 陷阱**: 东方财富内部 `100.NDX` 实际指向"纳斯达克综合指数 (IXIC)" 而非纳斯达克 100；正确的纳斯达克 100 是 `100.NDX100`。腾讯 K 线接口 `us.NDX`（带点）2026-06 起也错位指向德尼克斯投资 (DX.N)，必须使用 `usNDX`（不带点）。新增美股指数前请用东方财富搜索 API（`searchapi.eastmoney.com/api/suggest/get?input=<name>`）验证 secid 与 f14 中文名一致，并对腾讯 K 线代码二次抓取确认。后端 `fetchRealtimeQuotesEastmoney()` 已加 name 自检，错位响应会被自动丢弃并告警 `[美股映射]`。
