@@ -12,6 +12,7 @@ const {
     searchIndex, readIndexWatchlist, writeIndexWatchlist, fetchIndexQuotesForWatchlist,
     getKlineSourceHealthSnapshot, startKlineSourceHealthMonitor,
     fetchIndexHistory,
+    selfHealWatchlistSecids,
 } = require('./services/dataFetcher');
 const {
     fetchAllStockData, readWatchlist, writeWatchlist, ensureWatchlist, isTradingHours,
@@ -306,6 +307,70 @@ function writeDiskCache(key, data) {
 const _smartCache = {};  // key → { data, time }
 const _smartFetchPromises = {};  // key → Promise (并发去重)
 
+// ============================================================
+// 数据源模式：legacy（请求时采集，原逻辑）/ db（只读采集进程产出的文件）
+// 开关位于 data/site-config.json 的 dataSourceMode，管理端可切换，结果缓存 2 秒
+// ============================================================
+const readModel = require('./services/db/readModel');
+const dbRepo = require('./services/db/repo');
+let _modeCache = { value: 'legacy', at: 0 };
+
+function getDataSourceMode() {
+    // 环境变量优先（测试用）；正常运行以 site-config.json 为准
+    if (process.env.DATA_SOURCE_MODE === 'db' || process.env.DATA_SOURCE_MODE === 'legacy') return process.env.DATA_SOURCE_MODE;
+    if (Date.now() - _modeCache.at > 2000) {
+        const m = readSiteConfig().dataSourceMode;
+        _modeCache = { value: m === 'db' ? 'db' : 'legacy', at: Date.now() };
+    }
+    return _modeCache.value;
+}
+
+const isDbMode = () => getDataSourceMode() === 'db';
+
+// 快照与关注清单对齐：删除、排序即时生效（不必等采集进程下一轮）
+const WATCHLIST_ALIGN = {
+    'index-quotes': { field: 'indices', keys: () => readIndexWatchlist().map(i => `${i.code}.${i.market}`), itemKey: i => i.code },
+    indices: { field: 'indices', keys: () => readIndexWatchlist().map(i => `${i.code}.${i.market}`), itemKey: i => i.code },
+    stocks: { field: 'stocks', keys: () => readWatchlist().map(s => `${s.code}.${s.market}`), itemKey: i => i.code },
+    etfs: { field: 'etfs', keys: () => readEtfWatchlist().map(e => `${e.code}.${e.market}`), itemKey: i => i.code },
+    'active-funds': { field: 'funds', keys: () => readFundWatchlist().map(f => String(f.code)), itemKey: i => String(i.code) },
+};
+
+function alignToWatchlist(key, data) {
+    const rule = WATCHLIST_ALIGN[key];
+    if (!rule || !data || !Array.isArray(data[rule.field])) return { data, missing: 0 };
+    let keys;
+    try { keys = rule.keys(); } catch (e) { return { data, missing: 0 }; }
+    const byKey = new Map(data[rule.field].map(i => [rule.itemKey(i), i]));
+    const list = keys.map(k => byKey.get(k)).filter(Boolean);
+    return { data: { ...data, [rule.field]: list }, missing: keys.length - list.length };
+}
+
+const _dbSnapTime = {}; // key → 快照时间（用于响应中的 dataTime）
+const _dbFallbackWarned = {};
+
+/**
+ * db 模式下取快照；forceRefresh 且快照缺少关注清单中的标的时（刚添加），最多等待 10 秒采集进程补齐
+ * 返回 null 表示采集进程尚未产出该数据
+ */
+async function getDbSnapshot(key, forceRefresh) {
+    const deadline = Date.now() + (forceRefresh ? 10000 : 0);
+    for (;;) {
+        const snap = readModel.getSnapshot(key);
+        if (!snap) return null;
+        const aligned = alignToWatchlist(key, snap.data);
+        if (aligned.missing === 0 || Date.now() >= deadline) {
+            _dbSnapTime[key] = snap.time;
+            return aligned.data;
+        }
+        await new Promise(r => setTimeout(r, 500));
+    }
+}
+
+function dataMeta(key) {
+    return { dataSourceMode: getDataSourceMode(), dataTime: _dbSnapTime[key] ? new Date(_dbSnapTime[key]).toISOString() : (_smartCache[key] ? new Date(_smartCache[key].time).toISOString() : null) };
+}
+
 /**
  * 智能缓存获取
  * @param {string} key 缓存键
@@ -314,6 +379,17 @@ const _smartFetchPromises = {};  // key → Promise (并发去重)
  * @returns {Promise<any>} 缓存数据
  */
 async function smartCacheGet(key, fetcher, forceRefresh = false) {
+    // db 模式：只读采集进程产出的快照，请求线程不调用外部数据源
+    if (isDbMode() && readModel.hasKey(key)) {
+        const data = await getDbSnapshot(key, forceRefresh);
+        if (data) return data;
+        if (!_dbFallbackWarned[key]) {
+            _dbFallbackWarned[key] = true;
+            console.warn(`[读库] ${key} 暂无采集快照，本次回退原有逻辑（采集进程是否在运行？）`);
+        }
+    }
+    delete _dbSnapTime[key];
+
     const now = Date.now();
     const ttl = getCacheTTL(key);
 
@@ -433,28 +509,7 @@ async function getCachedIndexQuotes(forceRefresh = false) {
 
 // 每日估值缓存
 async function getCachedDailyEval(forceRefresh = false) {
-    return smartCacheGet('daily-eval', async () => {
-        const { fetchDanjuanEvaluation } = require('./services/dataFetcher');
-        const evaMap = await fetchDanjuanEvaluation();
-        if (!evaMap || Object.keys(evaMap).length === 0) {
-            throw new Error('估值数据暂不可用');
-        }
-        const evaOrder = { low: 0, mid: 1, high: 2 };
-        const items = Object.entries(evaMap).map(([code, v]) => ({
-            code,
-            name: v.name || code,
-            pe: v.pe, pb: v.pb,
-            pePercentile: v.pePercentile, pbPercentile: v.pbPercentile,
-            roe: v.roe, dividend: v.dividend,
-            evaType: v.evaType, peg: v.peg, pbFlag: v.pbFlag, date: v.date,
-        })).sort((a, b) => {
-            const oa = evaOrder[a.evaType] ?? 1;
-            const ob = evaOrder[b.evaType] ?? 1;
-            if (oa !== ob) return oa - ob;
-            return (a.pePercentile ?? 50) - (b.pePercentile ?? 50);
-        });
-        return { items, updateDate: items[0]?.date || null, total: items.length, source: '蛋卷基金(Wind)' };
-    }, forceRefresh);
+    return smartCacheGet('daily-eval', () => require('./services/dailyEval').fetchDailyEval(), forceRefresh);
 }
 
 // ============================================================
@@ -765,19 +820,27 @@ app.post('/api/admin/users/update', requireAdmin, (req, res) => {
 
         if (role && ['admin', 'user'].includes(role)) user.role = role;
         if (nickname && typeof nickname === 'string') user.nickname = nickname.trim().slice(0, 20);
+        let passwordChanged = false;
         if (password && typeof password === 'string' && password.length >= 6) {
             const { salt, hash } = hashPassword(password);
             user.salt = salt;
             user.passwordHash = hash;
+            passwordChanged = true;
         }
         writeUsers(users);
         // 如果修改了角色，需要更新该用户的 session
+        // 如果修改了密码，让该用户的其他会话失效（强制重新登录），保证新密码立即生效；
+        // 但保留发起本次操作的管理员自己的会话，否则改自己密码后当前操作会被立即登出
+        const operatorToken = extractToken(req);
+        let kickedCount = 0;
         for (const [token, session] of sessions) {
-            if (session.username === username) {
-                session.role = user.role;
-            }
+            if (session.username !== username) continue;
+            if (!passwordChanged) { session.role = user.role; continue; }
+            if (token === operatorToken) continue;
+            sessions.delete(token);
+            kickedCount++;
         }
-        console.log(`[用户] 管理员更新用户: ${username}`);
+        console.log(`[用户] 管理员更新用户: ${username}${passwordChanged ? `（密码已重置，其他会话 ${kickedCount} 个已失效）` : ''}`);
         res.json({ success: true, data: { users: users.map(u => ({ username: u.username, role: u.role, nickname: u.nickname, createdAt: u.createdAt })) } });
     } catch (err) {
         console.error('[API] /api/admin/users/update 错误:', err.message);
@@ -863,6 +926,7 @@ app.get('/api/indices', async (req, res) => {
             success: true,
             data: responseData,
             trading: isTradingHours(),
+            ...dataMeta('indices'),
         });
     } catch (err) {
         console.error('[API] /api/indices 错误:', err.message);
@@ -892,8 +956,125 @@ app.get('/api/health', (req, res) => {
         lastFetch: cachedData ? new Date(lastFetchTime).toISOString() : null,
         uptime: process.uptime().toFixed(0) + 's',
         trading: isTradingHours(),
+        dataSourceMode: getDataSourceMode(),
         cache: cacheStatus,
     });
+});
+
+// ============================================================
+// 本地历史库查询（db 模式 K 线、估值 / 温度历史）
+// ============================================================
+const INDEX_RANGE_DAYS = { '1y': 252, '3y': 756, '5y': 1260, '10y': 2520 };
+
+/** 从历史库取最近 n 条日 K；库不可用或数据不足返回 null */
+async function klinesFromDb(type, fullCode, n) {
+    try {
+        const db = await readModel.getDb();
+        if (!db) return null;
+        const inst = dbRepo.findByFullCode(db, type, fullCode);
+        if (!inst) return null;
+        const rows = dbRepo.all(db, `SELECT trade_date AS date, open, high, low, close, volume, amount,
+                change_pct AS changePercent, change_amt AS changeAmount, source
+            FROM kline_daily WHERE instrument_id = ? ORDER BY trade_date DESC LIMIT ?`, [inst.id, n]).reverse();
+        if (rows.length < 2) return null;
+        const source = rows[rows.length - 1].source;
+        return { series: rows.map(({ source: _s, ...r }) => r), source };
+    } catch (err) {
+        console.warn(`[读库] K 线查询失败(${fullCode}):`, err.message);
+        return null;
+    }
+}
+
+const VALUATION_RANGE_YEARS = { '1y': 1, '3y': 3, '5y': 5, '10y': 10, all: 100 };
+const VALUATION_SOURCE_LABEL = {
+    danjuan: '蛋卷基金（历史为周线）', csindex: '中证指数官网', eastmoney_dc: '东方财富数据中心', youzhiyouxing: '有知有行',
+};
+
+/**
+ * GET /api/valuation/history?type=index|stock|etf&code=000300.SH&metric=pe|pb|temperature&range=1y|3y|5y|10y|all
+ * ETF 返回其跟踪指数的估值；无估值数据源的标的返回 supported:false
+ */
+app.get('/api/valuation/history', async (req, res) => {
+    const type = String(req.query.type || 'index');
+    const code = String(req.query.code || '').trim();
+    const metric = String(req.query.metric || 'pe');
+    const range = String(req.query.range || '10y');
+    if (!['index', 'stock', 'etf'].includes(type) || !/^[A-Za-z0-9._-]{2,20}$/.test(code)
+        || !['pe', 'pb', 'temperature'].includes(metric) || !VALUATION_RANGE_YEARS[range]) {
+        return res.status(400).json({ success: false, error: '参数错误' });
+    }
+    try {
+        const db = await readModel.getDb();
+        if (!db) return res.json({ success: true, data: { supported: false, code, metric, message: '历史库尚未生成' } });
+        let inst = dbRepo.findByFullCode(db, type, code);
+        if (!inst) return res.json({ success: true, data: { supported: false, code, metric, message: '暂无该标的的历史记录' } });
+        let trackingIndex = null;
+        if (type === 'etf') {
+            const idx = inst.tracking_instrument_id ? dbRepo.getInstrumentById(db, inst.tracking_instrument_id) : null;
+            if (!idx) return res.json({ success: true, data: { supported: false, code, metric, message: '暂无估值数据（未关联跟踪指数）' } });
+            trackingIndex = { code: `${idx.code}.${idx.market}`, name: idx.name };
+            inst = idx;
+        }
+        if (metric !== 'temperature' && (!inst.valuation_source || inst.valuation_source === 'none')) {
+            return res.json({ success: true, data: { supported: false, code, metric, trackingIndex, message: '暂无估值数据' } });
+        }
+        const years = VALUATION_RANGE_YEARS[range];
+        const from = new Date(Date.now() - years * 365.25 * 86400000).toISOString().slice(0, 10);
+        const points = dbRepo.valuationRange(db, inst.id, metric, range === 'all' ? '0000-00-00' : from);
+        const firstEver = dbRepo.get(db, `SELECT MIN(trade_date) AS d FROM valuation_daily WHERE instrument_id = ? AND ${metric === 'temperature' ? 'temperature' : metric} IS NOT NULL`, [inst.id]);
+        const bands = metric === 'temperature' ? null : dbRepo.getBands(db, inst.id, metric);
+        const source = points.length ? points[points.length - 1].source : (metric === 'temperature' ? 'youzhiyouxing' : inst.valuation_source);
+        res.json({
+            success: true,
+            data: {
+                supported: points.length > 0,
+                code, metric, range, trackingIndex,
+                name: inst.name,
+                source, sourceLabel: VALUATION_SOURCE_LABEL[source] || source || '',
+                since: firstEver ? firstEver.d : null,
+                points: points.map(p => ({ date: p.date, value: p.value, granularity: p.granularity, isFallback: !!p.isFallback })),
+                bands: bands && (bands.p30 != null || bands.p50 != null) ? { p30: bands.p30, p50: bands.p50, p70: bands.p70 } : null,
+                message: points.length ? null : (metric === 'temperature' ? '暂无温度数据' : '暂无估值数据'),
+            },
+        });
+    } catch (err) {
+        console.error('[API] /api/valuation/history 错误:', err.message);
+        res.status(500).json({ success: false, error: '估值历史查询失败: ' + err.message });
+    }
+});
+
+/** GET /api/market-status - 各市场交易状态（前端据此决定是否轮询） */
+app.get('/api/market-status', (req, res) => {
+    res.json({ success: true, data: require('./services/marketHours').getMarketStatus() });
+});
+
+/** GET /api/collector/status - 采集进程与历史库状态 */
+app.get('/api/collector/status', async (req, res) => {
+    try {
+        const st = readModel.status();
+        const db = await readModel.getDb();
+        let summary = null;
+        if (db) {
+            const count = (t) => dbRepo.get(db, `SELECT COUNT(*) AS n FROM ${t}`).n;
+            summary = {
+                instruments: dbRepo.all(db, 'SELECT type, status, COUNT(*) AS n FROM instruments GROUP BY type, status'),
+                klineRows: count('kline_daily'), navRows: count('fund_nav_daily'), valuationRows: count('valuation_daily'),
+                recentRuns: dbRepo.recentRuns(db, 15),
+            };
+        }
+        const hb = st.latest && st.latest.collector && st.latest.collector.heartbeatAt;
+        res.json({
+            success: true,
+            data: {
+                dataSourceMode: getDataSourceMode(),
+                collectorAlive: !!hb && (Date.now() - new Date(hb).getTime()) < 90 * 1000,
+                ...st,
+                summary,
+            },
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 /**
@@ -929,6 +1110,7 @@ app.get('/api/indices/quotes', async (req, res) => {
             success: true,
             data,
             trading: isTradingHours(),
+            ...dataMeta('index-quotes'),
         });
     } catch (err) {
         console.error('[API] /api/indices/quotes 错误:', err.message);
@@ -949,6 +1131,19 @@ app.get('/api/indices/:code/klines', async (req, res) => {
         return res.status(400).json({ success: false, error: '非法 code 参数' });
     }
     try {
+        // 0) db 模式：优先读本地历史库（有数据即返回，否则回退原有 failover 链）
+        if (isDbMode()) {
+            const rows = await klinesFromDb('index', fullCode, INDEX_RANGE_DAYS[req.query.range] || INDEX_RANGE_DAYS['1y']);
+            if (rows) {
+                return res.json({
+                    success: true,
+                    data: {
+                        code: fullCode, historySeries: rows.series, source: `db:${rows.source}`, sourceLabel: '本地历史库',
+                        stale: false, fetchedAt: new Date().toISOString(),
+                    },
+                });
+            }
+        }
         // 1) 优先查 POOL_MAP（候选池内有完整 cfg）
         let cfg = POOL_MAP[fullCode];
         // 2) 否则从 watchlist 动态构造（用户搜索添加的非主流指数）
@@ -1083,19 +1278,25 @@ app.post('/api/indices/add', requireAuth, (req, res) => {
             return res.status(400).json({ success: false, error: '最多支持关注20个指数' });
         }
         // 从 POOL_MAP 获取图标信息，否则自动生成
+        // 跨市场查候选池：即使入参 market 与池内不一致（如中证系被判成 HI），也能校正并带上 djCode
         const poolKey = `${code}.${market}`;
-        const poolCfg = POOL_MAP[poolKey];
+        const poolCfg = POOL_MAP[poolKey] || FULL_INDEX_POOL.find(cfg => cfg.code === code);
+        const finalMarket = poolCfg?.market || market;
+        const finalSecid = poolCfg?.secid || secid;
         const preset = INDEX_ICON_PRESETS[indices.length % INDEX_ICON_PRESETS.length];
         const icon = poolCfg?.icon || name.replace(/[A-Za-z0-9\s指数]/g, '').slice(0, 2) || code.slice(0, 3);
         const newIndex = {
             name,
             code,
-            market,
-            secid,
+            market: finalMarket,
+            secid: finalSecid,
+            // 持久化估值映射：后续行情接口可直接用，不再依赖运行时候选池命中
+            djCode: poolCfg?.djCode || null,
+            csCode: poolCfg?.csCode || null,
             icon,
             iconBg: poolCfg?.iconBg || preset.bg,
             iconColor: poolCfg?.iconColor || preset.color,
-            category: category || (market === 'US' ? 'broad-us' : market === 'HI' ? 'broad-hk' : 'broad-cn'),
+            category: category || (finalMarket === 'US' ? 'broad-us' : finalMarket === 'HI' ? 'broad-hk' : 'broad-cn'),
         };
         indices.push(newIndex);
         writeIndexWatchlist(indices);
@@ -1105,7 +1306,7 @@ app.post('/api/indices/add', requireAuth, (req, res) => {
         console.log(`[指数] 添加关注: ${name}(${code})`);
         res.json({ success: true, data: { index: newIndex, total: indices.length } });
         // 异步预热新指数历史数据（fire-and-forget，不阻塞响应；失败由常规刷新周期自愈）
-        fetchIndexHistory({ name, code, market, secid }, { range: '10y' })
+        fetchIndexHistory({ name, code, market: finalMarket, secid: finalSecid }, { range: '10y' })
             .then(r => console.log(`[指数] 新指数历史数据预热完成: ${name}(${code})，K线 ${r?.klines?.length || 0} 条`))
             .catch(err => console.warn(`[指数] 新指数历史数据预热失败: ${name}(${code}):`, err.message));
     } catch (err) {
@@ -1125,7 +1326,10 @@ app.post('/api/indices/remove', requireAuth, (req, res) => {
             return res.status(400).json({ success: false, error: '缺少指数代码' });
         }
         const indices = readIndexWatchlist();
-        const idx = indices.findIndex(i => i.code === code);
+        // 归一化：前端可能传带市场后缀的 code（如 000300.SH），watchlist 中存的是裸 code
+        const normalize = c => String(c || '').replace(/\.[A-Z]{2,5}$/i, '');
+        const target = normalize(code);
+        const idx = indices.findIndex(i => normalize(i.code) === target);
         if (idx === -1) {
             return res.status(404).json({ success: false, error: '该指数不在关注列表中' });
         }
@@ -1153,12 +1357,19 @@ app.post('/api/indices/reorder', requireAdmin, (req, res) => {
             return res.status(400).json({ success: false, error: '缺少 codes 数组' });
         }
         const indices = readIndexWatchlist();
-        const map = new Map(indices.map(i => [i.code, i]));
-        const reordered = codes.map(c => map.get(c)).filter(Boolean);
+        // 归一化：前端可能发送带市场后缀的 code（如 000300.SH），watchlist 中存的是裸 code
+        const normalize = c => String(c || '').replace(/\.[A-Z]{2,5}$/i, '');
+        const normalizedCodes = codes.map(normalize);
+        const map = new Map(indices.map(i => [normalize(i.code), i]));
+        const reordered = normalizedCodes.map(c => map.get(c)).filter(Boolean);
         // 追加 codes 中未包含的项（防止遗漏）
-        const codesSet = new Set(codes);
-        indices.forEach(i => { if (!codesSet.has(i.code)) reordered.push(i); });
+        const codesSet = new Set(normalizedCodes);
+        indices.forEach(i => { if (!codesSet.has(normalize(i.code))) reordered.push(i); });
         writeIndexWatchlist(reordered);
+        // 失效 index-quotes 缓存并异步刷新，否则刷新页面仍返回缓存中的旧顺序
+        delete _smartCache['index-quotes'];
+        getCachedIndexQuotes(true).catch(err => console.warn('[指数] 排序后行情缓存刷新失败:', err.message));
+        console.log(`[指数] 重排关注顺序: ${reordered.map(i => i.code).join(', ')}`);
         res.json({ success: true, data: { total: reordered.length } });
     } catch (err) {
         console.error('[API] /api/indices/reorder 错误:', err.message);
@@ -1187,7 +1398,7 @@ function readSiteConfig() {
 
 function writeSiteConfig(cfg) {
     ensureDataDir();
-    fs.writeFileSync(SITE_CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf8');
+    require('./services/db/atomicWrite').writeJsonAtomic(SITE_CONFIG_FILE, cfg, true);
 }
 
 /**
@@ -1195,19 +1406,24 @@ function writeSiteConfig(cfg) {
  */
 app.get('/api/site-config', (req, res) => {
     const cfg = readSiteConfig();
-    res.json({ success: true, data: { loginEnabled: cfg.loginEnabled } });
+    res.json({ success: true, data: { loginEnabled: cfg.loginEnabled, dataSourceMode: cfg.dataSourceMode === 'db' ? 'db' : 'legacy' } });
 });
 
 /**
  * POST /api/site-config - 更新站点配置（仅管理员）
- * Body: { loginEnabled: boolean }
+ * Body: { loginEnabled?: boolean, dataSourceMode?: 'legacy' | 'db' }
  */
 app.post('/api/site-config', requireAdmin, (req, res) => {
     try {
-        const { loginEnabled } = req.body || {};
+        const { loginEnabled, dataSourceMode } = req.body || {};
         const cfg = readSiteConfig();
         if (typeof loginEnabled === 'boolean') {
             cfg.loginEnabled = loginEnabled;
+        }
+        if (dataSourceMode === 'legacy' || dataSourceMode === 'db') {
+            if (cfg.dataSourceMode !== dataSourceMode) console.log(`[站点配置] 数据源模式: ${cfg.dataSourceMode || 'legacy'} → ${dataSourceMode}`);
+            cfg.dataSourceMode = dataSourceMode;
+            _modeCache.at = 0;
         }
         writeSiteConfig(cfg);
         console.log(`[站点配置] 登录功能: ${cfg.loginEnabled ? '开启' : '关闭'}`);
@@ -1276,6 +1492,7 @@ app.get('/api/daily-eval', async (req, res) => {
         res.json({
             success: true,
             data,
+            ...dataMeta('daily-eval'),
         });
     } catch (err) {
         console.error('[API] /api/daily-eval 错误:', err.message);
@@ -1386,6 +1603,7 @@ app.get('/api/active-funds', async (req, res) => {
         res.json({
             success: true,
             data: responseData,
+            ...dataMeta('active-funds'),
         });
     } catch (err) {
         console.error('[API] /api/active-funds 错误:', err.message);
@@ -1527,6 +1745,7 @@ app.get('/api/stocks', async (req, res) => {
             success: true,
             data: data,
             trading: isTradingHours(),
+            ...dataMeta('stocks'),
         });
     } catch (err) {
         console.error('[API] /api/stocks 错误:', err.message);
@@ -1702,6 +1921,7 @@ app.get('/api/etfs', async (req, res) => {
             success: true,
             data: data,
             trading: isTradingHours(),
+            ...dataMeta('etfs'),
         });
     } catch (err) {
         console.error('[API] /api/etfs 错误:', err.message);
@@ -1858,6 +2078,16 @@ app.get('/api/etfs/klines', async (req, res) => {
         if (!['1y', '3y', '5y'].includes(range)) {
             return res.status(400).json({ success: false, error: '无效的范围' });
         }
+        if (isDbMode() && code && market) {
+            const rows = await klinesFromDb('etf', `${code}.${market}`, { '1y': 250, '3y': 750, '5y': 1250 }[range]);
+            if (rows) {
+                const klines = rows.series.map(k => ({
+                    date: k.date, open: k.open, close: k.close, high: k.high, low: k.low,
+                    volume: k.volume || 0, amount: k.amount || 0, changePercent: k.changePercent || 0,
+                }));
+                return res.json({ success: true, data: { klines, range, source: `db:${rows.source}` } });
+            }
+        }
         const klines = await fetchETFKlinesForRange(secid, code, market, range);
         res.json({ success: true, data: { klines, range } });
     } catch (err) {
@@ -1925,7 +2155,20 @@ app.listen(PORT, () => {
     }
 
     // Phase 2: 后台异步刷新（K 线优先 + 其他并发）
+    // db 模式下数据由采集进程提供，网站不做请求时采集
+    if (isDbMode()) {
+        console.log('[启动] 数据源模式 db：读取采集进程产出的数据，跳过后台预加载');
+    }
     (async () => {
+        // Phase 2a-0: 自检关注列表的 secid / market（修正历史脏数据，如中证指数被存成港股 100.xxx）
+        // 两种模式都要执行：网站是 watchlist 的写入方，修正后采集进程会监听到文件变化并重新同步；
+        // legacy 模式下必须在 K 线刷新之前，否则后续采集仍会用错误的 secid
+        try {
+            await selfHealWatchlistSecids();
+        } catch (err) {
+            console.warn('[启动] 关注列表 secid 自检失败:', err.message);
+        }
+        if (isDbMode()) return;
         try {
             const refreshStart = Date.now();
             console.log('[启动] Phase 2: 开始后台数据刷新（K 线优先）...');

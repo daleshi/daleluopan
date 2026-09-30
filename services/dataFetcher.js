@@ -220,6 +220,115 @@ for (const cfg of FULL_INDEX_POOL) {
 // ============================================================
 // 根据用户选中的 code.market 列表，生成对应的 CONFIG 数组
 // ============================================================
+// 启动自检：修正 watchlist 中 secid / market 存错的条目（历史脏数据，如中证指数被存成港股 100.xxx）
+let _secidSelfHealDone = false;
+
+async function probeIndexSecid(code, currentMarket = null, currentSecid = null) {
+    // 先验证当前配置；当前配置可取到数据就直接返回，避免误改正常条目
+    const markets = currentMarket ? [currentMarket, ...['CSI', 'HI', 'SH', 'SZ'].filter(m => m !== currentMarket)] : ['CSI', 'HI', 'SH', 'SZ'];
+    const headers = { ...HEADERS, 'Referer': 'https://quote.eastmoney.com/' };
+    // 批量接口 ulist.np（行情采集主用，更稳定）优先；单只接口 stock/get 作为备用
+    // （实测 2026-09-30 服务器到 stock/get 持续连不上，导致自检整体失效）
+    const probeOne = async (secid) => {
+        try {
+            const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&invt=2&fields=f2,f12,f14&secids=${secid}`;
+            const res = await safeFetch(url, { headers }, 1);
+            const d = (await res.json())?.data?.diff?.[0];
+            if (d && String(d.f12 || '') === String(code)) {
+                return (d.f2 == null || d.f2 === '-') ? { ok: false } : { ok: true, name: d.f14 || null };
+            }
+            if (d === undefined) return { ok: false };
+        } catch (err) {
+            // 继续尝试备用接口
+        }
+        try {
+            const url = `https://push2.eastmoney.com/api/qt/stock/get?fltt=2&invt=2&fields=f43,f57,f58&secid=${secid}`;
+            const res = await safeFetch(url, { headers }, 1);
+            const d = (await res.json())?.data;
+            if (!d || d.f43 == null || d.f43 === '-') return { ok: false };
+            if (String(d.f57 || '') !== String(code)) return { ok: false }; // 代码对不上，说明不是同一个指数
+            return { ok: true, name: d.f58 || null };
+        } catch (err) {
+            return { ok: false, networkError: true };
+        }
+    };
+    let networkErrors = 0;
+    for (const m of markets) {
+        const secid = (m === currentMarket && currentSecid) ? currentSecid : deriveSecidForMarket(code, m);
+        const r = await probeOne(secid);
+        if (r.ok) return { market: m, secid, name: r.name };
+        if (r.networkError) networkErrors++;
+    }
+    // 东财整体不可达时（实测生产服务器 IP 会被东财行情接口限制），无法用行情探测。
+    // 仅针对已知的错存形态兜底：6 位纯数字代码被存成港股（港股指数代码均为字母，如 HSI / HSTECH），
+    // 用中证官网确认它确实是中证指数
+    if (networkErrors > 0 && currentMarket === 'HI' && /^\d{6}$/.test(String(code))) {
+        try {
+            const end = new Date(Date.now() + 8 * 3600e3);
+            const start = new Date(end.getTime() - 20 * 86400e3);
+            const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '');
+            const url = `https://www.csindex.com.cn/csindex-home/perf/index-perf?indexCode=${code}&startDate=${fmt(start)}&endDate=${fmt(end)}`;
+            const res = await safeFetch(url, { headers: { 'User-Agent': HEADERS['User-Agent'] } }, 1);
+            const rows = (await res.json())?.data;
+            if (Array.isArray(rows) && rows.some(r => String(r.indexCode) === String(code))) {
+                return { market: 'CSI', secid: deriveSecidForMarket(code, 'CSI'), name: rows[0].indexNameCn || null };
+            }
+        } catch (err) {
+            // 中证官网也不可用：保持原配置，下次启动再试
+        }
+    }
+    return null;
+}
+
+async function selfHealWatchlistSecids(maxFixes = 5) {
+    if (_secidSelfHealDone) return 0;
+    _secidSelfHealDone = true;
+    let indices;
+    try {
+        indices = readIndexWatchlist();
+    } catch (err) {
+        return 0;
+    }
+    if (!Array.isArray(indices) || indices.length === 0) return 0;
+
+    // 先按当前配置探测，取不到价格的才尝试修正
+    const suspects = [];
+    for (const item of indices) {
+        // 候选池内的指数配置是人工校准过的（例如 NDX 必须用 100.NDX100，
+        // 100.NDX 在东财指向纳斯达克综合指数），绝不能让自检覆盖
+        if (POOL_MAP[`${item.code}.${item.market}`]
+            || FULL_INDEX_POOL.some(cfg => cfg.code === item.code)) continue;
+        const valid = await probeIndexSecid(item.code, item.market, item.secid);
+        // 只有当当前配置确实取不到数据（探测结果落在别的市场）时才修正
+        if (valid && valid.market !== item.market) {
+            suspects.push({ item, valid });
+        }
+        if (suspects.length >= maxFixes) break;
+    }
+    if (suspects.length === 0) return 0;
+
+    const byCode = new Map(indices.map(i => [String(i.code), i]));
+    const changed = [];
+    for (const { item, valid } of suspects) {
+        const target = byCode.get(String(item.code));
+        if (!target) continue;
+        console.log(`  [自检] ${item.name}(${item.code}) secid ${item.secid} 取不到数据，修正为 ${valid.secid}（${valid.market}）`);
+        target.secid = valid.secid;
+        target.market = valid.market;
+        changed.push(item.code);
+    }
+    if (changed.length > 0) {
+        try {
+            writeIndexWatchlist(indices);
+            console.log(`  [自检] 已修正 ${changed.length} 个指数的 secid: ${changed.join(', ')}`);
+        } catch (err) {
+            console.warn('  [自检] 写回 watchlist 失败:', err.message);
+            return 0;
+        }
+    }
+    return changed.length;
+}
+
 function buildIndexConfig(selectedCodes) {
     const codes = Array.isArray(selectedCodes) && selectedCodes.length > 0
         ? selectedCodes
@@ -446,7 +555,21 @@ function uniqueValues(values) {
 }
 
 function isSpecialCSIIndex(cfg) {
-    return cfg?.market === 'CSI' && /[A-Za-z]/.test(String(cfg?.code || ''));
+    // 中证（CSI）指数的 secid 前缀是 2.，与东财返回的 secid 可能不一致
+    // 注意：中证代码既有带字母的（H30269），也有纯数字的（931787 港股创新药、931250 港股通创新药），
+    // 纯数字的容易被误判成港股（secid 存成 100.xxx）而取不到任何数据，因此这里不能只认字母
+    return cfg?.market === 'CSI';
+}
+
+/** 按市场与代码推导正确的东财 secid */
+function deriveSecidForMarket(code, market) {
+    const c = String(code || '');
+    if (market === 'CSI') return /^[A-Za-z]/.test(c) ? `2.${c}` : `2.${c}`;
+    if (market === 'HI') return `100.${c}`;
+    if (market === 'US') return `100.${c}`;
+    if (market === 'SZ') return /^\d{6}$/.test(c) ? `0.${c}` : c;
+    if (market === 'SH') return /^\d{6}$/.test(c) ? `1.${c}` : c;
+    return c;
 }
 
 function buildIndexKlineProfile(cfg) {
@@ -923,6 +1046,24 @@ async function fetchRealtimeQuotesEastmoney(allConfigs) {
 //     美股指数: usINX, usNDX, usDJI 等
 //     字段索引: 3=最新价 4=昨收 5=今开 31=涨跌额 32=涨跌幅 33=最高 34=最低
 // ============================================================
+/** 腾讯 qt.gtimg.cn 的 52 周高低（字段 48/49）仅对港美股有效；A 股/CSI 返回的是换手率等无关字段 */
+function isTencent52wFieldMarket(market) {
+    return market === 'HI' || market === 'HK' || market === 'US';
+}
+
+/**
+ * 52 周高低合理性校验：拒绝量级明显错位的值（如 A 股被填成 1.05，而价格在 4000 上下）
+ * - 必须 0 < low <= high
+ * - 与当前价的比值需在合理区间内（过低/过高都不可能是同一指数的 52 周区间）
+ */
+function isSane52wRange(high52w, low52w, refPrice) {
+    if (!(high52w > 0) || !(low52w > 0)) return false;
+    if (!(high52w >= low52w)) return false;
+    const ref = Number(refPrice);
+    if (!(ref > 0)) return true;
+    return low52w >= ref * 0.05 && high52w <= ref * 20;
+}
+
 async function fetchRealtimeQuotesTencent(allConfigs) {
     // 构造腾讯代码映射
     const codeMap = {}; // txCode → cfg
@@ -984,15 +1125,23 @@ async function fetchRealtimeQuotesTencent(allConfigs) {
                 name: fields[1] || cfg.name,
             };
             // 腾讯扩展字段：52周高低（字段48=52周高, 49=52周低）
+            // 重要：该组字段仅在港美股（hk*/us*）返回真实的 52 周高低；
+            // A股/CSI（sh*/sz*）指数的 48/49 是换手率、量比之类的小数（实测 sh000300 为 -1 / 1.04），
+            // 若照单全收会把 52 周最低填成 1 左右的荒谬值，因此 A 股必须跳过，改由 K 线统计回填。
+            const txHas52w = isTencent52wFieldMarket(cfg.market);
             const high52w = parseFloat(fields[48]) || 0;
             const low52w = parseFloat(fields[49]) || 0;
-            if (high52w > 0) quoteData.high52w = high52w;
-            if (low52w > 0) quoteData.low52w = low52w;
-            // 涨幅区间（字段54=近1月, 55=近3月, 59=近1年等，部分指数可用）
-            const chg1m = parseFloat(fields[54]);
-            const chg3m = parseFloat(fields[55]);
-            if (!isNaN(chg1m)) quoteData.changeMonth = chg1m;
-            if (!isNaN(chg3m)) quoteData.change3Month = chg3m;
+            if (txHas52w && isSane52wRange(high52w, low52w, price || prevClose)) {
+                quoteData.high52w = high52w;
+                quoteData.low52w = low52w;
+            }
+            // 涨幅区间（字段54=近1月, 55=近3月，仅港美股可用，A股为空）
+            if (txHas52w) {
+                const chg1m = parseFloat(fields[54]);
+                const chg3m = parseFloat(fields[55]);
+                if (!isNaN(chg1m)) quoteData.changeMonth = chg1m;
+                if (!isNaN(chg3m)) quoteData.change3Month = chg3m;
+            }
             quotes[cfg.code] = quoteData;
         }
     }
@@ -2519,7 +2668,7 @@ function readIndexWatchlist() {
 
 function writeIndexWatchlist(indices) {
     ensureDataDir();
-    fs.writeFileSync(INDEX_WATCHLIST_FILE, JSON.stringify({ indices }, null, 2), 'utf8');
+    require('./db/atomicWrite').writeJsonAtomic(INDEX_WATCHLIST_FILE, { indices }, true);
 }
 
 // ============================================================
@@ -2559,7 +2708,12 @@ async function searchIndex(keyword) {
                 let market, secid;
                 if (mkt === '0') { market = 'SZ'; secid = `0.${code}`; }
                 else if (mkt === '1') { market = 'SH'; secid = `1.${code}`; }
-                else if (mkt === '2' || mkt === '128') { market = 'HI'; secid = `100.${code}`; }
+                else if (mkt === '2' || mkt === '128') {
+                    // MktNum=2/128 混合了中证系与港股：按代码特征区分
+                    // 港股代码形如 HSI / HSTECH / HSCEI / HSSCNE，中证系形如 H30269 / 930050
+                    if (/^(HSI|HSTE|HSCE|HSSC|HK)/i.test(code)) { market = 'HI'; secid = `100.${code}`; }
+                    else { market = 'CSI'; secid = `2.${code}`; }
+                }
                 else if (mkt === '100') {
                     // MktNum=100 可能是港股或美股，通过代码特征区分
                     if (/^(HSI|HSTE|HSCE|HSSC)/.test(code)) { market = 'HI'; secid = `100.${code}`; }
@@ -2577,15 +2731,22 @@ async function searchIndex(keyword) {
                 const name = d.Name || code;
                 // 从 POOL_MAP 获取已知图标，否则自动生成
                 const poolKey = `${code}.${market}`;
-                const poolCfg = POOL_MAP[poolKey];
+                // 关键：先按 code 跨市场查候选池（不限 market），避免池内指数因市场推断偏差
+                // （如中证系被判成 HI）而丢失 djCode / secid，导致添加后行情与估值取不到
+                const poolCfg = POOL_MAP[poolKey]
+                    || FULL_INDEX_POOL.find(cfg => cfg.code === code);
+                const finalMarket = poolCfg?.market || market;
+                const finalSecid = poolCfg?.secid || secid;
                 const icon = poolCfg?.icon || name.replace(/[A-Za-z0-9\s指数]/g, '').slice(0, 2) || code.slice(0, 3);
                 return {
                     code,
                     name,
-                    market,
-                    secid,
+                    market: finalMarket,
+                    secid: finalSecid,
                     icon,
-                    category: poolCfg?.category || (market === 'US' ? 'broad-us' : market === 'HI' ? 'broad-hk' : 'broad-cn'),
+                    djCode: poolCfg?.djCode || null,
+                    csCode: poolCfg?.csCode || null,
+                    category: poolCfg?.category || (finalMarket === 'US' ? 'broad-us' : finalMarket === 'HI' ? 'broad-hk' : 'broad-cn'),
                 };
             });
     } catch (err) {
@@ -2600,6 +2761,8 @@ async function searchIndex(keyword) {
                 market: cfg.market,
                 secid: cfg.secid,
                 icon: cfg.icon,
+                djCode: cfg.djCode || null,
+                csCode: cfg.csCode || null,
                 category: cfg.category,
             }));
     }
@@ -2610,7 +2773,13 @@ async function searchIndex(keyword) {
 // ============================================================
 
 // 美股卡片增强：从 indices.json 合并 K 线衍生统计字段（高 52 周/低 52 周/动量/Sparkline）
-const _INDICES_CACHE_FILE = path.join(__dirname, '..', 'data', 'cache', 'indices.json');
+// 采集进程通过 setIndicesCacheFile 指向自己的快照（data/db/snap/indices.json），网站进程沿用默认路径
+let _INDICES_CACHE_FILE = path.join(__dirname, '..', 'data', 'cache', 'indices.json');
+function setIndicesCacheFile(file) {
+    _INDICES_CACHE_FILE = file;
+    _indicesMapMemo = null;
+}
+let _indicesMapMemo = null; // { file, mtimeMs, result }
 
 /**
  * 计算单一周期涨跌幅（%），基于交易日切片。
@@ -2701,6 +2870,21 @@ function computeUSMomentum(historySeries, currentPrice = null, quoteHigh52w = nu
  * @returns {{ map: Map<string, Object>, cacheTime: number }} 失败或文件不存在时返回空 Map + cacheTime=0
  */
 function loadIndicesCacheMap() {
+    // 文件未变化时复用上次解析结果（文件约 7MB，高频行情采集下反复解析开销明显）
+    try {
+        const mtimeMs = fs.existsSync(_INDICES_CACHE_FILE) ? fs.statSync(_INDICES_CACHE_FILE).mtimeMs : 0;
+        if (_indicesMapMemo && _indicesMapMemo.file === _INDICES_CACHE_FILE && _indicesMapMemo.mtimeMs === mtimeMs && mtimeMs > 0) {
+            return _indicesMapMemo.result;
+        }
+        const result = _loadIndicesCacheMapUncached();
+        if (mtimeMs > 0) _indicesMapMemo = { file: _INDICES_CACHE_FILE, mtimeMs, result };
+        return result;
+    } catch (e) {
+        return _loadIndicesCacheMapUncached();
+    }
+}
+
+function _loadIndicesCacheMapUncached() {
     try {
         if (!fs.existsSync(_INDICES_CACHE_FILE)) return { map: new Map(), cacheTime: 0 };
         const raw = fs.readFileSync(_INDICES_CACHE_FILE, 'utf8');
@@ -2801,10 +2985,14 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
     });
 
     // 并行获取行情 + 蛋卷估值 + 知有行温度
-    const [quotes, djEvaMap, yzyxData] = await Promise.all([
+    // 天天基金估值：仅作为蛋卷未命中时的二级来源，受数据源开关控制
+    const dsEnabledQuotes = readEnabledDataSources();
+    const tiantianEnabled = dsEnabledQuotes.tiantian !== false;
+    const [quotes, djEvaMap, yzyxData, ttEvaMap] = await Promise.all([
         fetchRealtimeQuotes(configs),
         fetchDanjuanEvaluation().catch(() => ({})),
         fetchYZYXThermometer().catch(() => null),
+        tiantianEnabled ? fetchTiantianValuationMap().catch(() => ({})) : Promise.resolve(null),
     ]);
 
     // 美股增强：加载 indices.json 缓存的 K 线衍生统计字段（仅在 results.map 内对美股启用）
@@ -2836,10 +3024,12 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
         const poolCfg = POOL_MAP[poolKey];
 
         // 蛋卷基金估值（通过 djCode 匹配）
+        // 优先用 watchlist 自带的 djCode（添加时持久化），其次回退候选池配置（兼容旧数据）
         let pe = null, pb = null, pePercentile = null, pbPercentile = null;
         let roe = null, dividend = null, evaType = null;
-        if (poolCfg && poolCfg.djCode && djEvaMap[poolCfg.djCode]) {
-            const dj = djEvaMap[poolCfg.djCode];
+        const djCode = idx.djCode || poolCfg?.djCode || null;
+        if (djCode && djEvaMap[djCode]) {
+            const dj = djEvaMap[djCode];
             pe = dj.pe;
             pb = dj.pb;
             pePercentile = dj.pePercentile;
@@ -2847,6 +3037,23 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             roe = dj.roe;
             dividend = dj.dividend;
             evaType = dj.evaType;
+        }
+        // 二级来源兜底：蛋卷未命中（多为搜索添加的池外指数）时用天天基金，按 code / csCode / djCode 匹配
+        if (pe == null && pb == null && ttEvaMap) {
+            const keysToTry = [idx.code, idx.csCode, djCode].filter(Boolean).map(v => String(v).toUpperCase());
+            const tt = keysToTry.map(key => ttEvaMap[key]).find(Boolean);
+            if (tt) {
+                pe = tt.pe ?? null;
+                pb = tt.pb ?? null;
+                pePercentile = tt.pePercentile ?? null;
+                pbPercentile = tt.pbPercentile ?? null;
+                // 天天基金不提供估值档位，百分位可用时按现有阈值推导
+                if (pePercentile != null) {
+                    if (pePercentile < 30) evaType = 'low';
+                    else if (pePercentile < 70) evaType = 'mid';
+                    else evaType = 'high';
+                }
+            }
         }
 
         // 知有行温度
@@ -2884,8 +3091,15 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             // 一般是 secid 错位的旧数据），不要再用其陈旧字段污染本次响应。
             if (enriched && !enriched._needsForceRefresh) {
                 // 用 indices.json 的 K 线统计回填（东财主源不返回 52w 字段，腾讯仅备用时才有）
-                if (enriched.high52w && (!q.high52w || q.high52w <= 0)) q.high52w = enriched.high52w;
-                if (enriched.low52w && (!q.low52w || q.low52w <= 0)) q.low52w = enriched.low52w;
+                // 行情源「缺失」或「取值明显不合理」时，用 K 线统计覆盖
+                // （如 A 股被腾讯填成 1 左右的换手率值，此处整体纠正）
+                const refPrice = q.price || q.prevClose || null;
+                const quoteSane = isSane52wRange(q.high52w ?? 0, q.low52w ?? 0, refPrice);
+                if (enriched.high52w && enriched.low52w && !quoteSane
+                    && isSane52wRange(enriched.high52w, enriched.low52w, refPrice)) {
+                    q.high52w = enriched.high52w;
+                    q.low52w = enriched.low52w;
+                }
                 if (idx.market === 'US') {
                     // 关键：动量计算优先用实时价 q.price 作为 last，避免 historySeries 末尾陈旧
                     // （东财 K 线对美股可能滞后，但腾讯实时 quotes 一般是准确的）
@@ -3031,6 +3245,9 @@ module.exports = {
     readIndexWatchlist,
     writeIndexWatchlist,
     fetchIndexQuotesForWatchlist,
+    selfHealWatchlistSecids,
+    setIndicesCacheFile,
+    calcMomentumSet,
     // 健康监控（K 线源）
     getKlineSourceHealthSnapshot,
     startKlineSourceHealthMonitor,

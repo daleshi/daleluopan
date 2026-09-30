@@ -68,7 +68,7 @@ function readFundWatchlist() {
 
 function writeFundWatchlist(funds) {
     ensureDataDir();
-    fs.writeFileSync(FUND_WATCHLIST_FILE, JSON.stringify({ funds }, null, 2), 'utf8');
+    require('./db/atomicWrite').writeJsonAtomic(FUND_WATCHLIST_FILE, { funds }, true);
 }
 
 function getActiveFundList() {

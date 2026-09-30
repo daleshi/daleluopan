@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大乐罗盘 · 微信小程序上线操作步骤</title>
+<style>
+:root{
+  --brand:#d2601a; --brand-d:#a8480d; --ink:#1a1d24; --sub:#5b6478;
+  --line:#e6e1d8; --bg:#fbf9f6; --card:#fff; --ok:#2f7d4f; --warn:#c2410c; --info:#1d4ed8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.75;font-size:15px}
+.wrap{max-width:920px;margin:0 auto;padding:0 20px 80px}
+header{background:linear-gradient(135deg,#d2601a 0%,#e08a3c 55%,#c9451a 100%);color:#fff;
+  padding:44px 20px 38px;margin-bottom:34px}
+header .inner{max-width:920px;margin:0 auto}
+header h1{margin:0 0 10px;font-size:29px;letter-spacing:.5px}
+header p{margin:0;opacity:.95;font-size:15px}
+.badges{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+.badge{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);
+  padding:5px 13px;border-radius:20px;font-size:13px}
+h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:5px solid var(--brand)}
+h3{font-size:16px;margin:26px 0 8px}
+p{margin:10px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:16px 0}
+.alert{border-left:4px solid var(--warn);background:#fff5ee;border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0}
+.alert.info{border-color:var(--info);background:#eef2ff}
+.alert.ok{border-color:var(--ok);background:#eef7f1}
+.alert b{display:block;margin-bottom:4px}
+code{background:#f2eee7;padding:2px 6px;border-radius:4px;font-size:13.5px;
+  font-family:"SF Mono",Menlo,Consolas,monospace}
+.path{display:inline-block;background:#1a1d24;color:#ffd9b8;padding:3px 9px;border-radius:5px;
+  font-size:13px;font-family:"SF Mono",Menlo,monospace;letter-spacing:.2px}
+.path i{color:#8fa3c8;font-style:normal;margin:0 5px}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;background:#fff}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:#f5f1ea;font-weight:600}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  margin:18px 0;overflow:hidden}
+.step-h{display:flex;align-items:center;gap:12px;padding:15px 20px;background:#faf7f2;border-bottom:1px solid var(--line)}
+.step-n{width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;flex:0 0 30px;font-size:15px}
+.step-t{font-size:16.5px;font-weight:600}
+.step-meta{margin-left:auto;font-size:12.5px;color:var(--sub);white-space:nowrap}
+.step-b{padding:18px 22px}
+ol,ul{padding-left:22px;margin:10px 0}
+li{margin:6px 0}
+.done{color:var(--ok);font-weight:600}
+.timeline{display:flex;gap:0;margin:20px 0;flex-wrap:wrap}
+.tl{flex:1;min-width:118px;text-align:center;padding:11px 6px;font-size:12.5px;
+  border-bottom:4px solid var(--brand);color:var(--sub)}
+.tl b{display:block;font-size:13.5px;color:var(--ink)}
+.tl:nth-child(1){border-color:#e08a3c}.tl:nth-child(2){border-color:#d2601a}
+.tl:nth-child(3){border-color:#c9451a}.tl:nth-child(4){border-color:#a8480d}
+.tl:nth-child(5){border-color:#8c3a0a}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;font-size:14px}
+.kv>div:nth-child(odd){color:var(--sub)}
+footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);
+  color:var(--sub);font-size:13px;text-align:center}
+@media print{header{background:#d2601a!important;-webkit-print-color-adjust:exact}.step{break-inside:avoid}}
+@media(max-width:600px){header h1{font-size:23px}.wrap{padding:0 14px 60px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <h1>大乐罗盘 · 微信小程序上线操作步骤</h1>
+    <p>个人主体 · 原生小程序 · 复用已备案域名 daleluopan.com 的现有 API</p>
+    <div class="badges">
+      <span class="badge">AppID 已注册</span>
+      <span class="badge">域名已 ICP 备案</span>
+      <span class="badge">HTTPS 已就绪</span>
+      <span class="badge">骨架代码已就绪</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="alert">
+  <b>先纠正一个认知：「发布网站到小程序」这三件事里，只有第三件是"发布"</b>
+  微信小程序不是浏览器。<code>https://daleluopan.com</code> 那个 795KB 的 H5 页面<strong>无法直接搬进小程序</strong>——
+  个人主体没有「业务域名」权限，web-view 组件用不了。所以真实做法是：<br>
+  ① 后端 API 继续跑在 daleluopan.com 上（<strong>不用动</strong>）→
+  ② 小程序用 <code>wx.request</code> 调这批 API 渲染自己的页面（<strong>骨架已写好</strong>）→
+  ③ 走完备案+审核后点「发布」。<br>
+  数据在同一个服务器、同一套接口，小程序只是多了一层前端壳。
+</div>
+
+<h2>整体时间线</h2>
+<div class="timeline">
+  <div class="tl"><b>第 1 天</b>配域名+跑通</div>
+  <div class="tl"><b>第 1 天</b>真机扫码预览</div>
+  <div class="tl"><b>第 1 天</b>上传体验版</div>
+  <div class="tl"><b>今天提交</b>小程序备案</div>
+  <div class="tl"><b>1-20 工作日</b>审核+发布</div>
+</div>
+<p>前三步今天就能全部做完，手机扫码就能用。<strong>真正卡时间的是备案</strong>，所以第 4 步务必今天就提交，别等前面做完再说。</p>
+
+<h2>开始之前：你需要准备的东西</h2>
+<div class="card">
+  <div class="kv">
+    <div>AppID</div><div>微信公众平台 → 设置 → 基本设置 → 账号信息，形如 <code>wx1234567890abcdef</code>（18 位）</div>
+    <div>管理员微信</div><div>配置域名、上传代码、人脸核验都需要<strong>管理员本人扫码</strong></div>
+    <div>小程序名称</div><div>先想好，备案后改名要重新备案。建议「大乐罗盘」或同类，去微信搜一下别重名</div>
+    <div>身份证</div><div>备案需本人人脸核验 + 证件照片，个人主体只要身份证</div>
+    <div>服务器域名</div><div><code>https://daleluopan.com</code>（已备案 ✓）</div>
+  </div>
+</div>
+
+<h2>操作步骤</h2>
+
+<div class="step">
+  <div class="step-h"><div class="step-n">1</div><div class="step-t">配置服务器域名</div><div class="step-meta">10 分钟 · 今天必做</div></div>
+  <div class="step-b">
+    <p>打开 <strong>mp.weixin.qq.com</strong> 扫码登录你的小程序，按这个路径走：</p>
+    <p><span class="path">管理<i>›</i>开发管理<i>›</i>开发设置<i>›</i>服务器域名</span>
+    （部分版本显示为 <span class="path">开发<i>›</i>开发设置<i>›</i>服务器域名</span>）</p>
+    <ol>
+      <li>点「修改」，<strong>管理员微信扫码确认</strong></li>
+      <li><strong>request 合法域名</strong> 填：<code>https://daleluopan.com</code>
+        <ul>
+          <li>必须以 <code>https://</code> 开头</li>
+          <li><strong>不能带端口</strong>，写成 <code>https://daleluopan.com:443</code> 会全部请求失败</li>
+          <li>结尾不要加斜杠</li>
+        </ul>
+      </li>
+      <li>其余三类（uploadFile / downloadFile / socket）暂时留空，骨架用不到</li>
+      <li>保存。域名已备案，<strong>立即生效，不用等</strong></li>
+    </ol>
+    <div class="alert ok"><b>验证是否配成功</b>
+      填完后刷新页面，能看到该域名出现在列表里即成功。若提示「域名未备案」，说明微信侧同步延迟，等 24 小时再试。</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-h"><div class="step-n">2</div><div class="step-t">填 AppID 并导入开发者工具</div><div class="step-meta">15 分钟</div></div>
+  <div class="step-b">
+    <p>没装开发者工具的话先装：<strong>微信开发者工具 · 稳定版 Stable Build</strong>（developers.weixin.qq.com/miniprogram/dev/devtools/download.html）</p>
+    <p><strong>方式 A（推荐，一条命令）</strong> —— 在项目根目录执行：</p>
+    <div class="card" style="margin:10px 0;background:#1a1d24;border:none">
+      <code style="background:none;color:#ffd9b8;display:block;padding:0">bash scripts/set-mp-appid.sh wx你的AppID</code>
+    </div>
+    <p>脚本会校验格式（wx + 16 位十六进制）并写入 <code>miniprogram/project.config.json</code>。</p>
+    <p><strong>方式 B（手动）</strong> —— 打开 <code>miniprogram/project.config.json</code>，改这一行：</p>
+    <div class="card" style="margin:10px 0;background:#1a1d24;border:none">
+      <code style="background:none;color:#ffd9b8;display:block;padding:0">"appid": "wx1234567890abcdef",</code>
+    </div>
+    <p>然后开发者工具 → <strong>导入项目</strong> → 目录选 <code>/Users/daleshi/daleluopan/miniprogram</code> → AppID 会自动带出 → 点「导入」。</p>
+    <div class="alert"><b>导入时的两个坑</b>
+      ① 目录要选到 <code>miniprogram</code> 这一层，<strong>不要选项目根目录</strong>，否则会报「未找到 app.json」；<br>
+      ② 不要用「测试号」，必须填你自己的 AppID，不然第 5 步上传不了代码。</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-h"><div class="step-n">3</div><div class="step-t">本地跑通，确认真拿到了数据</div><div class="step-meta">10 分钟</div></div>
+  <div class="step-b">
+    <p>导入后模拟器会自动编译。你应该看到：</p>
+    <table>
+      <tr><th style="width:80px">Tab</th><th>应该显示的内容</th></tr>
+      <tr><td>估值</td><td>顶部「市场温度 XX°」+ 9 个指数卡片（沪深300、中证500、中证消费、纳斯达克100 等），含 PE/PB/ROE/股息率、PE 百分位水位条、30 日迷你走势图</td></tr>
+      <tr><td>温度</td><td>全市场温度环形图 + 低估/适中/高估三档概率 + 12 个指数温度排序</td></tr>
+      <tr><td>我的</td><td>服务地址 https://daleluopan.com、数据来源说明</td></tr>
+    </table>
+    <p>点任一指数卡片 → 跳到温度页看该指数详情。</p>
+    <div class="alert info"><b>关于「不校验合法域名」</b>
+      项目里 <code>urlCheck</code> 已设为 false，所以开发者工具里能直接跑。这<strong>只在开发者工具和手机调试模式下有效</strong>，
+      正常扫码预览仍要走第 1 步配好的域名。第 1 步做完之后，建议去「详情 → 本地设置」把它<strong>取消勾选</strong>再测一次，才是真实验证。</div>
+    <div class="alert"><b>如果页面空白 / 提示网络异常</b>
+      先看 Console 报错，再对照文末排错表。<strong>最常见</strong>：request 域名没配、AppID 填成测试号、后端没起。</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-h"><div class="step-n">4</div><div class="step-t">真机预览，手机扫码体验</div><div class="step-meta">5 分钟</div></div>
+  <div class="step-b">
+    <p>开发者工具顶部点 <strong>「预览」</strong> → 出现二维码 → <strong>用管理员或已添加的体验成员微信扫码</strong>。</p>
+    <p class="done">到这一步，你手机上已经有一个能用的大乐罗盘小程序了。</p>
+    <p>注意：开发版二维码<strong>有效期 25 分钟</strong>，过期重新点预览。开发版的请求会走真实域名校验，
+    所以这一步能跑通 = 第 1 步配置无误。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-h"><div class="step-n">5</div><div class="step-t">上传为体验版（长期可访问）</div><div class="step-meta">10 分钟</div></div>
+  <div class="step-b">
+    <p>开发者工具点 <strong>「上传」</strong> → 填版本号（如 <code>1.0.0</code>）和备注 → 确定。</p>
+    <p>然后后台：<span class="path">管理<i>›</i>版本管理</span> → 在「开发版本」里把刚上传的版本<strong>选为体验版</strong>。</p>
+    <p><span class="path">管理<i>›</i>成员管理<i>›</i>体验成员</span> 添加你想分享的人（个人主体最多 <strong>15 位</strong>）。</p>
+    <div class="alert ok"><b>体验版不需要备案、不需要审核</b>
+      这是个人主体最实用的阶段：功能完整、能长期使用、能给别人扫码体验，完全绕开审核。自用或给朋友用，到这里就够了。</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-h"><div class="step-n">6</div><div class="step-t">完善小程序基本信息 + 选类目</div><div class="step-meta">20 分钟 · 备案前必须做</div></div>
+  <div class="step-b">
+    <p><span class="path">设置<i>›</i>基本设置</span> 里补齐：名称、头像、简介、<strong>服务类目</strong>。</p>
+    <div class="alert"><b>类目选择：这一步决定你能不能过审</b>
+      A 股行情属于「金融业 - 股票信息服务平台」，需要《增值电信业务经营许可证》+ 沪深交易所《证券信息经营许可合同》，
+      <strong>个人主体 100% 拿不到</strong>，选了必被驳回。<br><br>
+      建议：定位成「个人投研记录工具」，类目选 <strong>工具 → 信息查询</strong>（或「工具 → 效率」）。
+      简介里强调"记录个人持仓与估值观察"，不要写"提供行情资讯""投资建议"。<br><br>
+      即便如此，审核仍可能按页面实际内容判定为金融信息服务。这是灰度操作，要有被驳回的心理准备。
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-h"><div class="step-n">7</div><div class="step-t">提交小程序备案</div><div class="step-meta">今天就要提交 · 1-20 工作日</div></div>
+  <div class="step-b">
+    <p>入口二选一：</p>
+    <ul>
+      <li>未上架小程序：后台<strong>首页</strong>点「去备案」</li>
+      <li>或：<span class="path">设置<i>›</i>小程序备案<i>›</i>去备案</span></li>
+    </ul>
+    <p>流程：填写主体信息（个人：身份证）→ 小程序负责人信息 → 小程序信息（名称/类目/服务内容）→
+    上传证件 → <strong>人脸核验</strong>（本人微信扫码）→ 微信初审 1-2 工作日 → 工信部短信核验 → 通管局终审。</p>
+    <div class="alert"><b>三个必须记住的点</b>
+      ① 工信部会发短信验证码到负责人手机，<strong>必须 24 小时内</strong>到 beian.miit.gov.cn 完成核验，超时备案失败；<br>
+      ② 个人主体材料很简单：身份证正反面 + 本人人脸核验，不需要营业执照；<br>
+      ③ 备案通过后，<strong>备案号要展示在小程序「关于」页面</strong>，微信会检查。</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-h"><div class="step-n">8</div><div class="step-t">提交审核并发布</div><div class="step-meta">备案通过后 · 1-7 天</div></div>
+  <div class="step-b">
+    <p>备案状态变「已备案」后：<span class="path">管理<i>›</i>版本管理</span> → 把体验版<strong>提交审核</strong> →
+    填测试信息 → 等审核 → 通过后点「发布」。</p>
+    <div class="alert ok"><b>一个天然优势：审核员不需要登录就能看到内容</b>
+      骨架的估值页和温度页都是<strong>免登录</strong>的，审核员打开就有数据。千万别把登录设成强制前置，否则审核员进不去会直接驳回。</div>
+    <p>审核常见驳回原因：类目与内容不符、服务内容涉及投资建议、页面存在诱导分享、缺少备案号展示。</p>
+  </div>
+</div>
+
+<h2>登录功能：还需要一步后端部署</h2>
+<div class="card">
+  <p>骨架的「我的」页有账号密码登录。但当前<strong>线上后端还没部署 token 返回</strong>，所以现在登录会提示"无 token"。</p>
+  <p>本地 <code>server.js</code> 的 <code>/api/auth/login</code> 已改好（在响应体里补了 <code>token</code> 和 <code>expiresAt</code>，
+  Cookie 逻辑未动，网页版无感知），<strong>需要重新部署到 43.136.122.239 才生效</strong>：</p>
+  <div class="card" style="margin:10px 0;background:#1a1d24;border:none">
+    <code style="background:none;color:#ffd9b8;display:block;padding:0">bash scripts/package-deploy.sh   # 打包并部署（会重启服务）</code>
+  </div>
+  <p>估值、温度两个核心功能<strong>不受影响</strong>，不部署也能正常用。只有登录态相关功能需要它。</p>
+</div>
+
+<h2>排错对照表</h2>
+<table>
+  <tr><th style="width:32%">现象</th><th style="width:30%">原因</th><th>解决</th></tr>
+  <tr><td>url not in domain list</td><td>request 合法域名没配 / 配错</td><td>回第 1 步，检查是否带端口、是否是 https</td></tr>
+  <tr><td>导入项目报「未找到 app.json」</td><td>目录选错</td><td>选到 <code>miniprogram/</code> 这一层，不是项目根</td></tr>
+  <tr><td>真机扫码白屏，开发者工具正常</td><td>手机走了域名校验</td><td>确认第 1 步已保存；手机开调试模式可临时绕过</td></tr>
+  <tr><td>开发者工具能请求，手机不行</td><td>本地开了「不校验合法域名」</td><td>详情 → 本地设置 → 取消勾选后重测</td></tr>
+  <tr><td>页面显示「网络异常」</td><td>服务器挂了或超时</td><td><code>curl https://daleluopan.com/api/health</code> 验证</td></tr>
+  <tr><td>登录提示「无 token」</td><td>线上后端未部署改动</td><td>见上一节；或先不用登录，核心功能免登录</td></tr>
+  <tr><td>上传代码失败</td><td>AppID 是测试号 / 无权限</td><td>换真实 AppID；必须是管理员或开发者身份</td></tr>
+  <tr><td>备案被驳回</td><td>名称重名 / 类目不符 / 证件不清</td><td>看驳回原因逐项改；名称避开已备案小程序</td></tr>
+</table>
+
+<h2>命令速查</h2>
+<div class="card" style="background:#1a1d24;border:none">
+<code style="background:none;color:#ffd9b8;display:block;padding:0;line-height:2">
+# 填入 AppID（项目根目录）<br>
+bash scripts/set-mp-appid.sh wx你的AppID<br><br>
+# 验证线上 API 可用<br>
+curl https://daleluopan.com/api/health<br><br>
+# 部署后端 token 改动（会重启服务）<br>
+bash scripts/package-deploy.sh
+</code>
+</div>
+
+<footer>
+  大乐罗盘 · 小程序上线操作手册 · 适用于个人主体原生小程序路线<br>
+  骨架代码：<code>miniprogram/</code> ｜ 完整方案评估：<code>docs/wechat-miniprogram-publish-plan.html</code>
+</footer>
+
+</div>
+</body>
+</html>

@@ -998,6 +998,21 @@
         .featured-range-btn.disabled, .featured-range-btn:disabled {
             opacity: 0.35; cursor: not-allowed; pointer-events: none;
         }
+        /* 走势指标切换（价格 / PE / PB / 温度） */
+        .trend-metric-tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--overlay-03); border: 1px solid var(--border-subtle); }
+        .trend-metric-tab { border: none; background: transparent; color: var(--text-secondary); padding: 5px 12px; border-radius: 999px; font-size: 12px; cursor: pointer; }
+        .trend-metric-tab:hover { color: var(--text-primary); }
+        .trend-metric-tab.active { background: var(--bg-card); color: var(--accent-blue); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+        /* 估值 / 温度历史曲线 */
+        .val-chart { position: relative; }
+        .val-chart svg { display: block; width: 100%; }
+        .val-chart-empty { display: flex; align-items: center; justify-content: center; min-height: 200px; color: var(--text-muted); font-size: 13px; text-align: center; padding: 0 16px; }
+        .val-chart-tip { position: absolute; top: 6px; left: 10px; font-size: 12px; color: var(--text-secondary); font-family: var(--font-mono); pointer-events: none; }
+        .val-chart-foot { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+        .val-chart-foot .val-legend { display: inline-flex; align-items: center; gap: 4px; }
+        .val-chart-foot .val-swatch { display: inline-block; width: 14px; border-top: 2px dashed currentColor; }
+        .val-trend-link { margin-top: 8px; border: 1px solid var(--border-subtle); background: transparent; color: var(--accent-blue); font-size: 12px; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
+        .val-trend-link:hover { background: var(--accent-blue-dim); }
         .featured-index-metrics {
             display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
         }
@@ -2088,6 +2103,7 @@
             50% { opacity: 0.4; transform: scale(0.7); }
         }
         .update-time-badge .utb-time { white-space: nowrap; }
+        .update-time-badge .utb-stale { color: var(--accent-gold, #d69e2e); font-weight: 600; }
 
         .af-header-nav { text-align: right; flex-shrink: 0; }
         .af-nav-value {
@@ -3228,8 +3244,9 @@
         #adminLoginView.visible { display: flex; }
         .admin-login-card {
             background: var(--bg-card); border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md); padding: 36px 32px 28px;
+            border-radius: var(--radius-md); padding: 44px 32px 28px;
             width: 360px; max-width: 92vw; box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+            position: relative; /* 为右上角关闭按钮提供定位上下文 */
         }
         .admin-login-title {
             margin: 0 0 8px; font-size: 20px; font-weight: 600;
@@ -3924,6 +3941,7 @@
     <!-- /admin 路径专用全屏登录视图 -->
     <div id="adminLoginView">
         <div class="admin-login-card">
+            <button class="auth-modal-close" onclick="closeAdminLoginView()" title="关闭，返回首页">✕</button>
             <h2 class="admin-login-title">大乐罗盘</h2>
             <p class="admin-login-subtitle">管理员登录</p>
             <div class="auth-field"><label>账号</label><input id="adminLoginUsername" placeholder="请输入账号" autocomplete="username"></div>
@@ -4229,10 +4247,34 @@
         const cachedTag = opts.cached ? ' <span style="opacity:0.6">(缓存)</span>' : '';
         const dateStr = opts.showDate ? d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) + ' ' : '';
         const liveCls = isLive ? ' live' : '';
-        return `<span class="update-time-badge${liveCls}"><span class="utb-dot"></span><span class="utb-time">${prefix} ${dateStr}${hms}${cachedTag}</span></span>`;
+        // 交易时段内数据超过 2 分钟未更新：提示"X 分钟前"（外部数据源故障时页面仍显示上一份数据）
+        const ageMin = Math.floor((Date.now() - d.getTime()) / 60000);
+        const staleTag = isLive && ageMin >= 2
+            ? ` <span class="utb-stale" title="数据源暂时不可用，显示的是最近一次成功获取的数据">· ${ageMin >= 60 ? Math.floor(ageMin / 60) + ' 小时' : ageMin + ' 分钟'}前</span>`
+            : '';
+        return `<span class="update-time-badge${liveCls}"><span class="utb-dot"></span><span class="utb-time">${prefix} ${dateStr}${hms}${cachedTag}${staleTag}</span></span>`;
     }
 
+    // 市场状态以服务端为准（/api/market-status，按交易所时区计算），每 30 秒同步；取不到时本地计算兜底
+    let _marketStatus = null;
+    let _marketStatusAt = 0;
+    async function refreshMarketStatus() {
+        try {
+            const resp = await fetch('/api/market-status');
+            const json = await resp.json();
+            if (json && json.success && json.data) {
+                _marketStatus = json.data;
+                _marketStatusAt = Date.now();
+            }
+        } catch (e) { /* 网络异常时沿用本地计算 */ }
+    }
+    refreshMarketStatus();
+    setInterval(refreshMarketStatus, 30000);
+
     function isMarketOpen() {
+        if (_marketStatus && Date.now() - _marketStatusAt < 90000) {
+            return !!(_marketStatus.CN && _marketStatus.CN.open);
+        }
         const now = new Date();
         // 转北京时间（UTC+8）
         const utc = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -4244,9 +4286,9 @@
         return (hhmm >= 930 && hhmm <= 1130) || (hhmm >= 1300 && hhmm <= 1500);
     }
 
-    /** 返回 3000~5000ms 之间的随机刷新间隔 */
+    /** 返回 5000~8000ms 之间的随机刷新间隔（后台采集节奏为 5～10 秒，更频繁的轮询没有新数据） */
     function getRandomRefreshInterval() {
-        return 3000 + Math.floor(Math.random() * 2000);
+        return 5000 + Math.floor(Math.random() * 3000);
     }
 
     /**
@@ -4290,18 +4332,18 @@
     }
 
     // ================================================================
-    // 统一数据刷新调度器（1-3秒随机，按当前 Tab 串行刷新对应数据）
+    // 统一数据刷新调度器（5-8秒随机，按当前 Tab 串行刷新对应数据）
     // ================================================================
     /**
      * 统一数据刷新调度器
-     * 单一 setTimeout 链，1-3 秒随机间隔，根据当前激活 Tab 串行刷新对应数据
+     * 单一 setTimeout 链，5-8 秒随机间隔（与后台 5～10 秒采集节奏对齐），根据当前激活 Tab 串行刷新对应数据
      */
     function createDataRefreshScheduler() {
         let timer = null;
         let running = false;
         let currentTab = 'dashboard';
 
-        function getInterval() { return Math.random() * 2000 + 1000; }
+        function getInterval() { return getRandomRefreshInterval(); }
 
         function schedule() {
             timer = setTimeout(async () => {
@@ -5263,7 +5305,7 @@
     // ================================================================
     // 指数详情弹窗
     // ================================================================
-    let idxModalTrendState = { range: '1y', date: null, code: null };
+    let idxModalTrendState = { range: '1y', date: null, code: null, metric: 'price' };
 
     // ===== 模态框区间走势 — 按需 K 线加载 + 并发去重 + 多池回写 =====
     const _modalTrendInFlight = new Map(); // code → Promise
@@ -5370,6 +5412,196 @@
         }
     }
 
+    // ================================================================
+    // 估值 / 温度历史曲线（数据来自本地历史库 /api/valuation/history）
+    //   - 横轴按真实日期比例（历史周线与近期日线混排不失真）
+    //   - PE / PB 附 30 / 50 / 70 分位参考线；不画百分位曲线
+    // ================================================================
+    const VAL_METRIC_META = {
+        pe: { label: 'PE', digits: 2 },
+        pb: { label: 'PB', digits: 3 },
+        temperature: { label: '温度', digits: 0 },
+    };
+    const _valHistCache = new Map(); // key → { at, data }
+
+    async function fetchValuationHistory(type, code, metric, range) {
+        const key = `${type}|${code}|${metric}|${range}`;
+        const hit = _valHistCache.get(key);
+        if (hit && Date.now() - hit.at < 5 * 60 * 1000) return hit.data;
+        const resp = await fetch(`/api/valuation/history?type=${encodeURIComponent(type)}&code=${encodeURIComponent(code)}&metric=${metric}&range=${range}`);
+        const json = await resp.json();
+        if (!resp.ok || !json.success) throw new Error(json.error || '估值历史加载失败');
+        _valHistCache.set(key, { at: Date.now(), data: json.data });
+        return json.data;
+    }
+
+    function buildValuationSvg(data, width, height) {
+        const pts = data.points.map(p => ({ ...p, t: Date.parse(p.date + 'T00:00:00') }));
+        const digits = VAL_METRIC_META[data.metric].digits;
+        const isTemp = data.metric === 'temperature';
+        const pad = { top: 30, right: 86, bottom: 24, left: 48 }; // 顶部留出悬停数值提示的位置
+        const w = width - pad.left - pad.right;
+        const h = height - pad.top - pad.bottom;
+        const bands = data.bands ? [
+            { label: '70分位', v: data.bands.p70, color: '#e53e3e' },
+            { label: '中位', v: data.bands.p50, color: '#a0aec0' },
+            { label: '30分位', v: data.bands.p30, color: '#38a169' },
+        ].filter(b => b.v != null) : [];
+
+        let yMin = isTemp ? 0 : Math.min(...pts.map(p => p.value), ...bands.map(b => b.v));
+        let yMax = isTemp ? 100 : Math.max(...pts.map(p => p.value), ...bands.map(b => b.v));
+        if (!isTemp) {
+            const span = (yMax - yMin) || Math.abs(yMax) * 0.1 || 1;
+            yMin -= span * 0.08;
+            yMax += span * 0.08;
+        }
+        const t0 = pts[0].t;
+        const t1 = pts[pts.length - 1].t;
+        const X = (t) => (t1 === t0 ? pad.left + w / 2 : pad.left + ((t - t0) / (t1 - t0)) * w);
+        const Y = (v) => pad.top + (1 - (v - yMin) / (yMax - yMin)) * h;
+        const fmt = (v) => Number(v).toFixed(digits);
+
+        // 纵轴刻度
+        let grid = '';
+        for (let i = 0; i <= 4; i++) {
+            const v = yMin + ((yMax - yMin) * i) / 4;
+            const y = Y(v);
+            grid += `<line x1="${pad.left}" x2="${pad.left + w}" y1="${y}" y2="${y}" style="stroke:var(--border-subtle)" stroke-width="1" opacity="0.6"/>`
+                + `<text x="${pad.left - 6}" y="${y + 4}" text-anchor="end" font-size="10" style="fill:var(--text-muted)">${isTemp ? Math.round(v) : fmt(v)}</text>`;
+        }
+        // 横轴刻度：按日期均分 5 个
+        const spanYears = (t1 - t0) / (365.25 * 86400000);
+        let xTicks = '';
+        if (t1 > t0) {
+            for (let i = 0; i <= 4; i++) {
+                const t = t0 + ((t1 - t0) * i) / 4;
+                const dt = new Date(t);
+                const label = spanYears > 2.5 ? `${dt.getFullYear()}` : `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+                xTicks += `<text x="${X(t)}" y="${height - 6}" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}" font-size="10" style="fill:var(--text-muted)">${label}</text>`;
+            }
+        } else {
+            xTicks = `<text x="${X(t0)}" y="${height - 6}" text-anchor="middle" font-size="10" style="fill:var(--text-muted)">${pts[0].date}</text>`;
+        }
+        // 分位参考线
+        const bandSvg = bands.map(b => {
+            const y = Y(b.v);
+            return `<line x1="${pad.left}" x2="${pad.left + w}" y1="${y}" y2="${y}" stroke="${b.color}" stroke-width="1.2" stroke-dasharray="5 4"/>`
+                + `<text x="${pad.left + w + 6}" y="${y + 4}" font-size="10" fill="${b.color}">${b.label} ${fmt(b.v)}</text>`;
+        }).join('');
+        // 曲线与面积
+        const line = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.value).toFixed(1)}`).join(' ');
+        const area = pts.length > 1 ? `${line} L${X(t1).toFixed(1)},${pad.top + h} L${X(t0).toFixed(1)},${pad.top + h} Z` : '';
+        const fallbackDots = pts.filter(p => p.isFallback).map(p => `<circle cx="${X(p.t)}" cy="${Y(p.value)}" r="3" fill="none" stroke="#dd6b20" stroke-width="1.5"/>`).join('');
+        const last = pts[pts.length - 1];
+        const lastX = X(last.t);
+        const lastY = Y(last.value);
+        const curLabel = bands.length ? '' : `<text x="${pad.left + w + 6}" y="${lastY + 4}" font-size="10" style="fill:var(--accent-blue)">当前 ${fmt(last.value)}</text>`;
+
+        const html = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${data.metric}历史走势">
+            <defs><linearGradient id="valFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" style="stop-color:var(--accent-blue);stop-opacity:0.22"/><stop offset="100%" style="stop-color:var(--accent-blue);stop-opacity:0"/>
+            </linearGradient></defs>
+            ${grid}${xTicks}${bandSvg}
+            ${area ? `<path d="${area}" fill="url(#valFill)"/>` : ''}
+            ${pts.length > 1 ? `<path d="${line}" fill="none" style="stroke:var(--accent-blue)" stroke-width="1.8" stroke-linejoin="round"/>` : ''}
+            ${fallbackDots}
+            <circle cx="${lastX}" cy="${lastY}" r="4" style="fill:var(--accent-blue)" stroke="#fff" stroke-width="1.5"/>
+            ${curLabel}
+            <line class="val-hover-line" x1="0" x2="0" y1="${pad.top}" y2="${pad.top + h}" style="stroke:var(--text-muted)" stroke-width="1" opacity="0"/>
+            <circle class="val-hover-dot" r="3.5" style="fill:var(--accent-blue)" opacity="0"/>
+            <rect x="${pad.left}" y="${pad.top}" width="${w}" height="${h}" fill="transparent" class="val-hover-area"/>
+        </svg>`;
+        return { html, pts, X, Y, left: pad.left, plotWidth: w };
+    }
+
+    /**
+     * 渲染估值 / 温度曲线
+     * @param {HTMLElement} el     图表容器
+     * @param {{type, code, metric, range}} q
+     * @param {HTMLElement} footEl 图例与说明容器（可选）
+     */
+    async function renderValuationChart(el, q, footEl) {
+        if (!el) return;
+        const token = `${q.type}|${q.code}|${q.metric}|${q.range}`;
+        el.dataset.valToken = token;
+        el.innerHTML = '<div class="val-chart-empty">正在加载历史数据…</div>';
+        if (footEl) footEl.innerHTML = '';
+        let data;
+        try {
+            data = await fetchValuationHistory(q.type, q.code, q.metric, q.range);
+        } catch (err) {
+            if (el.dataset.valToken === token) el.innerHTML = `<div class="val-chart-empty">历史数据加载失败：${escapeHtml(err.message)}</div>`;
+            return;
+        }
+        if (el.dataset.valToken !== token) return; // 已切换到其他指标 / 周期
+        const meta = VAL_METRIC_META[q.metric];
+        if (!data.supported || !Array.isArray(data.points) || data.points.length === 0) {
+            const msg = data.message || (q.metric === 'temperature' ? '暂无温度数据' : '暂无估值数据');
+            el.innerHTML = `<div class="val-chart-empty">${escapeHtml(msg)}</div>`;
+            if (footEl && data.trackingIndex) footEl.innerHTML = `<span>跟踪指数：${escapeHtml(data.trackingIndex.name)}</span>`;
+            return;
+        }
+
+        const width = Math.max(el.clientWidth || 700, 320);
+        const chart = buildValuationSvg(data, width, 220);
+        el.innerHTML = `<div class="val-chart">${chart.html}<div class="val-chart-tip"></div></div>`;
+
+        // 悬停 / 触摸查看数值（按日期找最近的点）
+        const { pts, X, Y } = chart;
+        const svg = el.querySelector('svg');
+        const tip = el.querySelector('.val-chart-tip');
+        const hLine = svg.querySelector('.val-hover-line');
+        const hDot = svg.querySelector('.val-hover-dot');
+        const t0 = pts[0].t;
+        const t1 = pts[pts.length - 1].t;
+        const showPoint = (p) => {
+            const tag = p.isFallback ? ' · 兜底' : (p.granularity === 'weekly' ? ' · 周线' : '');
+            tip.textContent = `${p.date}  ${meta.label} ${Number(p.value).toFixed(meta.digits)}${tag}`;
+        };
+        showPoint(pts[pts.length - 1]);
+        const onMove = (clientX) => {
+            const rect = svg.getBoundingClientRect();
+            const sx = ((clientX - rect.left) / rect.width) * width;
+            if (t1 === t0 || sx < chart.left || sx > chart.left + chart.plotWidth) return;
+            const t = t0 + ((sx - chart.left) / chart.plotWidth) * (t1 - t0);
+            let lo = 0;
+            let hi = pts.length - 1;
+            while (hi - lo > 1) {
+                const mid = (lo + hi) >> 1;
+                if (pts[mid].t < t) lo = mid; else hi = mid;
+            }
+            const p = Math.abs(pts[lo].t - t) <= Math.abs(pts[hi].t - t) ? pts[lo] : pts[hi];
+            const px = X(p.t);
+            hLine.setAttribute('x1', px);
+            hLine.setAttribute('x2', px);
+            hLine.setAttribute('opacity', '0.5');
+            hDot.setAttribute('cx', px);
+            hDot.setAttribute('cy', Y(p.value));
+            hDot.setAttribute('opacity', '1');
+            showPoint(p);
+        };
+        const onLeave = () => {
+            hLine.setAttribute('opacity', '0');
+            hDot.setAttribute('opacity', '0');
+            showPoint(pts[pts.length - 1]);
+        };
+        svg.addEventListener('mousemove', e => onMove(e.clientX));
+        svg.addEventListener('touchmove', e => { if (e.touches[0]) onMove(e.touches[0].clientX); }, { passive: true });
+        svg.addEventListener('mouseleave', onLeave);
+        svg.addEventListener('touchend', onLeave);
+
+        if (footEl) {
+            const items = [];
+            items.push(`<span>来源：${escapeHtml(data.sourceLabel || data.source || '')}</span>`);
+            if (data.trackingIndex) items.push(`<span>跟踪指数：${escapeHtml(data.trackingIndex.name)}</span>`);
+            if (q.metric === 'temperature' && data.since) items.push(`<span>自 ${escapeHtml(data.since)} 起记录（数据源不提供历史温度）</span>`);
+            if (data.points.some(p => p.granularity === 'weekly')) items.push('<span>早期为周线、近期为日线，横轴按日期排列</span>');
+            if (data.bands) items.push('<span class="val-legend"><span class="val-swatch" style="color:#38a169"></span>30分位</span><span class="val-legend"><span class="val-swatch" style="color:#a0aec0"></span>中位</span><span class="val-legend"><span class="val-swatch" style="color:#e53e3e"></span>70分位</span>');
+            if (data.points.some(p => p.isFallback)) items.push('<span style="color:#dd6b20">○ 收盘后未取得当日数据时的盘中兜底值</span>');
+            footEl.innerHTML = items.join('');
+        }
+    }
+
     function openIdxDetailModal(code) {
         // 优先在 dashboard 数据池找完整 d（含 historySeries / pe / pb 等）
         let d = getCurrentDashboardCards().find(item => item.code === code);
@@ -5389,7 +5621,7 @@
             console.warn('[模态框] 未找到指数:', code);
             return;
         }
-        idxModalTrendState = { range: '1y', date: null, code: d.code };
+        idxModalTrendState = { range: '1y', date: null, code: d.code, metric: 'price' };
         // 模态框打开期间的运行时状态（不污染数据本身）
         delete d.__trendError;
         // 未持有全量（10y）数据时触发拉取；此前的 1y 短数据也会触发升级
@@ -5455,11 +5687,16 @@
         const hasPct = d.pePercentile != null;
         const hasPB = d.pb != null;
 
+        const trendMetric = idxModalTrendState.metric || 'price';
+        const metricTabs = [['price', '价格'], ['pe', 'PE'], ['pb', 'PB'], ['temperature', '温度']]
+            .map(([k, label]) => `<button class="trend-metric-tab ${trendMetric === k ? 'active' : ''}" onclick="setIdxModalTrendMetric('${k}')">${label}</button>`)
+            .join('');
         const rangeButtons = (() => {
             const coverage = getTrendDataCoverage(d);
             return Object.entries(FEATURED_TREND_RANGES).map(([key, item]) => {
                 // 加载中暂不禁用（数据条数未知），加载完成后会基于全量数据重建按钮区
-                const available = coverage.rangeAvailability[key] || !!d.__trendLoading;
+                // 估值 / 温度曲线来自历史库，不受价格 K 线覆盖范围限制
+                const available = trendMetric !== 'price' || coverage.rangeAvailability[key] || !!d.__trendLoading;
                 const active = idxModalTrendState.range === key;
                 return `<button class="featured-range-btn ${active ? 'active' : ''} ${!available ? 'disabled' : ''}" ${!available ? `disabled title="历史数据不足，当前仅覆盖约${coverage.actualYears}年"` : ''} onclick="setIdxModalTrendRange('${key}')">${item.label}</button>`;
             }).join('');
@@ -5566,15 +5803,16 @@
             <!-- PE/PB 百分位条 -->
             ${peSectionHTML}
             ${pbSectionHTML}
-            ${!peSectionHTML && !pbSectionHTML ? '<div style="font-size:12px;color:var(--text-muted);padding:6px 0;">暂无估值数据（该指数未接入估值数据源，展示行情与趋势信息）</div>' : ''}
+            ${!peSectionHTML && !pbSectionHTML ? '<div style="font-size:12px;color:var(--text-muted);padding:6px 0;">暂无实时估值数据</div>' : ''}
 
             <!-- 趋势图 -->
             <div class="idx-modal-section-label">区间走势分析</div>
             <div class="idx-modal-trend-section">
                 <div class="idx-modal-trend-head">
-                    <div class="idx-modal-trend-title">点击曲线锚点或下方标签查看详情</div>
+                    <div class="trend-metric-tabs">${metricTabs}</div>
                     <div class="featured-trend-ranges">${rangeButtons}</div>
                 </div>
+                <div class="idx-modal-trend-title" style="margin:-4px 0 8px">${trendMetric === 'price' ? '点击曲线锚点或下方标签查看详情' : (trendMetric === 'temperature' ? '市场温度（0～100，越低越便宜）· 悬停查看数值' : '横轴按日期排列 · 悬停查看数值')}</div>
                 <div class="idx-modal-sparkline" id="idxModalTrendChart"></div>
                 <div class="idx-modal-axis" id="idxModalTrendAxis"></div>
                 <div class="idx-modal-trend-detail" id="idxModalTrendDetail"></div>
@@ -5596,6 +5834,14 @@
         const axisEl = document.getElementById('idxModalTrendAxis');
         const detailEl = document.getElementById('idxModalTrendDetail');
         if (!chartEl || !axisEl || !detailEl) return;
+
+        // PE / PB / 温度：读本地历史库
+        if (idxModalTrendState.metric && idxModalTrendState.metric !== 'price') {
+            axisEl.innerHTML = '';
+            detailEl.innerHTML = '<div class="val-chart-foot"></div>';
+            renderValuationChart(chartEl, { type: 'index', code: d.code, metric: idxModalTrendState.metric, range: idxModalTrendState.range }, detailEl.firstElementChild);
+            return;
+        }
 
         // ① error 态
         if (d.__trendError) {
@@ -5679,6 +5925,20 @@
     function setIdxModalTrendRange(rangeKey) {
         if (!FEATURED_TREND_RANGES[rangeKey]) return;
         idxModalTrendState.range = rangeKey;
+        idxModalTrendState.date = null;
+        const d = _findModalIndex(idxModalTrendState.code);
+        if (d) {
+            const body = document.getElementById('idxModalBody');
+            if (body) {
+                body.innerHTML = buildIdxModalBody(d);
+                setTimeout(() => renderIdxModalTrend(d), 50);
+            }
+        }
+    }
+
+    function setIdxModalTrendMetric(metric) {
+        if (!['price', 'pe', 'pb', 'temperature'].includes(metric)) return;
+        idxModalTrendState.metric = metric;
         idxModalTrendState.date = null;
         const d = _findModalIndex(idxModalTrendState.code);
         if (d) {
@@ -6791,8 +7051,12 @@
             </div>`;
         }
 
-        // 美股专属：数据源透出（quoteSource + quoteFetchedAt + 错位告警）
-        if (isUS && (idx.quoteSource || idx.staleNote)) {
+        // 数据源透出（quoteSource + quoteFetchedAt + 错位告警）：美股常驻；其他市场仅在实时行情缺失、改用收盘价时显示
+        if (idx.quoteSource === 'db-close') {
+            html += `<div class="idx-temp-wrap" style="background:transparent;padding:4px 0">
+                <span class="thermo-stale-badge" title="${escapeHtml(idx.staleNote || '')}">⚠️ ${escapeHtml(idx.staleNote || '实时行情暂不可用')}</span>
+            </div>`;
+        } else if (isUS && (idx.quoteSource || idx.staleNote)) {
             const sourceLabelMap = {
                 tencent: '腾讯',
                 eastmoney: '东方财富',
@@ -7871,10 +8135,12 @@
                 <div class="featured-axis-tags" id="etfChartAxis" style="margin-top:8px"></div>
                 <div class="featured-point-detail" id="etfChartDetail" style="margin-top:8px"></div>
             </div>
+            ${buildValuationPanelHTML('etfVal', '跟踪指数估值')}
         `;
 
         modal.classList.add('show');
         modal.onclick = function(e) { if (e.target === modal) closeETFDetail(); };
+        initValuationPanel('etfVal', { type: 'etf', code: etf.code, metrics: ['pe', 'pb'] });
 
         // 默认加载近1年K线（含日期和最高最低点标记）
         switchETFKlineRange(etf.secid, etf.shortCode, etf.market || 'SH', '1y', null);
@@ -7882,6 +8148,66 @@
 
     function closeETFDetail() {
         document.getElementById('etfDetailModal').classList.remove('show');
+    }
+
+    // ===================== 估值走势面板（ETF 详情 / 股票估值弹窗共用）=====================
+    const _valPanels = {}; // id → { type, code, metric, range, metrics }
+
+    function buildValuationPanelHTML(id, title) {
+        return `<div class="etf-detail-chart-area" style="margin-top:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+                <div style="font-size:14px;font-weight:600">${escapeHtml(title)}</div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <div class="trend-metric-tabs" id="${id}Metrics"></div>
+                    <div class="featured-trend-ranges" id="${id}Ranges"></div>
+                </div>
+            </div>
+            <div class="idx-modal-sparkline" id="${id}Chart"></div>
+            <div class="val-chart-foot" id="${id}Foot"></div>
+        </div>`;
+    }
+
+    function initValuationPanel(id, { type, code, metrics = ['pe', 'pb'], metric, range = '5y' }) {
+        _valPanels[id] = { type, code, metrics, metric: metric || metrics[0], range };
+        renderValuationPanel(id);
+    }
+
+    function setValuationPanel(id, patch) {
+        if (!_valPanels[id]) return;
+        Object.assign(_valPanels[id], patch);
+        renderValuationPanel(id);
+    }
+
+    function renderValuationPanel(id) {
+        const p = _valPanels[id];
+        const mEl = document.getElementById(`${id}Metrics`);
+        const rEl = document.getElementById(`${id}Ranges`);
+        if (!p || !mEl || !rEl) return;
+        mEl.innerHTML = p.metrics.map(m => `<button class="trend-metric-tab ${p.metric === m ? 'active' : ''}" onclick="setValuationPanel('${id}',{metric:'${m}'})">${VAL_METRIC_META[m].label}</button>`).join('');
+        rEl.innerHTML = Object.entries(FEATURED_TREND_RANGES).map(([k, item]) => `<button class="featured-range-btn ${p.range === k ? 'active' : ''}" onclick="setValuationPanel('${id}',{range:'${k}'})">${item.label}</button>`).join('');
+        renderValuationChart(document.getElementById(`${id}Chart`), { type: p.type, code: p.code, metric: p.metric, range: p.range }, document.getElementById(`${id}Foot`));
+    }
+
+    /** 股票 PE / PB 历史走势弹窗（复用 ETF 弹窗容器样式） */
+    function openValuationModal(type, code, name) {
+        let modal = document.getElementById('valDetailModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'etf-modal-overlay';
+            modal.id = 'valDetailModal';
+            modal.innerHTML = '<div class="etf-modal"><div class="etf-modal-header" id="valModalHeader"></div><div class="etf-modal-body" id="valModalBody"></div></div>';
+            document.body.appendChild(modal);
+            modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('show'); };
+        }
+        document.getElementById('valModalHeader').innerHTML = `
+            <div>
+                <div style="font-size:18px;font-weight:700">${escapeHtml(name || code)}</div>
+                <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono)">${escapeHtml(code)} · 估值历史</div>
+            </div>
+            <button class="etf-modal-close" style="margin-left:auto" onclick="document.getElementById('valDetailModal').classList.remove('show')">✕</button>`;
+        document.getElementById('valModalBody').innerHTML = buildValuationPanelHTML('stockVal', 'PE / PB 历史走势');
+        modal.classList.add('show');
+        initValuationPanel('stockVal', { type, code, metrics: ['pe', 'pb'] });
     }
 
     // K线缓存，避免重复请求
@@ -8416,6 +8742,7 @@
                         <span class="stock-detail-label">昨收</span>
                         <span class="stock-detail-val">${s.prevClose ? s.prevClose.toFixed(2) : '--'}</span>
                     </div>
+                    <button class="val-trend-link" onclick="event.stopPropagation();openValuationModal('stock','${escapeHtml(s.code)}','${escapeHtml((s.name || '').replace(/'/g, ''))}')">📈 PE / PB 历史走势</button>
                 </div>
             </div>`, flashClass, dir, sign, s };
         };
@@ -8549,8 +8876,8 @@
                 const insertAt = Math.min(firstVisibleIdx, newOrder.length);
                 newOrder.splice(insertAt, 0, ...insertItems);
                 indexQuotesData = newOrder;
-                // 5) 持久化使用全集 codes（不带后缀），保证 watchlist 完整顺序
-                const codes = indexQuotesData.map(i => i.code);
+                // 5) 持久化使用全集 codes（剥离市场后缀，与 watchlist 中存储的裸 code 一致）
+                const codes = indexQuotesData.map(i => String(i.code).replace(/\.[A-Z]{2,5}$/, ''));
                 fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -9403,18 +9730,48 @@
             });
             const d = await r.json();
             if (d.success) {
+                _loginFailCount.modal = 0;
                 authUser = d.data;
                 closeAuthModal();
                 updateAuthUI();
                 showCfgToast('登录成功，欢迎 ' + (d.data.nickname || d.data.username));
             } else {
-                errEl.textContent = d.error || '登录失败';
+                errEl.textContent = loginFailMessage(d.error || '账号或密码错误', 'modal');
             }
         } catch (e) {
-            errEl.textContent = '网络错误: ' + e.message;
+            errEl.textContent = '网络错误，请检查网络后重试';
         } finally {
             btn.disabled = false;
         }
+    }
+
+    /** 关闭 /admin 全屏登录页，返回首页 */
+    function closeAdminLoginView() {
+        document.getElementById('adminLoginView').classList.remove('visible');
+        window.location.href = '/';
+    }
+
+    /** 登录失败计数：连续失败达阈值时给出更明确的引导 */
+    const _loginFailCount = { admin: 0, modal: 0 };
+
+    function bindLoginErrorAutoClear(errEl, inputIds) {
+        inputIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', () => { errEl.textContent = ''; });
+        });
+    }
+
+    // 输入账号/密码时自动清除上一次的错误提示（两处登录框）
+    bindLoginErrorAutoClear(document.getElementById('adminLoginError'), ['adminLoginUsername', 'adminLoginPassword']);
+    bindLoginErrorAutoClear(document.getElementById('loginError'), ['loginUsername', 'loginPassword']);
+
+    /** 返回失败提示文案：连续失败 3 次及以上时追加引导 */
+    function loginFailMessage(baseMsg, kind) {
+        _loginFailCount[kind] += 1;
+        if (_loginFailCount[kind] >= 3) {
+            return baseMsg + '。忘记密码请联系管理员在「用户管理」中重置。';
+        }
+        return baseMsg;
     }
 
     // /admin 路径专用登录函数（成功后跳转 /）
@@ -9433,12 +9790,13 @@
             });
             const d = await r.json();
             if (d.success) {
+                _loginFailCount.admin = 0;
                 window.location.href = '/';
             } else {
-                errEl.textContent = d.error || '账号或密码错误';
+                errEl.textContent = loginFailMessage(d.error || '账号或密码错误', 'admin');
             }
         } catch (e) {
-            errEl.textContent = '网络错误: ' + e.message;
+            errEl.textContent = '网络错误，请检查网络后重试';
         } finally {
             btn.disabled = false;
         }
@@ -9548,6 +9906,7 @@
                 + '<td>' + roleBadge + '</td>'
                 + '<td style="color:var(--text-secondary);font-size:12px">' + dateStr + '</td>'
                 + '<td>'
+                + '<button class="admin-action-btn" onclick="openResetPasswordForm(\'' + escapeHtml(u.username) + '\')">改密码</button>'
                 + '<button class="admin-action-btn" onclick="openAdminUserForm(\'' + escapeHtml(u.username) + '\')">编辑</button>'
                 + (isSelf ? '' : '<button class="admin-action-btn danger" onclick="deleteAdminUser(\'' + escapeHtml(u.username) + '\')">删除</button>')
                 + '</td>'
@@ -9555,7 +9914,12 @@
         }).join('');
     }
 
-    function openAdminUserForm(editUsername) {
+    /** 从「改密码」按钮进入：复用编辑表单，但聚焦密码字段并提示这是重置密码 */
+    function openResetPasswordForm(username) {
+        openAdminUserForm(username, true);
+    }
+
+    function openAdminUserForm(editUsername, focusPassword = false) {
         const mask = document.getElementById('adminUserModalMask');
         const title = document.getElementById('adminUserFormTitle');
         const mode = document.getElementById('adminUserFormMode');
@@ -9568,15 +9932,25 @@
         errEl.textContent = '';
         if (editUsername) {
             const u = adminUsersList.find(x => x.username === editUsername);
-            title.textContent = '编辑用户';
+            const isSelf = authUser && authUser.username === editUsername;
+            title.textContent = focusPassword ? '重置密码' : '编辑用户';
             mode.value = 'edit';
             uEl.value = editUsername;
             uEl.disabled = true;
             nEl.value = u ? (u.nickname || '') : '';
             pEl.value = '';
-            pEl.placeholder = '留空则不修改';
-            hint.textContent = '(留空不修改)';
+            pEl.placeholder = focusPassword ? '请输入新密码（至少6位）' : '留空则不修改';
+            hint.textContent = focusPassword ? '(至少6位，保存后立即生效)' : '(留空不修改)';
             rEl.value = u ? u.role : 'user';
+            if (focusPassword) {
+                errEl.textContent = isSelf
+                    ? '提示：修改自己的密码后，其他设备上的登录会失效，本设备可继续使用。'
+                    : '提示：保存后该用户其他设备上的登录会失效，需要用新密码重新登录。';
+                errEl.style.color = 'var(--text-muted)';
+                pEl.focus();
+            } else {
+                errEl.style.color = '';
+            }
         } else {
             title.textContent = '添加用户';
             mode.value = 'add';
@@ -9592,6 +9966,9 @@
     }
 
     function closeAdminUserForm() {
+        const errEl = document.getElementById('adminUserFormError');
+        errEl.textContent = '';
+        errEl.style.color = '';
         document.getElementById('adminUserModalMask').classList.remove('open');
     }
 
@@ -9632,8 +10009,14 @@
                 adminUsersList = d.data.users || [];
                 renderAdminUsers();
                 closeAdminUserForm();
-                showCfgToast(mode === 'add' ? '用户已添加' : '用户已更新');
-                // 如果编辑了自己的角色，刷新 auth
+                if (mode === 'add') {
+                    showCfgToast('用户已添加');
+                } else if (password) {
+                    showCfgToast('密码已重置，新密码立即生效');
+                } else {
+                    showCfgToast('用户已更新');
+                }
+                // 如果编辑了自己（角色或密码），刷新 auth
                 if (mode === 'edit' && authUser && authUser.username === username) {
                     checkAuth();
                 }

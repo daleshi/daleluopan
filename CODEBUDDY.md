@@ -19,12 +19,18 @@ npm start
 # 或
 npm run dev
 
+# 后台采集进程（本地调试；数据写入 data/db/）
+npm run collector
+
 # PM2 生产管理
-npm run pm2:start     # 启动
-npm run pm2:restart   # 重启
+npm run pm2:start     # 启动（网站 + 采集两个应用）
+npm run pm2:restart   # 重启网站
 npm run pm2:stop      # 停止
 npm run pm2:logs      # 查看日志（最近 100 行）
 npm run pm2:status    # 查看进程状态
+npm run pm2:collector:start    # 单独启动采集进程（首次部署）
+npm run pm2:collector:restart  # 重启采集进程
+npm run pm2:collector:logs     # 采集进程日志
 
 # 打包发布
 npm run package:deploy  # 生成 dist/dale-compass-YYYYMMDD-HHMMSS.tar.gz
@@ -57,7 +63,7 @@ npm run package:deploy  # 生成 dist/dale-compass-YYYYMMDD-HHMMSS.tar.gz
 | **进程管理** | PM2 6.0 |
 | **前端** | 纯原生 HTML/CSS/JS 单文件 SPA（零构建依赖，无框架） |
 | **字体** | Google Fonts — Noto Serif SC, Noto Sans SC, DM Mono |
-| **数据持久化** | JSON 文件（无数据库） |
+| **数据持久化** | JSON 文件（关注清单、配置、用户）+ SQLite 历史库（sql.js 1.14，SQLite 编译为 WASM，无原生依赖） |
 
 ---
 
@@ -67,14 +73,30 @@ npm run package:deploy  # 生成 dist/dale-compass-YYYYMMDD-HHMMSS.tar.gz
 daleluopan/
 ├── server.js                    # 主入口（~1972行）Express 服务 + 全部 API 路由 + 认证系统 + 缓存层
 ├── package.json                 # 项目配置（5 个依赖）
-├── ecosystem.config.js          # PM2 进程管理配置
+├── collector.js                 # 后台采集进程入口（PM2 应用 dale-collector）
+├── ecosystem.config.js          # PM2 进程管理配置（dale-compass + dale-collector）
 ├── CODEBUDDY.md                 # 本文件 — 项目规范说明
 ├── README.md                    # 项目说明文档
 ├── services/                    # 后端数据采集服务层
-│   ├── dataFetcher.js          #   指数数据采集核心（~2306行，最大文件）— 13个数据源
-│   ├── stockFetcher.js         #   股票实时行情采集（~790行）
-│   ├── fundFetcher.js          #   基金数据采集（~712行）
-│   └── etfFetcher.js           #   ETF 数据采集（~600行）
+│   ├── dataFetcher.js          #   指数数据采集核心（最大文件）— 13个数据源
+│   ├── stockFetcher.js         #   股票实时行情采集
+│   ├── fundFetcher.js          #   基金数据采集
+│   ├── etfFetcher.js           #   ETF 数据采集
+│   ├── marketHours.js          #   交易时段统一模块（A股/港股/美股，按交易所时区，含夏令时）
+│   ├── dailyEval.js            #   每日估值数据组装（网站与采集进程共用）
+│   ├── db/                     #   历史库
+│   │   ├── sqlite.js           #     sql.js 加载、损坏时从备份恢复、原子导出
+│   │   ├── schema.js           #     表结构与版本化迁移
+│   │   ├── repo.js             #     数据访问、幂等 UPSERT、关注清单镜像
+│   │   ├── readModel.js        #     网站只读副本（按文件 mtime 重载）
+│   │   ├── atomicWrite.js      #     原子写文件（临时文件 + rename）
+│   │   └── paths.js            #     文件路径
+│   └── collector/              #   采集进程
+│       ├── quoteLoop.js        #     盘中循环（5～10 秒随机、失败退避、不变降频）
+│       ├── jobs.js             #     行情快照、日K、估值、温度、净值、回补、补齐、备份
+│       ├── scheduler.js        #     每日任务调度（按交易所当地时间）
+│       ├── sources.js          #     蛋卷/中证/东财数据中心/国证/腾讯 历史数据源
+│       └── store.js            #     latest.json / 快照 / 库落盘
 ├── public/                      # 前端静态资源
 │   ├── index.html              #   单文件 SPA（~9894行，包含全部 HTML+CSS+JS）
 │   ├── about/                  #   关于页面图片资源
@@ -96,13 +118,18 @@ daleluopan/
 │   ├── site-config.json        #   站点配置（登录开关等）
 │   ├── site-stats.json         #   站点访问统计
 │   ├── users.json              #   用户账户数据
-│   └── cache/                  #   磁盘缓存目录
-│       ├── indices.json        #   指数数据缓存
-│       ├── index-quotes.json   #   指数行情缓存
-│       ├── daily-eval.json     #   每日估值缓存
-│       ├── stocks.json         #   股票数据缓存
-│       ├── etfs.json           #   ETF 数据缓存
-│       └── active-funds.json   #   基金数据缓存
+│   ├── cache/                  #   磁盘缓存目录（legacy 模式下网站写入）
+│   │   ├── indices.json        #   指数数据缓存
+│   │   ├── index-quotes.json   #   指数行情缓存
+│   │   ├── daily-eval.json     #   每日估值缓存
+│   │   ├── stocks.json         #   股票数据缓存
+│   │   ├── etfs.json           #   ETF 数据缓存
+│   │   └── active-funds.json   #   基金数据缓存
+│   ├── db/                     #   采集进程产出（唯一写入者；不打包、部署不覆盖）
+│   │   ├── latest.json         #   最新行情快照 + 采集状态 + 心跳
+│   │   ├── snap/               #   指数完整数据 / 严选基金快照
+│   │   └── market.db           #   历史库：日K、基金净值、估值与温度快照、分位参考线、任务日志
+│   └── backup/                 #   market.db 每日备份（保留 14 份）
 ├── scripts/
 │   └── package-deploy.sh       #   打包发布脚本
 ├── dist/                        # 部署相关文档和脚本
@@ -116,6 +143,31 @@ daleluopan/
 ---
 
 ## 架构设计
+
+### 双进程与数据源模式
+
+```
+            ┌──────────────────────────────┐
+            │ dale-collector（唯一写入者）    │  盘中 5～10 秒随机采集；失败退避至 120 秒
+            └──────┬──────────────┬────────┘  收盘日K / 晚间估值、温度、基金净值 / 23:45 备份
+     每轮采集后     │              │ 每日任务后（先写临时文件再 rename，原子替换）
+                   ▼              ▼
+     data/db/latest.json + snap/   data/db/market.db
+                   │ mtime 变化才重读 │
+                   ▼              ▼
+            ┌──────────────────────────────┐
+            │ dale-compass（网站，只读）        │
+            └──────────────────────────────┘
+```
+
+- **`dataSourceMode`**（`data/site-config.json`，管理端可切换）：
+  - `legacy`：原有逻辑，网站请求时采集并写 `data/cache/`
+  - `db`：`smartCacheGet` 直接返回采集快照，请求线程不调用外部源；快照缺失时才回退原逻辑
+  - 测试时可用环境变量 `DATA_SOURCE_MODE=db|legacy` 覆盖；`DALE_DB_DIR` / `DALE_BACKUP_DIR` 可指定库目录
+- **关注清单**仍存于 `data/*-watchlist.json`（原子写），由网站读写；采集进程监听变化并同步到库中镜像（删除保留历史，重新添加接续）
+- **估值 / 温度曲线**（`/api/valuation/history`）只依赖 `market.db`，不受模式影响
+- **不经过采集进程的接口**：搜索、ETF 分时、温度详情、管理端手动刷新温度（均为用户主动触发、无法预先采集）
+- **状态查看**：`/api/collector/status`（心跳、快照时间、库行数、最近任务）、`/api/market-status`
 
 ### 整体架构
 

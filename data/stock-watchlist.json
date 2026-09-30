@@ -1,16 +1,6 @@
 {
   "stocks": [
     {
-      "name": "隆基绿能",
-      "code": "601012",
-      "market": "SH",
-      "secid": "1.601012",
-      "icon": "隆基",
-      "iconBg": "linear-gradient(135deg, #48bb78, #2f855a)",
-      "iconColor": "#fff",
-      "sector": "光伏"
-    },
-    {
       "name": "宝信软件",
       "code": "600845",
       "market": "SH",

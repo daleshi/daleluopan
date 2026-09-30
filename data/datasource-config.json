@@ -4,9 +4,9 @@
     "eastmoney": true,
     "youzhiyouxing": true,
     "tiantian": true,
-    "etfrun": false,
+    "etfrun": true,
     "eniu": true,
-    "csindex": false,
-    "tencent": false
+    "csindex": true,
+    "tencent": true
   }
 }

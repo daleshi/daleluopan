@@ -16,6 +16,10 @@
     "pm2:delete": "npx pm2 delete dale-compass",
     "pm2:status": "npx pm2 status dale-compass",
     "pm2:logs": "npx pm2 logs dale-compass --lines 100",
+    "collector": "node collector.js",
+    "pm2:collector:start": "npx pm2 start ecosystem.config.js --only dale-collector",
+    "pm2:collector:restart": "npx pm2 restart dale-collector",
+    "pm2:collector:logs": "npx pm2 logs dale-collector --lines 100",
     "pm2:save": "npx pm2 save"
   },
   "dependencies": {
@@ -23,7 +27,8 @@
     "express": "^4.18.2",
     "iconv-lite": "^0.6.3",
     "node-fetch": "^2.7.0",
-    "pm2": "^6.0.8"
+    "pm2": "^6.0.8",
+    "sql.js": "^1.14.2"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

@@ -14,13 +14,27 @@ mkdir -p "$PROJECT_ROOT/logs"
 
 cd "$PROJECT_ROOT"
 
+# node_modules/sql.js 只带运行所需的 3 个文件（纯 JS + WASM，与平台无关；服务器上不执行 npm install）
+SQLJS_FILES="node_modules/sql.js/package.json node_modules/sql.js/dist/sql-wasm.js node_modules/sql.js/dist/sql-wasm.wasm"
+for f in $SQLJS_FILES; do
+  if [ ! -f "$f" ]; then
+    echo "错误：缺少 $f，请先执行 npm install" >&2
+    exit 1
+  fi
+done
+
+# data/db（采集库）与 data/backup（库备份）是各机器自己的运行态数据，不打包
 tar -czf "$TAR_PATH" \
+  --exclude="data/db" \
+  --exclude="data/backup" \
   package.json \
   package-lock.json \
   server.js \
+  collector.js \
   ecosystem.config.js \
   public \
   services \
+  $SQLJS_FILES \
   data \
   logs
 

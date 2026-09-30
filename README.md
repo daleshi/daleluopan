@@ -59,7 +59,7 @@
 | **进程管理** | PM2 6.0 |
 | **前端** | 纯原生 HTML/CSS/JS 单文件 SPA（零构建依赖，无 React/Vue/Webpack） |
 | **字体** | Google Fonts — Noto Serif SC, Noto Sans SC, DM Mono |
-| **数据持久化** | JSON 文件（无数据库） |
+| **数据持久化** | JSON 文件（关注清单、配置、用户）+ SQLite 历史库（sql.js，WASM 实现，无原生依赖） |
 
 ---
 
@@ -69,12 +69,16 @@
 dale-compass/
 ├── server.js                    # 主入口（Express 服务 + API 路由 + 认证系统）
 ├── package.json                 # 项目配置
-├── ecosystem.config.js          # PM2 进程管理配置
+├── collector.js                 # 后台采集进程（行情数据唯一写入者）
+├── ecosystem.config.js          # PM2 进程管理配置（网站 + 采集）
 ├── services/                    # 后端数据采集服务层
 │   ├── dataFetcher.js          #   指数数据采集（蛋卷/东方财富/知有行等多源）
 │   ├── stockFetcher.js         #   股票实时行情采集
 │   ├── fundFetcher.js          #   基金数据采集
-│   └── etfFetcher.js           #   ETF 数据采集
+│   ├── etfFetcher.js           #   ETF 数据采集
+│   ├── marketHours.js          #   交易时段（A股/港股/美股）
+│   ├── db/                     #   历史库（sql.js）读写
+│   └── collector/              #   采集调度、历史回补、每日任务
 ├── public/                      # 前端静态资源
 │   ├── index.html              #   单文件 SPA（全部 HTML+CSS+JS）
 │   └── favicon.*               #   各尺寸图标
@@ -87,7 +91,9 @@ dale-compass/
 │   ├── dca-plan.json           #   （已闲置）历史定投策略数据，代码不再读写
 │   ├── position-benchmark.json #   （已闲置）历史加仓基准数据，代码不再读写
 │   ├── position-records.json   #   （已闲置）历史加仓记录数据，代码不再读写
-│   └── users.json              #   用户账户数据
+│   ├── users.json              #   用户账户数据
+│   ├── db/                     #   采集产出：latest.json（最新行情）、snap/、market.db（历史库）
+│   └── backup/                 #   market.db 每日备份（保留 14 份）
 ├── scripts/
 │   └── package-deploy.sh       #   打包发布脚本
 ├── dist/                        # 部署相关
@@ -212,12 +218,15 @@ npm start
 |---|---|---|
 | GET | `/api/daily-eval` | 每日估值全量数据（Wind） |
 | GET | `/api/thermometer/detail?code=` | 单指数温度详情 |
+| GET | `/api/valuation/history?type=&code=&metric=&range=` | PE / PB / 温度历史（本地历史库；ETF 返回跟踪指数） |
 
 ### 运维
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/health` | 健康检查 |
+| GET | `/api/health` | 健康检查（含数据源模式） |
+| GET | `/api/collector/status` | 采集进程心跳、快照时间、历史库行数、最近任务 |
+| GET | `/api/market-status` | 各市场交易状态（按交易所时区） |
 | GET | `/api/datasources` | 获取数据源配置 |
 | POST | `/api/datasources` | 保存数据源配置 |
 
@@ -228,12 +237,21 @@ npm start
 ### PM2 管理
 
 ```bash
-npm run pm2:start      # 启动
-npm run pm2:restart    # 重启
+npm run pm2:start      # 启动（网站 dale-compass + 采集 dale-collector）
+npm run pm2:restart    # 重启网站
 npm run pm2:stop       # 停止
 npm run pm2:logs       # 查看最近 100 行日志
 npm run pm2:status     # 查看进程状态
+npm run pm2:collector:start    # 首次部署时单独启动采集进程（之后 npx pm2 save）
+npm run pm2:collector:restart  # 重启采集进程
 ```
+
+### 数据源模式
+
+`data/site-config.json` 中的 `dataSourceMode`：
+
+- `legacy`（默认）：网站请求时采集外部数据源
+- `db`：网站只读采集进程产出的 `data/db/` 文件，外部源故障时照常显示上一份数据；切回 `legacy` 即可回退
 
 ### 打包发布
 

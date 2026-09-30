@@ -92,7 +92,7 @@ function readEtfWatchlist() {
 
 function writeEtfWatchlist(etfs) {
     ensureDataDir();
-    fs.writeFileSync(ETF_WATCHLIST_FILE, JSON.stringify({ etfs }, null, 2), 'utf8');
+    require('./db/atomicWrite').writeJsonAtomic(ETF_WATCHLIST_FILE, { etfs }, true);
 }
 
 // ============================================================
@@ -627,14 +627,9 @@ async function fetchAllETFData(forceRefresh = false) {
 }
 
 // 判断交易时间
+// 交易时段统一由 marketHours 模块实现（ETF 仅看 A 股）
 function isTradingHours() {
-    const now = new Date();
-    const day = now.getDay();
-    if (day === 0 || day === 6) return false;
-    const h = now.getHours();
-    const m = now.getMinutes();
-    const time = h * 60 + m;
-    return time >= 9 * 60 + 15 && time <= 15 * 60 + 5;
+    return require('./marketHours').isTradingHours('CN');
 }
 
 module.exports = {

@@ -25,11 +25,16 @@
 
 ## 上手步骤
 
-1. 微信开发者工具 → 导入项目 → 选择 `miniprogram/` 目录
-2. `project.config.json` 里把 `appid` 换成你的 AppID（个人主体小程序）
-3. 小程序后台 → 开发管理 → 开发设置 → **服务器域名** → request 合法域名填 `https://daleluopan.com`
-4. 调试阶段可在「详情 → 本地设置」勾选「不校验合法域名」先跑通；真机预览前取消勾选验证正式环境
-5. 提交**小程序 ICP 备案**（与域名备案是两回事，1-20 工作日，建议立刻启动）
+**完整图文步骤见 [`docs/miniprogram-launch-guide.html`](../docs/miniprogram-launch-guide.html)**（8 步：配域名 → 填 AppID → 本地跑通 → 真机预览 → 上传体验版 → 选类目 → 备案 → 发布）。
+
+精简版：
+
+1. 小程序后台 → <kbd>管理 → 开发管理 → 开发设置 → 服务器域名</kbd> → request 合法域名填 `https://daleluopan.com`（**不要带端口**），管理员扫码确认
+2. 填入 AppID：`bash scripts/set-mp-appid.sh wx你的AppID`（脚本会校验格式并写入 `project.config.json`）
+3. 微信开发者工具 → 导入项目 → 目录选 **`miniprogram/`**（不是项目根目录）
+4. 点「预览」扫码真机体验 → 点「上传」→ 后台选为体验版（体验版免备案免审核，可长期使用）
+5. 提交**小程序 ICP 备案**：后台首页「去备案」或 <kbd>设置 → 小程序备案</kbd>（与域名备案是两回事，1-20 工作日，建议今天就提交）
+6. 备案通过后提交审核 → 发布
 
 ## 后端配套改动
 

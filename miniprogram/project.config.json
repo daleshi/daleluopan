@@ -1,6 +1,6 @@
 {
-  "description": "大乐罗盘 · 微信小程序（web-view 版）",
-  "appid": "请填入你的 AppID",
+  "description": "大乐罗盘 · 微信小程序（原生版，个人主体适用）",
+  "appid": "请填入你的 AppID（wx 开头，18 位）",
   "projectname": "dale-compass-mp",
   "compileType": "miniprogram",
   "libVersion": "latest",

@@ -1,16 +1,6 @@
 {
   "etfs": [
     {
-      "name": "中证500ETF",
-      "code": "510500",
-      "market": "SH",
-      "secid": "1.510500",
-      "icon": "500",
-      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
-      "iconColor": "#fff",
-      "category": "宽基"
-    },
-    {
       "name": "创业板ETF",
       "code": "159915",
       "market": "SZ",

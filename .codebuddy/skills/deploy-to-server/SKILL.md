@@ -60,17 +60,25 @@ tar -xzf <PKG_NAME> \
   --exclude="data" \
   2>&1 | grep -v "Ignoring unknown extended header" | grep -v "^$" || true
 
-# 重启服务
+# 重启服务（网站）
 npx pm2 restart dale-compass
+
+# 重启采集进程；首次部署时 dale-collector 尚不存在，则按配置启动并保存进程列表
+if npx pm2 describe dale-collector >/dev/null 2>&1; then
+  npx pm2 restart dale-collector
+else
+  npx pm2 start ecosystem.config.js --only dale-collector && npx pm2 save
+fi
 
 # 等待启动
 sleep 3
 
 # 查看状态
-npx pm2 status dale-compass
+npx pm2 status
 
 # 查看最新日志
 npx pm2 logs dale-compass --lines 15 --nostream 2>&1 | tail -20
+npx pm2 logs dale-collector --lines 15 --nostream 2>&1 | tail -20
 '
 ```
 
@@ -133,6 +141,8 @@ echo "备份清理完成，当前保留：$(ls -d data.bak.* 2>/dev/null || echo
 
 - `data/` 目录包含用户数据和运行态 JSON，**始终排除在解压覆盖之外**，并在部署前自动备份
 - macOS 打包的 tar.gz 含 Apple 扩展头（`LIBARCHIVE.xattr.*`），Linux 解压时会有警告，属正常现象，不影响文件内容
-- 部署不会执行 `npm install`（`node_modules` 已随包包含），若新增依赖需手动处理
+- 部署不会执行 `npm install`：发布包**不含** `node_modules`，服务器沿用已有依赖目录；唯一例外是 `sql.js`（纯 JS + WASM，无原生编译），由 `scripts/package-deploy.sh` 只打包其运行所需的 3 个文件。今后新增其他依赖需手动处理
+- 两个 PM2 应用：`dale-compass`（网站）与 `dale-collector`（后台采集，行情数据唯一写入者）；`data/db/`（采集库）与 `data/backup/`（库备份，保留 14 份）不打包、不覆盖
+- 数据源模式由 `data/site-config.json` 的 `dataSourceMode`（`legacy` / `db`）控制，管理端可切换，回退只需切回 `legacy`
 - 每次部署后自动清理旧备份，**始终只保留最新 1 个**，如需回滚请在下次发布前手动操作
 - **密码仅用于命令执行，不记录到任何输出、日志或记忆中**

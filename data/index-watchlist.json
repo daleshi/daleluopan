@@ -11,12 +11,52 @@
       "category": "broad-cn"
     },
     {
-      "name": "中证500",
-      "code": "000905",
+      "name": "科创50",
+      "code": "000688",
       "market": "SH",
-      "secid": "1.000905",
-      "icon": "500",
-      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
+      "secid": "1.000688",
+      "icon": "科",
+      "iconBg": "linear-gradient(135deg, #fbd38d, #ed8936)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "创业板50",
+      "code": "399673",
+      "market": "SZ",
+      "secid": "0.399673",
+      "icon": "创业",
+      "iconBg": "linear-gradient(135deg, #63b3ed, #3182ce)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "创业板指",
+      "code": "399006",
+      "market": "SZ",
+      "secid": "0.399006",
+      "icon": "创",
+      "iconBg": "linear-gradient(135deg, #fc8181, #e53e3e)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "中证消费",
+      "code": "000932",
+      "market": "SH",
+      "secid": "1.000932",
+      "icon": "消费",
+      "iconBg": "linear-gradient(135deg, #68d391, #38a169)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "自由现金流",
+      "code": "980092",
+      "market": "SZ",
+      "secid": "0.980092",
+      "icon": "自由",
+      "iconBg": "linear-gradient(135deg, #a0aec0, #718096)",
       "iconColor": "#fff",
       "category": "broad-cn"
     },
@@ -41,22 +81,22 @@
       "category": "broad-cn"
     },
     {
-      "name": "中证消费",
-      "code": "000932",
+      "name": "中证500",
+      "code": "000905",
       "market": "SH",
-      "secid": "1.000932",
-      "icon": "消费",
-      "iconBg": "linear-gradient(135deg, #68d391, #38a169)",
+      "secid": "1.000905",
+      "icon": "500",
+      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
       "iconColor": "#fff",
       "category": "broad-cn"
     },
     {
-      "name": "科创50",
-      "code": "000688",
+      "name": "全指信息",
+      "code": "000993",
       "market": "SH",
-      "secid": "1.000688",
-      "icon": "科",
-      "iconBg": "linear-gradient(135deg, #fbd38d, #ed8936)",
+      "secid": "1.000993",
+      "icon": "全信",
+      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
       "iconColor": "#fff",
       "category": "broad-cn"
     },
@@ -67,6 +107,16 @@
       "secid": "100.HSTECH",
       "icon": "科技",
       "iconBg": "linear-gradient(135deg, #4fd1c5, #319795)",
+      "iconColor": "#fff",
+      "category": "broad-hk"
+    },
+    {
+      "name": "港股创新药",
+      "code": "931787",
+      "market": "CSI",
+      "secid": "2.931787",
+      "icon": "港股",
+      "iconBg": "linear-gradient(135deg, #76e4f7, #0bc5ea)",
       "iconColor": "#fff",
       "category": "broad-hk"
     },
