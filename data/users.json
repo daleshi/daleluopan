@@ -39,6 +39,14 @@
       "role": "user",
       "nickname": "test_user",
       "createdAt": "2026-04-21T02:33:41.339Z"
+    },
+    {
+      "username": "et_642651",
+      "passwordHash": "0bebae32ed87e2fb6f0545518403d617d962fde292e800a0286e6ddcfafc9cdf8d2431ae9958ff6cb5d61f79cb016e51492f068233d838fe0da75438c2fe3aae",
+      "salt": "6478d4094e8b2e5c031efa3ba6ba9477",
+      "role": "user",
+      "nickname": "et_642651",
+      "createdAt": "2026-10-13T13:37:22.654Z"
     }
   ]
 }

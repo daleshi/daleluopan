@@ -705,6 +705,88 @@
         }
         .etf-refresh-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
 
+        /* ===== ETF 网格交易 ===== */
+        .etf-grid-add-btn {
+            margin-left: auto; padding: 6px 14px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle); background: var(--bg-secondary);
+            color: var(--accent-blue); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s;
+        }
+        .etf-grid-add-btn:hover { border-color: var(--accent-blue); background: var(--accent-blue-dim); }
+        .eg-list { display: flex; flex-direction: column; gap: 12px; }
+        .eg-empty {
+            text-align: center; padding: 40px 20px; color: var(--text-muted);
+            background: var(--bg-card); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); font-size: 13px;
+        }
+        .eg-item { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+        .eg-row {
+            display: grid; grid-template-columns: 1.5fr .8fr .8fr 1.1fr 1.2fr 1.2fr auto;
+            gap: 10px; align-items: center; padding: 14px 16px;
+        }
+        .eg-row.eg-head {
+            padding: 10px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: .5px;
+        }
+        .eg-name { font-family: var(--font-serif); font-size: 14px; font-weight: 700; }
+        .eg-code { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+        .eg-cell { font-family: var(--font-mono); font-size: 12px; }
+        .eg-label { display: none; }
+        .eg-stale { color: var(--text-muted); opacity: .7; }
+        .eg-badge { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+        .eg-badge.running { background: rgba(72,187,120,.14); color: var(--green-value); }
+        .eg-badge.paused { background: rgba(236,201,75,.16); color: #ecc94b; }
+        .eg-badge.archived { background: var(--overlay-08); color: var(--text-muted); }
+        .eg-pause-reason { font-size: 11px; color: #ecc94b; margin-top: 4px; }
+        .eg-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+        .eg-btn {
+            padding: 5px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);
+            background: var(--bg-secondary); color: var(--text-secondary); font-size: 11px; cursor: pointer; transition: all .2s;
+        }
+        .eg-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .eg-btn.danger:hover { border-color: var(--red-danger); color: var(--red-danger); }
+        .eg-toggle {
+            padding: 10px 16px; border-top: 1px solid var(--border-subtle); cursor: pointer;
+            font-size: 12px; color: var(--text-secondary); background: var(--bg-secondary); user-select: none;
+        }
+        .eg-toggle:hover { color: var(--accent-blue); }
+        .eg-table-wrap { display: none; padding: 4px 16px 14px; overflow-x: auto; }
+        .eg-table-wrap.open { display: block; }
+        .eg-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; }
+        .eg-table th, .eg-table td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+        .eg-table th { color: var(--text-muted); font-size: 11px; font-weight: 600; text-align: right; }
+        .eg-table th:first-child, .eg-table td:first-child { text-align: left; }
+        .eg-status-base { background: var(--overlay-08); color: var(--text-secondary); padding: 2px 8px; border-radius: 20px; font-size: 10px; }
+        .eg-status-filled { background: rgba(72,187,120,.14); color: var(--green-value); padding: 2px 8px; border-radius: 20px; font-size: 10px; }
+        .eg-status-waiting { background: var(--accent-blue-dim); color: var(--accent-blue); padding: 2px 8px; border-radius: 20px; font-size: 10px; }
+        .eg-status-paused { background: rgba(236,201,75,.16); color: #ecc94b; padding: 2px 8px; border-radius: 20px; font-size: 10px; }
+        .eg-card-entry {
+            position: absolute; right: 38px; top: 10px; z-index: 3; width: 24px; height: 24px; border-radius: 50%;
+            border: none; background: var(--overlay-08); color: var(--text-secondary); font-size: 12px;
+            cursor: pointer; display: none; align-items: center; justify-content: center;
+        }
+        body.role-admin .eg-card-entry { display: flex; }
+        .eg-card-entry:hover { background: var(--accent-blue-dim); color: var(--accent-blue); }
+        .eg-preview {
+            margin-top: 4px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-sm);
+            font-family: var(--font-mono); font-size: 11px; max-height: 180px; overflow-y: auto;
+        }
+        .eg-modal-wide { width: 560px; }
+        .eg-field-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .eg-field-row.two { grid-template-columns: repeat(2, 1fr); }
+        .eg-modal-wide .eg-select, .eg-modal-wide select {
+            width: 100%; padding: 10px 12px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle); background: var(--bg-secondary);
+            color: var(--text-primary); font-size: 14px; font-family: var(--font-sans); box-sizing: border-box; outline: none;
+        }
+        .eg-group-title { font-size: 11px; color: var(--text-muted); font-weight: 600; margin: 14px 0 8px; letter-spacing: .5px; }
+        .eg-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        @media (max-width: 900px) {
+            .eg-row { grid-template-columns: 1.4fr .9fr 1.2fr auto; gap: 8px; }
+            .eg-row.eg-head { display: none; }
+            .eg-col-dist, .eg-col-grid { display: none; }
+            .eg-cell { position: relative; }
+            .eg-label { display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 2px; font-family: var(--font-sans); }
+        }
+
         .etf-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px;
         }
@@ -3591,6 +3673,21 @@
                     <div class="loading-wrap"><div class="loading-spinner"></div></div>
                 </div>
             </div>
+
+            <!-- ETF 网格交易（等比对称网格：涨 X% 卖 / 跌 X% 买） -->
+            <div class="section" style="margin-top:36px">
+                <div class="section-header">
+                    <div class="section-line"></div>
+                    <div class="section-title">ETF 网格交易</div>
+                    <div class="section-badge">ETF Grid</div>
+                    <button class="etf-grid-add-btn" id="etfGridAddBtn" onclick="openEtfGridForm()" style="display:none">＋ 新增网格</button>
+                </div>
+                <p class="chart-desc" style="margin-bottom:16px">
+                    等比对称网格交易：<strong>基准价 × (1 + 步长)^档位</strong>。触及买入网线时补录建仓、触及卖出网线时补录减仓。
+                    震荡市场吃波动，每完整闭环单轮净利 = <strong>(1 + 步长)² − 1 − 双边手续费</strong>。
+                </p>
+                <div class="eg-list" id="etfGridStrategyList"></div>
+            </div>
         </div>
 
         <!-- TAB: STOCKS -->
@@ -3998,6 +4095,90 @@
         </div>
     </div>
 
+    <!-- ETF 网格策略配置弹层 -->
+    <div class="auth-modal-mask" id="etfGridFormMask">
+        <div class="auth-modal eg-modal-wide">
+            <button class="auth-modal-close" onclick="closeEtfGridForm()">&times;</button>
+            <h3 id="etfGridFormTitle">添加 ETF 网格策略</h3>
+            <input type="hidden" id="etfGridFormMode" value="add">
+
+            <div class="eg-group-title">标的选择</div>
+            <div class="eg-field-row two">
+                <div class="auth-field"><label>ETF 标的（从严选ETF 看板选取）</label><select id="etfGridFundCode" onchange="onEtfGridFundChange()"></select></div>
+                <div class="auth-field"><label>手续费率(%)</label><input id="etfGridFeeRate" type="number" step="0.01" placeholder="0.15"></div>
+            </div>
+
+            <div class="eg-group-title">网格参数</div>
+            <div class="eg-field-row">
+                <div class="auth-field"><label>每格步长(%)</label><input id="etfGridStep" type="number" step="0.1" placeholder="5" oninput="renderEtfGridPreview()"></div>
+                <div class="auth-field"><label>单侧网数</label><input id="etfGridLevels" type="number" step="1" placeholder="5" oninput="renderEtfGridPreview()"></div>
+                <div class="auth-field"><label>网格中线</label><input id="etfGridBasePrice" type="number" step="0.001" placeholder="基准价" oninput="renderEtfGridPreview()"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <button type="button" class="eg-btn" onclick="etfGridUseCurrentPrice()">使用当前价</button>
+                <span class="eg-hint" id="etfGridCurrentPriceHint"></span>
+            </div>
+
+            <div class="eg-group-title">资金规划</div>
+            <div class="eg-field-row">
+                <div class="auth-field"><label>总预算(元)</label><input id="etfGridTotalBudget" type="number" step="100" placeholder="100000"></div>
+                <div class="auth-field"><label>底仓金额(元)</label><input id="etfGridBaseAmount" type="number" step="100" placeholder="40000"></div>
+                <div class="auth-field"><label>每格金额(元)</label><input id="etfGridAmountPerGrid" type="number" step="100" placeholder="5000"></div>
+            </div>
+
+            <div class="eg-group-title">保护机制（可选）</div>
+            <div class="eg-field-row two">
+                <div class="auth-field"><label>市场温度高于(°)时暂停买入</label><input id="etfGridPauseTemp" type="number" step="1" placeholder="留空不限制"></div>
+                <div class="auth-field"><label>连续买入 N 网后冷却 D 天</label><input id="etfGridCooldown" type="text" placeholder="如 3,5；留空不限制"></div>
+            </div>
+            <div class="auth-field">
+                <label>状态</label>
+                <select id="etfGridStatus" class="eg-select">
+                    <option value="running">运行中</option>
+                    <option value="paused">已暂停</option>
+                    <option value="archived">已归档</option>
+                </select>
+            </div>
+
+            <div class="eg-group-title">网格价位预览</div>
+            <div class="eg-preview" id="etfGridPreview"><span style="color:var(--text-muted)">请填入 步长/单侧网数/中线 以查看网格价位预览</span></div>
+
+            <button class="auth-submit" onclick="submitEtfGridForm()">保存策略</button>
+            <div class="auth-error" id="etfGridFormError"></div>
+        </div>
+    </div>
+
+    <!-- ETF 网格成交补录弹层 -->
+    <div class="auth-modal-mask" id="etfGridRecordMask">
+        <div class="auth-modal eg-modal-wide">
+            <button class="auth-modal-close" onclick="closeEtfGridRecordForm()">&times;</button>
+            <h3 id="etfGridRecordTitle">补录成交</h3>
+            <input type="hidden" id="etfGridRecordFundCode">
+            <div class="eg-field-row two">
+                <div class="auth-field"><label>类型</label>
+                    <select id="etfGridRecordType" class="eg-select" onchange="renderEtfGridRecordHint()">
+                        <option value="base">底仓 (档位 0)</option>
+                        <option value="buy">买入 (档位 &lt; 0)</option>
+                        <option value="sell">卖出 (档位 &gt; 0)</option>
+                    </select>
+                </div>
+                <div class="auth-field"><label>档位</label><input id="etfGridRecordLevel" type="number" step="1" placeholder="0"></div>
+            </div>
+            <div class="eg-field-row">
+                <div class="auth-field"><label>日期</label><input id="etfGridRecordDate" type="date"></div>
+                <div class="auth-field"><label>成交价</label><input id="etfGridRecordPrice" type="number" step="0.001" placeholder="0.000"></div>
+                <div class="auth-field"><label>份额</label><input id="etfGridRecordShares" type="number" step="1" placeholder="0"></div>
+            </div>
+            <div class="eg-field-row two">
+                <div class="auth-field"><label>金额(元)</label><input id="etfGridRecordAmount" type="number" step="0.01" placeholder="0.00"></div>
+                <div class="auth-field"><label>备注（可选）</label><input id="etfGridRecordNote" type="text" placeholder="最多 200 字"></div>
+            </div>
+            <div class="eg-hint" id="etfGridRecordHint"></div>
+            <button class="auth-submit" onclick="submitEtfGridRecord()">提交记录</button>
+            <div class="auth-error" id="etfGridRecordError"></div>
+        </div>
+    </div>
+
     <script>
     // ================================================================
     // THEME — 主题切换（深色/浅色）
@@ -4357,6 +4538,7 @@
                     await loadIndexQuotes(true);
                 } else if (currentTab === 'etf') {
                     await loadETFData(true);
+                    await loadEtfGridData();
                 } else if (currentTab === 'stocks') {
                     await loadStockData(true);
                 }
@@ -4416,6 +4598,7 @@
             loadActiveFundData(true);
         } else if (tab === 'etf') {
             loadETFData(true);
+            loadEtfGridData(true);
         } else if (tab === 'stocks') {
             loadStockData(true);
         } else if (tab === 'valuation') {
@@ -6577,6 +6760,7 @@
             }
             if (tab.dataset.tab === 'etf') {
                 loadETFData();
+                loadEtfGridData();
             }
         });
     });
@@ -7822,6 +8006,7 @@
             const sparkSvg = etf.sparkData && etf.sparkData.length > 2 ? generateETFSparkSvg(etf.sparkData, cp) : '';
             return { flash, html: `<div class="etf-card ${flash}" data-etf-code="${etf.code}" draggable="true" onclick="showETFDetail('${etf.shortCode}')">
                 <div class="pro-drag-handle" title="拖动调整顺序" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</div>                <button class="etf-card-remove" onclick="event.stopPropagation();removeETF('${etf.shortCode}')" title="移除">✕</button>
+                <button class="eg-card-entry" onclick="event.stopPropagation();openEtfGridForm('${etf.shortCode}')" title="网格交易">🕸️</button>
                 <div class="etf-card-header">
                     <div class="etf-card-icon" style="background:${etf.iconBg};color:${etf.iconColor}">${etf.icon || etf.shortCode.slice(-2)}</div>
                     <div class="etf-card-info">
@@ -7988,6 +8173,420 @@
             }
         } catch (err) {
             alert('添加失败: ' + err.message);
+        }
+    }
+
+    // ================================================================
+    // ETF 网格交易
+    // ================================================================
+    let etfGridPlans = [];
+    let etfGridRecs = { strategies: [], marketTemperature: null };
+    let etfGridHoldings = [];
+    let etfGridLoaded = false;
+
+    const egIsAdmin = () => !!(typeof authUser !== 'undefined' && authUser && authUser.role === 'admin');
+    const egNum = v => (v == null || v === '' || !isFinite(Number(v))) ? null : Number(v);
+    const egSigned = (v, suffix = '', digits = 2) => v == null ? '--' : (v > 0 ? '+' : '') + Number(v).toFixed(digits) + suffix;
+    const egMoney = v => v == null ? '--' : Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+
+    async function loadEtfGridData(forceRefresh = false) {
+        try {
+            const recUrl = forceRefresh ? '/api/strategy/etf-grid-recommendations?refresh=1' : '/api/strategy/etf-grid-recommendations';
+            const [plansRes, recRes, holdsRes] = await Promise.all([
+                fetch('/api/strategy/etf-grid-plans'),
+                fetch(recUrl),
+                fetch('/api/strategy/etf-grid-holdings'),
+            ]);
+            const [plansJson, recJson, holdsJson] = await Promise.all([plansRes.json(), recRes.json(), holdsRes.json()]);
+            etfGridPlans = (plansJson && plansJson.success && plansJson.data) ? (plansJson.data.strategies || []) : [];
+            etfGridRecs = (recJson && recJson.success && recJson.data) ? recJson.data : { strategies: [] };
+            etfGridHoldings = (holdsJson && holdsJson.success && holdsJson.data) ? (holdsJson.data.records || []) : [];
+            etfGridLoaded = true;
+            renderEtfGridList();
+        } catch (err) {
+            console.error('[ETF网格] 加载失败:', err.message);
+        }
+    }
+
+    function renderEtfGridList() {
+        const container = document.getElementById('etfGridStrategyList');
+        const addBtn = document.getElementById('etfGridAddBtn');
+        if (!container) return;
+        const isAdmin = egIsAdmin();
+        if (addBtn) addBtn.style.display = isAdmin ? '' : 'none';
+
+        const recByCode = {};
+        (etfGridRecs.strategies || []).forEach(r => { recByCode[r.fundCode] = r; });
+        const list = (etfGridPlans || []).map(p => recByCode[p.fundCode] || p);
+
+        if (list.length === 0) {
+            container.innerHTML = '<div class="eg-empty">暂无网格策略' + (isAdmin ? '，点击右上角"＋ 新增网格"开始配置' : '') + '</div>';
+            return;
+        }
+
+        const head = `<div class="eg-row eg-head">
+            <div>标的</div><div>现价</div><div class="eg-col-dist">距中线</div>
+            <div class="eg-col-grid">步长 × 网数 / 中线</div><div>下一网</div><div>持仓 / 浮盈</div><div style="text-align:right">操作</div>
+        </div>`;
+
+        const rows = list.map(s => {
+            const code = s.fundCode;
+            const name = s.shortName || s.fundName || code;
+            const stale = !(s.currentPrice > 0);
+            const price = stale ? '--' : Number(s.currentPrice).toFixed(3);
+            const dist = egSigned(s.distanceToBasePct, '%', 1);
+            const stepPct = s.gridStep != null ? (Number(s.gridStep) * 100).toFixed(1) : '--';
+            const gridInfo = `${stepPct}% × ${s.gridLevels ?? '--'} / ${s.basePrice != null ? Number(s.basePrice).toFixed(3) : '--'}`;
+            const ng = s.nearestGrid;
+            const nearest = ng ? `${ng.action === 'buy' ? '买' : '卖'} @${Number(ng.price).toFixed(3)}` : '--';
+            const pnl = s.pnl || {};
+            const hold = s.holdings || {};
+            const holdText = `成本 ${egMoney(hold.totalCostBasis)}元 / 余 ${egMoney(hold.remainingBudget)}元`;
+            const pnlText = `${egSigned(pnl.totalPnl, '元', 0)}（${egSigned(pnl.totalReturnPct, '%', 2)}）`;
+            const pnlColor = pnl.totalPnl == null ? 'var(--text-muted)' : (pnl.totalPnl > 0 ? 'var(--red-danger)' : (pnl.totalPnl < 0 ? 'var(--green-value)' : 'var(--text-primary)'));
+            const status = s.status || 'running';
+            const statusText = { running: '运行中', paused: '已暂停', archived: '已归档' }[status] || status;
+            const prot = s.protection || {};
+            const actions = isAdmin ? `
+                <button class="eg-btn" onclick="openEtfGridForm('${code}')">编辑</button>
+                <button class="eg-btn" onclick="openEtfGridRecordForm('${code}')">记一笔</button>
+                <button class="eg-btn" onclick="resetEtfGridBasePrice('${code}')">重置中线</button>
+                <button class="eg-btn danger" onclick="deleteEtfGridStrategy('${code}')">删除</button>` : '';
+            const tableRows = (s.gridTable || []).map(g => {
+                const stText = { base: '中线', filled: '已成交', waiting: '待触发', paused: '暂停' }[g.status] || g.status || '';
+                const actText = { buy: '买入', sell: '卖出', base: '—' }[g.action] || g.action;
+                return `<tr>
+                    <td>${g.level > 0 ? '+' : ''}${g.level}</td>
+                    <td>${Number(g.targetPrice).toFixed(3)}</td>
+                    <td>${actText}</td>
+                    <td><span class="eg-status-${g.status || 'waiting'}">${stText}</span></td>
+                    <td>${g.filledCost != null ? egMoney(g.filledCost) + '元' : '--'}</td>
+                    <td>${g.expectedNetPct != null ? Number(g.expectedNetPct).toFixed(2) + '%' : '--'}</td>
+                </tr>`;
+            }).join('');
+            const typeText = { base: '底仓', buy: '买入', sell: '卖出' };
+            const recRows = (etfGridHoldings || []).filter(r => r.fundCode === code).slice(0, 20).map(r => `<tr>
+                    <td>${r.date || '--'}</td>
+                    <td>${typeText[r.type] || r.type}</td>
+                    <td>${r.gridLevel > 0 ? '+' : ''}${r.gridLevel}</td>
+                    <td>${Number(r.price).toFixed(3)}</td>
+                    <td>${Number(r.shares).toFixed(0)}</td>
+                    <td>${Number(r.amount).toFixed(0)}元</td>
+                    <td><button class="eg-btn danger" onclick="deleteEtfGridRecord('${r.id}')">删除</button></td>
+                </tr>`).join('');
+            return `<div class="eg-item">
+                <div class="eg-row">
+                    <div>
+                        <div class="eg-name">${name}</div>
+                        <div class="eg-code">${code}</div>
+                    </div>
+                    <div class="eg-cell ${stale ? 'eg-stale' : ''}"><span class="eg-label">现价</span>${price}</div>
+                    <div class="eg-cell eg-col-dist"><span class="eg-label">距中线</span>${dist}</div>
+                    <div class="eg-cell eg-col-grid"><span class="eg-label">网格</span>${gridInfo}</div>
+                    <div class="eg-cell"><span class="eg-label">下一网</span>${nearest}</div>
+                    <div class="eg-cell"><span class="eg-label">持仓/浮盈</span>
+                        <div style="color:var(--text-secondary)">${holdText}</div>
+                        <div style="color:${pnlColor}">${pnlText}</div>
+                    </div>
+                    <div style="text-align:right"><span class="eg-badge ${status}">${statusText}</span></div>
+                </div>
+                ${prot.paused ? `<div style="padding:0 16px 10px"><div class="eg-pause-reason">⏸ ${prot.reason || '保护机制生效，买入暂停'}</div></div>` : ''}
+                ${isAdmin ? `<div style="padding:0 16px 12px"><div class="eg-actions">${actions}</div></div>` : ''}
+                <div class="eg-toggle" onclick="toggleEtfGridTable('${code}')">📊 网格价位表</div>
+                <div class="eg-table-wrap" id="egTable_${code}">
+                    <table class="eg-table">
+                        <thead><tr><th>档位</th><th>目标价</th><th>动作</th><th>状态</th><th>已投金额</th><th>单轮预期净利</th></tr></thead>
+                        <tbody>${tableRows || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">暂无价位数据</td></tr>'}</tbody>
+                    </table>
+                </div>
+                ${isAdmin ? `
+                <div class="eg-toggle" onclick="toggleEtfGridRecords('${code}')">📒 成交记录（本轮及历史）</div>
+                <div class="eg-table-wrap" id="egRecs_${code}">
+                    <table class="eg-table">
+                        <thead><tr><th>日期</th><th>类型</th><th>档位</th><th>价格</th><th>份额</th><th>金额</th><th>操作</th></tr></thead>
+                        <tbody>${recRows || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">暂无成交记录</td></tr>'}</tbody>
+                    </table>
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        container.innerHTML = `<div class="eg-item" style="background:transparent;border:none;padding:0">${head}</div>` + rows;
+    }
+
+    function toggleEtfGridTable(code) {
+        const el = document.getElementById('egTable_' + code);
+        if (el) el.classList.toggle('open');
+    }
+
+    function toggleEtfGridRecords(code) {
+        const el = document.getElementById('egRecs_' + code);
+        if (el) el.classList.toggle('open');
+    }
+
+    async function deleteEtfGridRecord(id) {
+        if (!egIsAdmin()) return;
+        if (!confirm('确定删除该条成交记录？')) return;
+        try {
+            const res = await fetch('/api/strategy/etf-grid-holdings/delete', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
+            });
+            const json = await res.json();
+            if (!json.success) { alert(json.error || '删除失败'); return; }
+            await loadEtfGridData(true);
+        } catch (err) {
+            alert('删除失败: ' + err.message);
+        }
+    }
+
+    /** ETF 看板（watchlist）是网格标的的唯一来源；code 为不含市场后缀的纯代码 */
+    async function etfGridFetchWatchlist() {
+        try {
+            const res = await fetch('/api/etfs/watchlist');
+            const json = await res.json();
+            return (json && json.success && json.data) ? (json.data.etfs || []) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /** 从已加载的行情里取该标的现价（看板 code 与行情 code 可能带 .SZ/.SH 后缀，需兼容匹配） */
+    const etfGridPriceOf = code => {
+        const hit = (etfData || []).find(e => e.shortCode === code || String(e.code).split('.')[0] === code);
+        return hit && hit.price > 0 ? hit.price : null;
+    };
+
+    async function etfGridFillFundOptions(selectedCode) {
+        const sel = document.getElementById('etfGridFundCode');
+        if (!sel) return;
+        const wl = await etfGridFetchWatchlist();
+        const opts = wl.map(w => {
+            const p = etfGridPriceOf(String(w.code));
+            return `<option value="${w.code}" data-name="${w.name}" data-secid="${w.secid || ''}" data-price="${p || ''}">${w.name}（${w.code}）</option>`;
+        }).join('');
+        sel.innerHTML = opts || '<option value="">（看板暂无 ETF）</option>';
+        if (selectedCode) sel.value = selectedCode;
+    }
+
+    async function openEtfGridForm(fundCode) {
+        if (!egIsAdmin()) return;
+        const existing = fundCode ? (etfGridPlans || []).find(p => p.fundCode === fundCode) : null;
+        document.getElementById('etfGridFormMode').value = existing ? 'edit' : 'add';
+        document.getElementById('etfGridFormTitle').textContent = existing ? ('编辑网格策略：' + (existing.shortName || existing.fundName)) : '添加 ETF 网格策略';
+        await etfGridFillFundOptions(existing ? existing.fundCode : (fundCode || ''));
+
+        const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val == null ? '' : val; };
+        v('etfGridFeeRate', existing && existing.feeRate != null ? (Number(existing.feeRate) * 100).toFixed(2) : '');
+        v('etfGridStep', existing ? (Number(existing.gridStep) * 100).toFixed(1) : '');
+        v('etfGridLevels', existing ? existing.gridLevels : '');
+        v('etfGridBasePrice', existing ? existing.basePrice : '');
+        v('etfGridTotalBudget', existing ? existing.totalBudget : '');
+        v('etfGridBaseAmount', existing ? existing.baseAmount : '');
+        v('etfGridAmountPerGrid', existing ? existing.amountPerGrid : '');
+        v('etfGridPauseTemp', existing && existing.pauseWhenTempAbove != null ? existing.pauseWhenTempAbove : '');
+        v('etfGridCooldown', existing && existing.cooldownAfterConsecutiveBuys ? `${existing.cooldownAfterConsecutiveBuys.n},${existing.cooldownAfterConsecutiveBuys.days}` : '');
+        const st = document.getElementById('etfGridStatus');
+        if (st) st.value = existing ? (existing.status || 'running') : 'running';
+        document.getElementById('etfGridFormError').textContent = '';
+        onEtfGridFundChange();
+        renderEtfGridPreview();
+        document.getElementById('etfGridFormMask').classList.add('open');
+    }
+
+    function closeEtfGridForm() {
+        document.getElementById('etfGridFormMask').classList.remove('open');
+    }
+
+    function onEtfGridFundChange() {
+        const sel = document.getElementById('etfGridFundCode');
+        const hint = document.getElementById('etfGridCurrentPriceHint');
+        if (!sel || !hint) return;
+        const opt = sel.options[sel.selectedIndex];
+        const p = opt ? Number(opt.dataset.price) : NaN;
+        hint.textContent = (p > 0) ? `当前价 ${p.toFixed(3)}` : '当前价 --';
+    }
+
+    function etfGridUseCurrentPrice() {
+        const sel = document.getElementById('etfGridFundCode');
+        if (!sel) return;
+        const opt = sel.options[sel.selectedIndex];
+        const p = opt ? Number(opt.dataset.price) : NaN;
+        if (p > 0) {
+            document.getElementById('etfGridBasePrice').value = p.toFixed(3);
+            renderEtfGridPreview();
+        }
+    }
+
+    function renderEtfGridPreview() {
+        const el = document.getElementById('etfGridPreview');
+        if (!el) return;
+        const stepPct = egNum(document.getElementById('etfGridStep').value);
+        const levels = egNum(document.getElementById('etfGridLevels').value);
+        const base = egNum(document.getElementById('etfGridBasePrice').value);
+        const feePct = egNum(document.getElementById('etfGridFeeRate').value);
+        if (stepPct == null || levels == null || base == null || stepPct <= 0 || base <= 0 || !Number.isInteger(levels) || levels < 1) {
+            el.innerHTML = '<span style="color:var(--text-muted)">请填入 步长/单侧网数/中线 以查看网格价位预览</span>';
+            return;
+        }
+        const step = stepPct / 100;
+        const fee = feePct != null ? feePct / 100 : 0.0015;
+        const rows = [];
+        for (let n = levels; n >= 1; n--) rows.push([n, base * Math.pow(1 + step, n), '卖出']);
+        rows.push([0, base, '中线']);
+        for (let n = 1; n <= levels; n++) rows.push([-n, base * Math.pow(1 + step, -n), '买入']);
+        const net = (Math.pow(1 + step, 2) - 1 - 2 * fee) * 100;
+        el.innerHTML = `<div style="margin-bottom:6px;color:var(--text-secondary)">单轮预期净利 ${net.toFixed(2)}%（已扣双边手续费 ${(fee * 200).toFixed(2)}%）</div>` +
+            rows.map(([lv, price, act]) => `<div>${lv > 0 ? '+' : ''}${lv}　${price.toFixed(3)}　${act}</div>`).join('');
+    }
+
+    async function submitEtfGridForm() {
+        const errEl = document.getElementById('etfGridFormError');
+        errEl.textContent = '';
+        const sel = document.getElementById('etfGridFundCode');
+        const opt = sel && sel.options[sel.selectedIndex];
+        const fundCode = sel ? sel.value : '';
+        if (!fundCode) { errEl.textContent = '请选择 ETF 标的'; return; }
+        const stepPct = egNum(document.getElementById('etfGridStep').value);
+        const levels = egNum(document.getElementById('etfGridLevels').value);
+        const basePrice = egNum(document.getElementById('etfGridBasePrice').value);
+        const totalBudget = egNum(document.getElementById('etfGridTotalBudget').value);
+        const baseAmount = egNum(document.getElementById('etfGridBaseAmount').value);
+        const amountPerGrid = egNum(document.getElementById('etfGridAmountPerGrid').value);
+        if (stepPct == null || levels == null || basePrice == null || totalBudget == null || baseAmount == null || amountPerGrid == null) {
+            errEl.textContent = '请完整填写 步长/网数/中线/预算/底仓/每格金额';
+            return;
+        }
+        const mode = document.getElementById('etfGridFormMode').value;
+        if (mode === 'edit' && !confirm('修改配置将开启新一轮网格计算，历史成交记录会锁定到旧版本。继续？')) return;
+
+        const cdRaw = (document.getElementById('etfGridCooldown').value || '').trim();
+        let cooldown = null;
+        if (cdRaw) {
+            const parts = cdRaw.split(/[,，\s]+/).map(Number).filter(n => isFinite(n) && n > 0);
+            if (parts.length >= 2) cooldown = { n: Math.round(parts[0]), days: Math.round(parts[1]) };
+        }
+        const body = {
+            fundCode,
+            fundName: opt ? (opt.dataset.name || opt.text) : fundCode,
+            gridStep: stepPct / 100,
+            gridLevels: Math.round(levels),
+            basePrice,
+            totalBudget,
+            baseAmount,
+            amountPerGrid,
+            status: document.getElementById('etfGridStatus').value || 'running',
+        };
+        const feePct = egNum(document.getElementById('etfGridFeeRate').value);
+        if (feePct != null) body.feeRate = feePct / 100;
+        const pauseTemp = egNum(document.getElementById('etfGridPauseTemp').value);
+        if (pauseTemp != null) body.pauseWhenTempAbove = pauseTemp;
+        if (cooldown) body.cooldownAfterConsecutiveBuys = cooldown;
+        // 编辑态保留创建时间
+        const existing = (etfGridPlans || []).find(p => p.fundCode === fundCode);
+        if (existing && existing.createdAt) body.createdAt = existing.createdAt;
+
+        try {
+            const res = await fetch('/api/strategy/etf-grid-plans', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+            });
+            const json = await res.json();
+            if (!json.success) { errEl.textContent = json.error || '保存失败'; return; }
+            if (json.warnings && json.warnings.length) console.warn('[ETF网格]', json.warnings.join('；'));
+            closeEtfGridForm();
+            await loadEtfGridData(true);
+        } catch (err) {
+            errEl.textContent = '保存失败: ' + err.message;
+        }
+    }
+
+    async function deleteEtfGridStrategy(fundCode) {
+        if (!egIsAdmin()) return;
+        if (!confirm('确定删除该网格策略？（已有的成交记录保留）')) return;
+        try {
+            const res = await fetch('/api/strategy/etf-grid-plans/delete', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fundCode }),
+            });
+            const json = await res.json();
+            if (!json.success) { alert(json.error || '删除失败'); return; }
+            await loadEtfGridData(true);
+        } catch (err) {
+            alert('删除失败: ' + err.message);
+        }
+    }
+
+    async function resetEtfGridBasePrice(fundCode) {
+        if (!egIsAdmin()) return;
+        if (!confirm('重置中线将开启新一轮网格计算，历史成交记录会锁定到旧版本。继续？')) return;
+        const input = prompt('输入新的网格中线价格（留空则自动取当前实时价）：', '');
+        if (input === null) return;
+        const body = { fundCode };
+        if (String(input).trim() !== '') {
+            const p = Number(input);
+            if (!isFinite(p) || p <= 0) { alert('中线价格必须 > 0'); return; }
+            body.newBasePrice = p;
+        }
+        try {
+            const res = await fetch('/api/strategy/etf-grid-plans/reset-base-price', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+            });
+            const json = await res.json();
+            if (!json.success) { alert(json.error || '重置失败'); return; }
+            await loadEtfGridData(true);
+        } catch (err) {
+            alert('重置失败: ' + err.message);
+        }
+    }
+
+    function openEtfGridRecordForm(fundCode) {
+        if (!egIsAdmin()) return;
+        document.getElementById('etfGridRecordFundCode').value = fundCode;
+        const s = (etfGridPlans || []).find(p => p.fundCode === fundCode);
+        document.getElementById('etfGridRecordTitle').textContent = '补录成交：' + (s ? (s.shortName || s.fundName) : fundCode);
+        const d = new Date();
+        document.getElementById('etfGridRecordDate').value = d.toISOString().slice(0, 10);
+        ['etfGridRecordLevel', 'etfGridRecordPrice', 'etfGridRecordShares', 'etfGridRecordAmount', 'etfGridRecordNote'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('etfGridRecordError').textContent = '';
+        renderEtfGridRecordHint();
+        document.getElementById('etfGridRecordMask').classList.add('open');
+    }
+
+    function closeEtfGridRecordForm() {
+        document.getElementById('etfGridRecordMask').classList.remove('open');
+    }
+
+    function renderEtfGridRecordHint() {
+        const el = document.getElementById('etfGridRecordHint');
+        if (!el) return;
+        const code = document.getElementById('etfGridRecordFundCode').value;
+        const s = (etfGridPlans || []).find(p => p.fundCode === code);
+        const type = document.getElementById('etfGridRecordType').value;
+        const levels = s ? s.gridLevels : null;
+        const range = levels == null ? '' : (type === 'buy' ? `（可填 -1 ~ -${levels}）` : (type === 'sell' ? `（可填 1 ~ ${levels}）` : '（固定为 0）'));
+        el.textContent = `档位范围${range}`;
+    }
+
+    async function submitEtfGridRecord() {
+        const errEl = document.getElementById('etfGridRecordError');
+        errEl.textContent = '';
+        const body = {
+            fundCode: document.getElementById('etfGridRecordFundCode').value,
+            type: document.getElementById('etfGridRecordType').value,
+            gridLevel: Number(document.getElementById('etfGridRecordLevel').value),
+            date: document.getElementById('etfGridRecordDate').value,
+            price: Number(document.getElementById('etfGridRecordPrice').value),
+            shares: Number(document.getElementById('etfGridRecordShares').value),
+            amount: Number(document.getElementById('etfGridRecordAmount').value),
+            note: document.getElementById('etfGridRecordNote').value || null,
+        };
+        try {
+            const res = await fetch('/api/strategy/etf-grid-holdings', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+            });
+            const json = await res.json();
+            if (!json.success) { errEl.textContent = json.error || '提交失败'; return; }
+            closeEtfGridRecordForm();
+            await loadEtfGridData(true);
+        } catch (err) {
+            errEl.textContent = '提交失败: ' + err.message;
         }
     }
 
