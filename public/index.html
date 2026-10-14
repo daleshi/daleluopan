@@ -7463,6 +7463,8 @@
         // 渲染指数基金
         const renderFundGrid = (grid, funds, emptyMsg) => {
             if (!grid) return;
+            // 拖拽排序绑定：幂等，无条件调用（不依赖 grid 当前是否为空）
+            initFundDnD(grid);
             if (funds.length === 0) {
                 grid.innerHTML = `<div class="af-group-empty">${emptyMsg}</div>`;
                 return;
@@ -7470,7 +7472,6 @@
             if (grid.children.length === 0) {
                 // 首次渲染：全量 innerHTML
                 grid.innerHTML = funds.map(fund => buildFundSummaryCard(fund)).join('');
-                initFundDnD(grid);
             } else if (isDraggingCard) {
                 // 拖拽进行中，跳过 DOM 重建
                 return;
@@ -8045,7 +8046,6 @@
         if (grid.children.length === 0) {
             // 首次渲染：全量 innerHTML
             grid.innerHTML = etfs.map(etf => buildEtfCardHtml(etf).html).join('');
-            initCardDnD(grid, 'etf');
         } else if (isDraggingCard) {
             // 拖拽进行中，跳过 DOM 重建
         } else {
@@ -8097,6 +8097,9 @@
                 }
             });
         }
+
+        // 拖拽排序绑定：幂等，无条件调用（不依赖 grid 当前是否为空）
+        initCardDnD(grid, 'etf');
     }
 
     function generateETFSparkSvg(prices, changePercent) {
@@ -9364,7 +9367,6 @@
         if (grid.children.length === 0) {
             // 首次渲染：全量 innerHTML
             grid.innerHTML = data.stocks.map((s, idx) => buildStockCardHtml(s, idx).html).join('');
-            initCardDnD(grid, 'stock');
         } else if (isDraggingCard) {
             // 拖拽进行中，跳过 DOM 重建
         } else {
@@ -9415,10 +9417,13 @@
                 drawStockSparkline(`stock-spark-${idx}`, s.sparkData, s.changePercent >= 0);
             }
         });
+
+        // 拖拽排序绑定：幂等，无条件调用（不依赖 grid 当前是否为空）
+        initCardDnD(grid, 'stock');
     }
 
     // ===== 拖拽排序 =====
-    // endpoint: 'fund' | 'etf' | 'stock'，codeAttr: 数据属性名
+    // endpoint: 'fund' | 'etf' | 'stock'；cardAttr: 卡片 HTML 属性名（kebab-case）
     function initCardDnD(grid, type) {
         if (!grid) return;
         const endpointMap = {
@@ -9426,18 +9431,29 @@
             stock: '/api/stocks/reorder',
             index: '/api/indices/reorder',
         };
-        const codeAttrMap = {
+        // attrMap：HTML 属性名（kebab-case），用于 querySelector / closest
+        const attrMap = {
+            etf:   'data-etf-code',
+            stock: 'data-stock-code',
+            index: 'data-code',
+        };
+        // keyMap：dataset 读取键（camelCase）
+        const keyMap = {
             etf:   'etfCode',
             stock: 'stockCode',
             index: 'code',
         };
         const endpoint = endpointMap[type];
-        const codeAttr = codeAttrMap[type];
-        if (!endpoint) return;
+        const cardAttr = attrMap[type];
+        const codeKey = keyMap[type];
+        if (!endpoint || !cardAttr) return;
+        // 幂等：同一网格只绑定一次，避免轮询刷新导致重复绑定
+        if (grid.dataset.dndBound === type) return;
+        grid.dataset.dndBound = type;
         let dragSrc = null;
 
         grid.addEventListener('dragstart', e => {
-            const card = e.target.closest('[data-' + codeAttr + ']');
+            const card = e.target.closest('[' + cardAttr + ']');
             if (!card || !authUser || authUser.role !== 'admin') { e.preventDefault(); return; }
             dragSrc = card;
             isDraggingCard = true;
@@ -9447,19 +9463,19 @@
         grid.addEventListener('dragover', e => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            const card = e.target.closest('[data-' + codeAttr + ']');
+            const card = e.target.closest('[' + cardAttr + ']');
             if (card && card !== dragSrc) {
                 grid.querySelectorAll('.card-drag-over').forEach(el => el.classList.remove('card-drag-over'));
                 card.classList.add('card-drag-over');
             }
         });
         grid.addEventListener('dragleave', e => {
-            const card = e.target.closest('[data-' + codeAttr + ']');
+            const card = e.target.closest('[' + cardAttr + ']');
             if (card) card.classList.remove('card-drag-over');
         });
         grid.addEventListener('drop', e => {
             e.preventDefault();
-            const target = e.target.closest('[data-' + codeAttr + ']');
+            const target = e.target.closest('[' + cardAttr + ']');
             if (!target || target === dragSrc || !dragSrc) return;
             grid.querySelectorAll('.card-drag-over').forEach(el => el.classList.remove('card-drag-over'));
             // 重排 DOM
@@ -9503,7 +9519,7 @@
             // ─── ETF / 股票通用路径（保留原行为）───
             // 提取新顺序并持久化
             const codes = Array.from(grid.children).map(el => {
-                const raw = el.dataset[codeAttr] || '';
+                const raw = el.dataset[codeKey] || '';
                 const base = raw.replace(/\.(SH|SZ|BJ)$/i, '');
                 // A 股与港股可能同码，带市场后缀交给后端按「代码+市场」匹配
                 const mk = el.dataset.stockMarket || el.dataset.etfMarket || '';
@@ -9526,6 +9542,9 @@
     // 基金网格 DnD（基金 code 无市场后缀）
     function initFundDnD(grid) {
         if (!grid) return;
+        // 幂等：同一网格只绑定一次
+        if (grid.dataset.dndBound === 'fund') return;
+        grid.dataset.dndBound = 'fund';
         let dragSrc = null;
 
         grid.addEventListener('dragstart', e => {

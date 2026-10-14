@@ -1,6 +1,26 @@
 {
   "stocks": [
     {
+      "name": "腾讯控股",
+      "code": "00700",
+      "market": "HK",
+      "secid": "116.00700",
+      "icon": "腾讯",
+      "iconBg": "linear-gradient(135deg, #90cdf4, #2b6cb0)",
+      "iconColor": "#fff",
+      "sector": ""
+    },
+    {
+      "name": "伊利股份",
+      "code": "600887",
+      "market": "SH",
+      "secid": "1.600887",
+      "icon": "伊利",
+      "iconBg": "linear-gradient(135deg, #90cdf4, #2b6cb0)",
+      "iconColor": "#fff",
+      "sector": ""
+    },
+    {
       "name": "宝信软件",
       "code": "600845",
       "market": "SH",
@@ -21,16 +41,6 @@
       "sector": "电力设备"
     },
     {
-      "name": "先导智能",
-      "code": "300450",
-      "market": "SZ",
-      "secid": "0.300450",
-      "icon": "先导",
-      "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
-      "iconColor": "#fff",
-      "sector": "锂电设备"
-    },
-    {
       "name": "长江电力",
       "code": "600900",
       "market": "SH",
@@ -38,27 +48,7 @@
       "icon": "长江",
       "iconBg": "linear-gradient(135deg, #b794f4, #805ad5)",
       "iconColor": "#fff",
-      "sector": "能源"
-    },
-    {
-      "name": "伊利股份",
-      "code": "600887",
-      "market": "SH",
-      "secid": "1.600887",
-      "icon": "伊利",
-      "iconBg": "linear-gradient(135deg, #90cdf4, #2b6cb0)",
-      "iconColor": "#fff",
-      "sector": ""
-    },
-    {
-      "name": "腾讯控股",
-      "code": "00700",
-      "market": "HK",
-      "secid": "116.00700",
-      "icon": "腾讯",
-      "iconBg": "linear-gradient(135deg, #90cdf4, #2b6cb0)",
-      "iconColor": "#fff",
-      "sector": ""
+      "sector": "电力"
     }
   ]
 }

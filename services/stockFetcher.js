@@ -50,7 +50,20 @@ function readWatchlist() {
             const raw = fs.readFileSync(WATCHLIST_FILE, 'utf8');
             const cfg = JSON.parse(raw);
             if (Array.isArray(cfg.stocks) && cfg.stocks.length > 0) {
-                return cfg.stocks;
+                // 自愈：按「代码 + 市场」去重，历史上曾因 reorder 兜底判断失误产生过重复项
+                const seen = new Set();
+                const deduped = [];
+                for (const s of cfg.stocks) {
+                    if (!s || !s.code) continue;
+                    const k = `${s.code}.${s.market || ''}`;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    deduped.push(s);
+                }
+                if (deduped.length !== cfg.stocks.length) {
+                    console.warn(`[股票] 关注列表存在重复项，已自动去重: ${cfg.stocks.length} → ${deduped.length}`);
+                }
+                return deduped.length > 0 ? deduped : cfg.stocks;
             }
         }
     } catch (err) {

@@ -1964,9 +1964,26 @@ app.post('/api/stocks/reorder', requireAdmin, (req, res) => {
             map.set(s.code, s);
             map.set(stockKey(s), s);
         });
-        const reordered = codes.map(c => map.get(c)).filter(Boolean);
+        // 按「代码 + 市场」去重，避免 codes 里出现重复或列表本身存在重复项时被放大
+        const reordered = [];
+        const seen = new Set();
+        for (const c of codes) {
+            const item = map.get(c);
+            if (!item) continue;
+            const k = stockKey(item);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            reordered.push(item);
+        }
+        // 兜底：codes 未覆盖的条目追加到末尾。codes 可能是裸 code 或 fullCode，两种都要认
         const codesSet = new Set(codes);
-        stocks.forEach(s => { if (!codesSet.has(s.code)) reordered.push(s); });
+        stocks.forEach(s => {
+            const k = stockKey(s);
+            if (codesSet.has(s.code) || codesSet.has(k)) return;
+            if (seen.has(k)) return;
+            seen.add(k);
+            reordered.push(s);
+        });
         writeWatchlist(reordered);
         res.json({ success: true, data: { total: reordered.length } });
     } catch (err) {

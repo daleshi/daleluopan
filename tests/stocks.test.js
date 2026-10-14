@@ -139,6 +139,44 @@ describe('Stocks — /api/stocks/*', () => {
         });
     });
 
+    // ── POST /api/stocks/reorder ──────────────────────────────
+    describe('POST /api/stocks/reorder', () => {
+        it('未登录时返回 401', async () => {
+            const res = await createAgent().post('/api/stocks/reorder').send({ codes: [] });
+            expect(res.status).toBe(401);
+        });
+
+        it('传非数组返回 400', async () => {
+            const res = await adminAgent.post('/api/stocks/reorder').send({ codes: '600519' });
+            expect(res.status).toBe(400);
+        });
+
+        it('用 fullCode（代码.市场）重排不会让关注列表翻倍', async () => {
+            const before = await adminAgent.get('/api/stocks/watchlist');
+            const beforeCodes = before.body.data.stocks.map(s => `${s.code}.${s.market}`);
+            const reversed = [...beforeCodes].reverse();
+            const res = await adminAgent.post('/api/stocks/reorder').send({ codes: reversed });
+            expect(res.body.success).toBe(true);
+
+            const after = await adminAgent.get('/api/stocks/watchlist');
+            const afterCodes = after.body.data.stocks.map(s => `${s.code}.${s.market}`);
+            // 条数不变（历史上曾因兜底判断用裸 code 匹配 fullCode 失败而整表追加）
+            expect(afterCodes.length).toBe(beforeCodes.length);
+            // 顺序按提交结果排列，且无重复
+            expect(afterCodes).toEqual(reversed);
+            expect(new Set(afterCodes).size).toBe(afterCodes.length);
+        });
+
+        it('用裸 code 重排同样不翻倍', async () => {
+            const before = await adminAgent.get('/api/stocks/watchlist');
+            const beforeCodes = before.body.data.stocks.map(s => `${s.code}.${s.market}`);
+            const res = await adminAgent.post('/api/stocks/reorder').send({ codes: beforeCodes.map(c => c.split('.')[0]) });
+            expect(res.body.success).toBe(true);
+            const after = await adminAgent.get('/api/stocks/watchlist');
+            expect(after.body.data.stocks.length).toBe(beforeCodes.length);
+        });
+    });
+
     // ── POST /api/stocks/watchlist（批量更新）─────────────────────
     describe('POST /api/stocks/watchlist', () => {
         it('未登录时返回 401', async () => {

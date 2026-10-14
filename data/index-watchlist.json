@@ -1,16 +1,6 @@
 {
   "indices": [
     {
-      "name": "沪深300",
-      "code": "000300",
-      "market": "SH",
-      "secid": "1.000300",
-      "icon": "300",
-      "iconBg": "linear-gradient(135deg, #63b3ed, #3182ce)",
-      "iconColor": "#fff",
-      "category": "broad-cn"
-    },
-    {
       "name": "科创50",
       "code": "000688",
       "market": "SH",
@@ -26,6 +16,16 @@
       "market": "SZ",
       "secid": "0.399673",
       "icon": "创业",
+      "iconBg": "linear-gradient(135deg, #63b3ed, #3182ce)",
+      "iconColor": "#fff",
+      "category": "broad-cn"
+    },
+    {
+      "name": "沪深300",
+      "code": "000300",
+      "market": "SH",
+      "secid": "1.000300",
+      "icon": "300",
       "iconBg": "linear-gradient(135deg, #63b3ed, #3182ce)",
       "iconColor": "#fff",
       "category": "broad-cn"

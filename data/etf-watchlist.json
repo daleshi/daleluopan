@@ -1,16 +1,6 @@
 {
   "etfs": [
     {
-      "name": "创业板ETF",
-      "code": "159915",
-      "market": "SZ",
-      "secid": "0.159915",
-      "icon": "创",
-      "iconBg": "linear-gradient(135deg, #fc8181, #e53e3e)",
-      "iconColor": "#fff",
-      "category": "宽基"
-    },
-    {
       "name": "科创50ETF",
       "code": "588000",
       "market": "SH",
@@ -29,6 +19,16 @@
       "iconBg": "linear-gradient(135deg, #fc8181, #c53030)",
       "iconColor": "#fff",
       "category": "LOF"
+    },
+    {
+      "name": "创业板ETF",
+      "code": "159915",
+      "market": "SZ",
+      "secid": "0.159915",
+      "icon": "创",
+      "iconBg": "linear-gradient(135deg, #fc8181, #e53e3e)",
+      "iconColor": "#fff",
+      "category": "宽基"
     },
     {
       "code": "510310",
