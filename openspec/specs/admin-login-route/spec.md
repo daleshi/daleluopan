@@ -1,5 +1,9 @@
-## ADDED Requirements
+# admin-login-route Specification
 
+## Purpose
+`/admin` 作为独立的登录入口：未登录访问时展示居中的登录卡片而非主应用，已登录访问时自动回到首页；根路径不再对外暴露任何登录入口。
+
+## Requirements
 ### Requirement: /admin 路径展示登录界面
 系统 SHALL 在用户访问 `/admin` 路径时，隐藏主应用内容，展示独立的登录视图（居中登录卡片），而非正常的 SPA 首页。
 

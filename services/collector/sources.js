@@ -141,7 +141,8 @@ async function fetchCnindexKlines(code, startDate = '2000-01-01', endDate = null
  * @param {string} market SH / SZ
  */
 async function fetchTencentKlines(code, market, startDate, endDate = null) {
-    const tx = `${market === 'SZ' ? 'sz' : 'sh'}${code}`;
+    // 港股个股用 hk 前缀（hk00700），A 股沿用 sz / sh；不复权，与 stockFetcher 口径一致
+    const tx = `${market === 'SZ' ? 'sz' : (market === 'HK' || market === 'HI' ? 'hk' : 'sh')}${code}`;
     const end = endDate || new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
     const out = new Map();
     let from = dashed(startDate);

@@ -268,15 +268,38 @@ function _detectIndexWatchlistMarkets() {
     }
 }
 
+/**
+ * 推断股票 watchlist 涉及的市场集合（用于 stocks 的 trading 与 TTL 动态判定）
+ * 返回 ['CN' | 'HK'] 子集；异常时兜底 ['CN']
+ */
+function _detectStockWatchlistMarkets() {
+    try {
+        const w = readWatchlist();
+        const set = new Set();
+        for (const s of w) {
+            if (s.market === 'HK' || s.market === 'HI') set.add('HK');
+            else set.add('CN');
+        }
+        return set.size > 0 ? [...set] : ['CN'];
+    } catch (e) {
+        return ['CN'];
+    }
+}
+
 function getCacheTTL(key) {
     // index-quotes 单独按 watchlist 涉及的市场动态判定（任一市场开盘 → 短 TTL）
     if (key === 'index-quotes') {
         const trading = isTradingHours(_detectIndexWatchlistMarkets());
         return trading ? CACHE_TTL_INDEX_QUOTES_TRADING : CACHE_TTL_INDEX_QUOTES_CLOSED;
     }
+    // stocks 同理：关注列表含港股时，港股时段内也按交易时段节奏刷新
+    if (key === 'stocks') {
+        const trading = isTradingHours(_detectStockWatchlistMarkets());
+        return trading ? 15 * 1000 : 30 * 60 * 1000;
+    }
     // 其他 cache key 沿用 A 股交易时段（向后兼容）
     const trading = isTradingHours();
-    if (key === 'stocks' || key === 'etfs') return trading ? 15 * 1000 : 30 * 60 * 1000;
+    if (key === 'etfs') return trading ? 15 * 1000 : 30 * 60 * 1000;
     if (key === 'active-funds') return trading ? 10 * 60 * 1000 : 60 * 60 * 1000;
     if (key === 'daily-eval') return 30 * 60 * 1000; // 每日估值：30分钟
     if (key === 'etf-grid-recommendations') return trading ? 30 * 1000 : 30 * 60 * 1000; // ETF网格推荐：交易时段30秒/休市30分钟
@@ -1749,7 +1772,8 @@ app.get('/api/stocks', async (req, res) => {
         res.json({
             success: true,
             data: data,
-            trading: isTradingHours(),
+            // 关注列表含港股时，港股时段内也为 true（A股收盘后港股仍在交易）
+            trading: isTradingHours(_detectStockWatchlistMarkets()),
             ...dataMeta('stocks'),
         });
     } catch (err) {
@@ -1772,6 +1796,40 @@ app.get('/api/stocks/watchlist', (req, res) => {
     });
 });
 
+// ============================================================
+// 股票市场校验（A 股 SH / SZ + 港股 HK）
+// ============================================================
+const STOCK_MARKET_RULES = {
+    SH: { codeLen: 6, codeRe: /^\d{6}$/, secidRe: /^1\.\d{6}$/, secidHint: '1.<6位>' },
+    SZ: { codeLen: 6, codeRe: /^\d{6}$/, secidRe: /^0\.\d{6}$/, secidHint: '0.<6位>' },
+    HK: { codeLen: 5, codeRe: /^\d{5}$/, secidRe: /^116\.\d{5}$/, secidHint: '116.<5位>' },
+};
+
+/**
+ * 校验股票 code / market / secid，港股代码不足 5 位补前导零
+ * @returns {{ok: boolean, error?: string, code?: string, market?: string, secid?: string}}
+ */
+function validateStockRef({ code, market, secid }) {
+    if (!code || !market || !secid) {
+        return { ok: false, error: '缺少必要参数（code, market, secid）' };
+    }
+    const rule = STOCK_MARKET_RULES[market];
+    if (!rule) {
+        return { ok: false, error: `不支持的市场 ${market}（仅支持 SH / SZ / HK）` };
+    }
+    const normCode = market === 'HK' ? String(code).padStart(5, '0') : String(code);
+    if (!rule.codeRe.test(normCode)) {
+        return { ok: false, error: `${market} 市场代码应为 ${rule.codeLen} 位数字（收到 ${normCode}）` };
+    }
+    if (!rule.secidRe.test(String(secid))) {
+        return { ok: false, error: `${market} 市场 secid 格式应为 ${rule.secidHint}（收到 ${secid}）` };
+    }
+    return { ok: true, code: normCode, market, secid: String(secid) };
+}
+
+/** 关注列表中的唯一键：代码 + 市场 */
+const stockKey = s => `${s.code}.${s.market || ''}`;
+
 /**
  * POST /api/stocks/watchlist - 更新关注列表
  * Body: { stocks: [{ name, code, market, secid, icon, iconBg, iconColor, sector }] }
@@ -1785,13 +1843,16 @@ app.post('/api/stocks/watchlist', requireAuth, (req, res) => {
         if (stocks.length > 20) {
             return res.status(400).json({ success: false, error: '最多支持关注20只股票' });
         }
-        // 校验每只股票的必填字段
-        const validStocks = stocks.filter(s =>
-            s && typeof s.name === 'string' && typeof s.code === 'string' &&
-            typeof s.market === 'string' && typeof s.secid === 'string'
-        );
+        // 校验每只股票的必填字段与市场格式（SH/SZ 6 位、HK 5 位）
+        const validStocks = [];
+        for (const s of stocks) {
+            if (!s || typeof s.name !== 'string') continue;
+            const v = validateStockRef(s);
+            if (!v.ok) continue;
+            validStocks.push({ ...s, code: v.code, market: v.market, secid: v.secid });
+        }
         if (validStocks.length === 0) {
-            return res.status(400).json({ success: false, error: '没有有效的股票数据' });
+            return res.status(400).json({ success: false, error: '没有有效的股票数据（A股代码6位、港股代码5位）' });
         }
         writeWatchlist(validStocks);
         console.log(`[配置] 用户更新股票关注列表: ${validStocks.map(s => s.name).join(', ')}`);
@@ -1829,16 +1890,16 @@ app.get('/api/stocks/search', requireAuth, async (req, res) => {
  */
 app.post('/api/stocks/add', requireAuth, (req, res) => {
     try {
-        const { code, name, market, secid, sector } = req.body || {};
-        if (!code || !name || !market || !secid) {
-            return res.status(400).json({ success: false, error: '缺少必要参数（code, name, market, secid）' });
+        const { name, sector } = req.body || {};
+        if (!name) {
+            return res.status(400).json({ success: false, error: '缺少股票名称' });
         }
-        if (!/^\d{6}$/.test(code)) {
-            return res.status(400).json({ success: false, error: '无效的股票代码' });
-        }
+        const v = validateStockRef(req.body || {});
+        if (!v.ok) return res.status(400).json({ success: false, error: v.error });
+        const { code, market, secid } = v;
         const stocks = readWatchlist();
-        if (stocks.find(s => s.code === code)) {
-            return res.status(400).json({ success: false, error: `${name}(${code}) 已在关注列表中` });
+        if (stocks.find(s => stockKey(s) === stockKey({ code, market }))) {
+            return res.status(400).json({ success: false, error: `${name}(${code}.${market}) 已在关注列表中` });
         }
         if (stocks.length >= 20) {
             return res.status(400).json({ success: false, error: '最多支持关注20只股票' });
@@ -1851,7 +1912,7 @@ app.post('/api/stocks/add', requireAuth, (req, res) => {
         };
         stocks.push(newStock);
         writeWatchlist(stocks);
-        console.log(`[配置] 用户添加股票: ${name}(${code})`);
+        console.log(`[配置] 用户添加股票: ${name}(${code}.${market})`);
         res.json({ success: true, data: { stock: newStock, total: stocks.length } });
     } catch (err) {
         console.error('[API] /api/stocks/add 错误:', err.message);
@@ -1861,22 +1922,24 @@ app.post('/api/stocks/add', requireAuth, (req, res) => {
 
 /**
  * POST /api/stocks/remove - 从关注列表移除股票
- * Body: { code }
+ * Body: { code, market? }（A股与港股可能同码，建议带 market；不带则按 code 匹配）
  */
 app.post('/api/stocks/remove', requireAuth, (req, res) => {
     try {
-        const { code } = req.body || {};
+        const { code, market } = req.body || {};
         if (!code) {
             return res.status(400).json({ success: false, error: '缺少股票代码' });
         }
         const stocks = readWatchlist();
-        const idx = stocks.findIndex(s => s.code === code);
+        const idx = market
+            ? stocks.findIndex(s => s.code === String(code).padStart(market === 'HK' ? 5 : 6, '0') && s.market === market)
+            : stocks.findIndex(s => s.code === code);
         if (idx === -1) {
             return res.status(404).json({ success: false, error: '该股票不在关注列表中' });
         }
         const removed = stocks.splice(idx, 1)[0];
         writeWatchlist(stocks);
-        console.log(`[配置] 用户移除股票: ${removed.name}(${code})`);
+        console.log(`[配置] 用户移除股票: ${removed.name}(${removed.code}.${removed.market || ''})`);
         res.json({ success: true, data: { removed: removed.name, total: stocks.length } });
     } catch (err) {
         console.error('[API] /api/stocks/remove 错误:', err.message);
@@ -1886,7 +1949,7 @@ app.post('/api/stocks/remove', requireAuth, (req, res) => {
 
 /**
  * POST /api/stocks/reorder - 重排股票关注列表顺序（管理员）
- * Body: { codes: ['600519', ...] }
+ * Body: { codes: ['600519', ...] }（支持带市场后缀的 fullCode，如 '00700.HK'）
  */
 app.post('/api/stocks/reorder', requireAdmin, (req, res) => {
     try {
@@ -1895,7 +1958,12 @@ app.post('/api/stocks/reorder', requireAdmin, (req, res) => {
             return res.status(400).json({ success: false, error: '缺少 codes 数组' });
         }
         const stocks = readWatchlist();
-        const map = new Map(stocks.map(s => [s.code, s]));
+        // 同时按 code 与 code.market 建立索引，兼容纯 code 与带市场后缀的 fullCode
+        const map = new Map();
+        stocks.forEach(s => {
+            map.set(s.code, s);
+            map.set(stockKey(s), s);
+        });
         const reordered = codes.map(c => map.get(c)).filter(Boolean);
         const codesSet = new Set(codes);
         stocks.forEach(s => { if (!codesSet.has(s.code)) reordered.push(s); });

@@ -1,3 +1,4 @@
 {
-  "loginEnabled": true
+  "loginEnabled": true,
+  "dataSourceMode": "legacy"
 }

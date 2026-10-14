@@ -118,7 +118,9 @@ function guessValuationSource(type, code, market, item, poolCfg) {
         return { valuation_source: dj ? 'danjuan' : 'none', dj_code: dj || null, cs_code: (poolCfg && poolCfg.csCode) || null };
     }
     if (type === 'stock') {
-        return { valuation_source: (market === 'SH' || market === 'SZ') ? 'eastmoney_dc' : 'none', dj_code: null, cs_code: null };
+        // 东财数据中心个股估值报表只覆盖 A 股；港股无历史估值源，改为从每日行情快照积累 PE / PB
+        const vs = market === 'SH' || market === 'SZ' ? 'eastmoney_dc' : (market === 'HK' || market === 'HI' ? 'quote_snapshot' : 'none');
+        return { valuation_source: vs, dj_code: null, cs_code: null };
     }
     return { valuation_source: 'none', dj_code: null, cs_code: null };
 }

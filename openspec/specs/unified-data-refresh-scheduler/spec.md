@@ -1,5 +1,9 @@
-## ADDED Requirements
+# unified-data-refresh-scheduler Specification
 
+## Purpose
+统一数据刷新调度：交易时段内按随机间隔串行刷新当前激活 Tab 的数据，非交易时段停止轮询；Tab 切换与顶部状态展示统一由单一调度器实例协调。
+
+## Requirements
 ### Requirement: 统一数据刷新调度器
 系统 SHALL 提供唯一的 `DataRefreshScheduler` 调度器实例，替代原有的 `indexRefresher`、`indexQuotesRefresher`、`etfRefresher`、`stockRefresher` 四个独立轮询器，作为全局唯一的数据刷新入口。
 

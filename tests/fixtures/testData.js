@@ -35,6 +35,15 @@ module.exports = {
         sector: '测试行业',
     },
 
+    // 测试港股（5 位代码 + 市场 HK + secid 116.<5位>；用不可能真实存在的 99999 避免与真实关注冲突）
+    testHkStock: {
+        code: '99999',
+        name: '测试港股',
+        market: 'HK',
+        secid: '116.99999',
+        sector: '测试行业',
+    },
+
     // 测试 ETF
     testEtf: {
         code: '999997',

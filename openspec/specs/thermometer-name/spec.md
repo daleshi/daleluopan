@@ -1,7 +1,9 @@
-# thermometer-name
+# thermometer-name Specification
+
+## Purpose
+温度计数据源名称与时效性：页面标题、卡片描述与风险提示中的品牌名称正确，数据 TTL 按交易时段感知，并提供强制刷新通道与时效性透出。
 
 ## Requirements
-
 ### Requirement: 温度计数据源名称显示正确
 温度计相关所有位置（包括风险提示）中数据源名称 SHALL 显示为"有知有行温度计"，不得显示任何错误字序变体（如"知有行温度计"）。
 

@@ -280,7 +280,9 @@ function createJobs({ store, log = console }) {
         const since = (fullFrom) => (full || !last ? fullFrom : addDays(last, -7));
         const tenYearsAgo = `${parseInt(bjToday().slice(0, 4), 10) - 10}-01-01`;
         const isIndex = inst.type === 'index';
-        const isAShare = (inst.type === 'stock' || inst.type === 'etf') && (inst.market === 'SH' || inst.market === 'SZ');
+        // 腾讯港股日 K 可用（hk00700），因此港个股也纳入腾讯兜底范围
+        const isAShare = (inst.type === 'stock' || inst.type === 'etf')
+            && (inst.market === 'SH' || inst.market === 'SZ' || inst.market === 'HK' || inst.market === 'HI');
         const csCode = isIndex ? (inst.cs_code || (inst.market === 'CSI' ? inst.code : null)) : null;
 
         let failoverSource = null; // 现有 failover 链实际命中的源（tencent / yahoo / 缓存）
@@ -496,13 +498,14 @@ function createJobs({ store, log = console }) {
         }
         const sq = store.getSnapshot('stocks');
         const sByCode = new Map((((sq && sq.data) || {}).stocks || []).map(s => [String(s.code).split('.')[0], s]));
-        for (const inst of stocks.filter(i => i.valuation_source === 'eastmoney_dc')) {
+        // A 股（eastmoney_dc）与港股（quote_snapshot）都从当日行情快照兜底写入 PE / PB
+        for (const inst of stocks.filter(i => i.valuation_source === 'eastmoney_dc' || i.valuation_source === 'quote_snapshot')) {
             if (repo.lastDate(db, 'kline_daily', inst.id) !== today) continue;
             const row = repo.get(db, 'SELECT pe FROM valuation_daily WHERE instrument_id = ? AND trade_date = ?', [inst.id, today]);
             const s = sByCode.get(inst.code);
             if (row && row.pe != null) continue;
             if (!s || (s.peTTM == null && s.pbRatio == null)) continue;
-            n += repo.upsertValuations(db, inst.id, [{ date: today, pe: s.peTTM, pb: s.pbRatio, granularity: 'daily', isFallback: true }], 'eastmoney_dc');
+            n += repo.upsertValuations(db, inst.id, [{ date: today, pe: s.peTTM, pb: s.pbRatio, granularity: 'daily', isFallback: true }], inst.valuation_source);
         }
         if (n) log.log(`[估值] 兜底写入 ${n} 条（${today}）`);
         return n;

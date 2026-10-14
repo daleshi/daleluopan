@@ -489,6 +489,11 @@
             font-size: 15px; font-weight: 600; color: var(--text-primary);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
+        .stock-market-tag {
+            display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 20px;
+            font-size: 10px; font-weight: 600; letter-spacing: .5px; vertical-align: middle;
+            background: var(--accent-blue-dim); color: var(--accent-blue);
+        }
         .stock-card-code {
             font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); margin-top: 2px;
         }
@@ -8788,7 +8793,7 @@
     }
 
     /** 股票 PE / PB 历史走势弹窗（复用 ETF 弹窗容器样式） */
-    function openValuationModal(type, code, name) {
+    function openValuationModal(type, code, name, market) {
         let modal = document.getElementById('valDetailModal');
         if (!modal) {
             modal = document.createElement('div');
@@ -8804,7 +8809,14 @@
                 <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono)">${escapeHtml(code)} · 估值历史</div>
             </div>
             <button class="etf-modal-close" style="margin-left:auto" onclick="document.getElementById('valDetailModal').classList.remove('show')">✕</button>`;
-        document.getElementById('valModalBody').innerHTML = buildValuationPanelHTML('stockVal', 'PE / PB 历史走势');
+        // 无历史估值数据源的市场（如港股）给出明确提示，避免误以为数据缺失
+        const noHistorySource = market === 'HK' || market === 'HI';
+        const hintHtml = noHistorySource
+            ? `<div style="margin-bottom:12px;padding:8px 12px;border-radius:var(--radius-sm);background:var(--bg-secondary);font-size:12px;color:var(--text-muted)">
+                ⚠️ 该市场暂无历史估值数据源，PE / PB 自接入之日起逐日积累（历史不回补）。
+               </div>`
+            : '';
+        document.getElementById('valModalBody').innerHTML = hintHtml + buildValuationPanelHTML('stockVal', 'PE / PB 历史走势');
         modal.classList.add('show');
         initValuationPanel('stockVal', { type, code, metrics: ['pe', 'pb'] });
     }
@@ -9268,15 +9280,18 @@
             const prevPrice = stockPrevPrices[s.code];
             const priceChanged = prevPrice != null && prevPrice !== s.price;
             const flashClass = priceChanged ? (s.price > prevPrice ? 'stock-flash-up' : 'stock-flash-down') : '';
-            const amountStr = formatAmount(s.amount);
-            const capStr = formatCap(s.marketCap);
-            return { html: `<div class="stock-card ${flashClass}" id="stock-card-${idx}" data-stock-code="${s.shortCode || s.code}" draggable="true">
-                <div class="pro-drag-handle" title="拖动调整顺序" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</div>                <button class="stock-card-remove" onclick="event.stopPropagation();removeStock('${s.shortCode || s.code}','${(s.name||'').replace(/'/g,'')}')" title="取消关注">×</button>
+            const isHk = s.market === 'HK' || s.market === 'HI';
+            // 港股金额/市值以港元计，需与 A 股的人民币区分标注
+            const amountStr = formatAmount(s.amount) + (s.amount && isHk ? ' 港元' : '');
+            const capStr = formatCap(s.marketCap) + (s.marketCap && isHk ? ' 港元' : '');
+            const fullCode = `${s.shortCode || s.code}${isHk ? '.HK' : ''}`;
+            return { html: `<div class="stock-card ${flashClass}" id="stock-card-${idx}" data-stock-code="${s.shortCode || s.code}" data-stock-market="${s.market || ''}" draggable="true">
+                <div class="pro-drag-handle" title="拖动调整顺序" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</div>                <button class="stock-card-remove" onclick="event.stopPropagation();removeStock('${s.shortCode || s.code}','${(s.name||'').replace(/'/g,'')}','${s.market || ''}')" title="取消关注">×</button>
                 <div class="stock-card-header">
                     <div class="stock-card-icon" style="background:${s.iconBg};color:${s.iconColor}">${escapeHtml(s.icon)}</div>
                     <div class="stock-card-title">
-                        <div class="stock-card-name">${escapeHtml(s.name)}</div>
-                        <div class="stock-card-code">${escapeHtml(s.shortCode || s.code)}</div>
+                        <div class="stock-card-name">${escapeHtml(s.name)}${isHk ? ' <span class="stock-market-tag">港股</span>' : ''}</div>
+                        <div class="stock-card-code">${escapeHtml(fullCode)}</div>
                     </div>
                     ${s.sector ? `<span class="stock-card-sector">${escapeHtml(s.sector)}</span>` : ''}
                 </div>
@@ -9341,7 +9356,7 @@
                         <span class="stock-detail-label">昨收</span>
                         <span class="stock-detail-val">${s.prevClose ? s.prevClose.toFixed(2) : '--'}</span>
                     </div>
-                    <button class="val-trend-link" onclick="event.stopPropagation();openValuationModal('stock','${escapeHtml(s.code)}','${escapeHtml((s.name || '').replace(/'/g, ''))}')">📈 PE / PB 历史走势</button>
+                    <button class="val-trend-link" onclick="event.stopPropagation();openValuationModal('stock','${escapeHtml(s.code)}','${escapeHtml((s.name || '').replace(/'/g, ''))}','${s.market || ''}')">📈 PE / PB 历史走势</button>
                 </div>
             </div>`, flashClass, dir, sign, s };
         };
@@ -9489,7 +9504,10 @@
             // 提取新顺序并持久化
             const codes = Array.from(grid.children).map(el => {
                 const raw = el.dataset[codeAttr] || '';
-                return raw.replace(/\.(SH|SZ|BJ)$/i, '');
+                const base = raw.replace(/\.(SH|SZ|BJ)$/i, '');
+                // A 股与港股可能同码，带市场后缀交给后端按「代码+市场」匹配
+                const mk = el.dataset.stockMarket || el.dataset.etfMarket || '';
+                return mk ? `${base}.${mk}` : base;
             });
             fetch(endpoint, {
                 method: 'POST',
@@ -9648,14 +9666,16 @@
                         resultsEl.classList.add('show');
                         return;
                     }
-                    // 获取已关注列表
-                    const watchedCodes = new Set(stockData.map(s => s.shortCode || s.code?.split('.')[0]));
+                    // 获取已关注列表（同一 5/6 位代码可能分属 A 股与港股，按「代码+市场」判重）
+                    const watchedKeys = new Set(stockData.map(s => `${s.shortCode || s.code?.split('.')[0]}.${s.market || ''}`));
                     resultsEl.innerHTML = results.map(r => {
-                        const isWatched = watchedCodes.has(r.code);
+                        const isWatched = watchedKeys.has(`${r.code}.${r.market || ''}`)
+                            || (!r.market && watchedKeys.has(`${r.code}.`));
+                        const label = r.marketLabel || (r.market === 'HK' ? '港股' : (r.market === 'SH' || r.market === 'SZ' ? 'A股' : ''));
                         return `<div class="stock-search-item">
                             <div class="stock-search-item-info">
-                                <div class="stock-search-item-name">${escapeHtml(r.name)}</div>
-                                <div class="stock-search-item-code">${r.code} · ${r.market}${r.sector ? ' · ' + r.sector : ''}</div>
+                                <div class="stock-search-item-name">${escapeHtml(r.name)}${label ? ` <span class="stock-market-tag">${label}</span>` : ''}</div>
+                                <div class="stock-search-item-code">${r.code}${r.market ? '.' + r.market : ''}${r.sector ? ' · ' + r.sector : ''}</div>
                             </div>
                             <button class="stock-search-item-btn ${isWatched ? 'added' : ''}"
                                     onclick="addStockFromSearch(this,'${r.code}','${(r.name||'').replace(/'/g,'')}','${r.market}','${r.secid}','${(r.sector||'').replace(/'/g,'')}')"
@@ -9714,14 +9734,14 @@
     }
 
     // ===================== 删除股票 =====================
-    async function removeStock(code, name) {
+    async function removeStock(code, name, market) {
         if (!authUser) { window.location.href = '/admin'; return; }
-        if (!confirm(`确定取消关注 ${name}(${code}) ？`)) return;
+        if (!confirm(`确定取消关注 ${name}(${code}${market ? '.' + market : ''}) ？`)) return;
         try {
             const resp = await fetch('/api/stocks/remove', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code }),
+                body: JSON.stringify({ code, market: market || undefined }),
             });
             const json = await resp.json();
             if (!json.success) throw new Error(json.error);

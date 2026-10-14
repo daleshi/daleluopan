@@ -1,3 +1,8 @@
+# index-quotes-panel Specification
+
+## Purpose
+指数实时行情面板：按市场（全部 / A 股 / 港股 / 美股）分类切换、各 Tab 实时显示关注计数、空分类显示引导文案，并在切换 Tab 时保持轮询增量更新与视觉一致性。
+
 ## Requirements
 
 ### Requirement: 指数行情面板按市场分类切换
@@ -227,7 +232,7 @@
 
 ### Requirement: 移动端响应式
 
-新增的 52w 条、动量徽章、Sparkline 在移动端（≤480px）自动调整为纵向堆叠或省略，保持卡片宽度不溢出。
+新增的 52w 条、动量徽章、Sparkline 在移动端（≤480px）SHALL 自动调整为纵向堆叠或省略，保持卡片宽度不溢出。
 
 #### Scenario: 480px 下动量徽章纵向排列
 

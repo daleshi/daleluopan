@@ -1,7 +1,7 @@
 'use strict';
 
 const { createAgent, loginAsAdmin } = require('./setup/helpers');
-const { testStock } = require('./fixtures/testData');
+const { testStock, testHkStock } = require('./fixtures/testData');
 
 describe('Stocks — /api/stocks/*', () => {
     let adminAgent;
@@ -68,12 +68,48 @@ describe('Stocks — /api/stocks/*', () => {
             expect(res.body.success).toBe(false);
         });
 
-        it('代码非6位时返回错误', async () => {
+        it('A股代码非6位时返回错误', async () => {
             const res = await adminAgent.post('/api/stocks/add').send({
                 ...testStock,
                 code: '12345',
             });
             expect(res.body.success).toBe(false);
+        });
+
+        it('不支持的市场（US）返回错误', async () => {
+            const res = await adminAgent.post('/api/stocks/add').send({
+                code: 'AAPL', name: '苹果', market: 'US', secid: '105.AAPL',
+            });
+            expect(res.body.success).toBe(false);
+        });
+
+        it('港股 secid 格式错误时返回错误', async () => {
+            const res = await adminAgent.post('/api/stocks/add').send({
+                ...testHkStock,
+                secid: '0.99999',
+            });
+            expect(res.body.success).toBe(false);
+        });
+
+        it('成功添加港股（5位代码 + HK）', async () => {
+            const res = await adminAgent.post('/api/stocks/add').send(testHkStock);
+            expect(res.body.success).toBe(true);
+            const list = await adminAgent.get('/api/stocks/watchlist');
+            const hk = list.body.data.stocks.find(s => s.code === '99999' && s.market === 'HK');
+            expect(hk).toBeTruthy();
+            expect(hk.secid).toBe('116.99999');
+        });
+
+        it('重复添加同一港股被拒绝', async () => {
+            const res = await adminAgent.post('/api/stocks/add').send(testHkStock);
+            expect(res.body.success).toBe(false);
+        });
+
+        it('A股与港股可共存于同一关注列表', async () => {
+            // testStock 已在前面的用例中加入，此处只校验两类市场可同时存在
+            const list = await adminAgent.get('/api/stocks/watchlist');
+            expect(list.body.data.stocks.find(s => s.code === testStock.code && s.market === 'SH')).toBeTruthy();
+            expect(list.body.data.stocks.find(s => s.code === '99999' && s.market === 'HK')).toBeTruthy();
         });
     });
 
@@ -92,6 +128,14 @@ describe('Stocks — /api/stocks/*', () => {
         it('删除不存在的股票时返回错误', async () => {
             const res = await adminAgent.post('/api/stocks/remove').send({ code: '000000' });
             expect(res.body.success).toBe(false);
+        });
+
+        it('带 market 删除港股', async () => {
+            const res = await adminAgent.post('/api/stocks/remove')
+                .send({ code: testHkStock.code, market: 'HK' });
+            expect(res.body.success).toBe(true);
+            const list = await adminAgent.get('/api/stocks/watchlist');
+            expect(list.body.data.stocks.find(s => s.code === '99999' && s.market === 'HK')).toBeFalsy();
         });
     });
 

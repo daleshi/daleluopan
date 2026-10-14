@@ -244,7 +244,8 @@ async function fetchStockQuotesEastmoney(stocks) {
 // ============================================================
 async function fetchStockQuotesTencent(stocks) {
     const codes = stocks.map(s => {
-        const prefix = s.market === 'SZ' ? 'sz' : 'sh';
+        // 港股个股用 hk 前缀（如 hk00700），A 股沿用 sz / sh
+        const prefix = s.market === 'SZ' ? 'sz' : (s.market === 'HK' || s.market === 'HI' ? 'hk' : 'sh');
         return `${prefix}${s.code}`;
     }).join(',');
     const url = `https://qt.gtimg.cn/q=${codes}`;
@@ -622,6 +623,7 @@ async function fetchAllStockData(forceRefresh = false) {
             name: quote.name || stock.name,
             code: resultCode,
             shortCode: stock.code,
+            market: stock.market || null,
             icon: stock.icon,
             iconBg: stock.iconBg,
             iconColor: stock.iconColor,
@@ -746,19 +748,33 @@ async function searchStock(keyword) {
         return data.QuotationCodeTable.Data
             .filter(d => {
                 const code = d.Code || '';
-                const name = (d.Name || '').toUpperCase();
-                // 过滤A股：代码6位数字，排除ETF/LOF/基金
-                if (!/^\d{6}$/.test(code)) return false;
-                if (name.includes('ETF') || name.includes('LOF')) return false;
-                // 只要沪深市场（MktNum: 0=深证, 1=上证）
+                const name = d.Name || '';
+                const upper = name.toUpperCase();
+                // 排除 ETF / LOF / 基金等非个股
+                if (upper.includes('ETF') || upper.includes('LOF')) return false;
+                if (name.includes('基金') || name.includes('信托')) return false;
+
                 const mkt = String(d.MktNum || '');
-                return mkt === '0' || mkt === '1';
+                // A 股：6 位 + 沪深市场（MktNum: 0=深证, 1=上证）
+                if (mkt === '0' || mkt === '1') return /^\d{6}$/.test(code);
+                // 港股：5 位 + 市场号 116
+                if (mkt === '116') {
+                    if (!/^\d{5}$/.test(code)) return false;
+                    // 排除窝轮 / 牛熊证 / 人民币柜台（-R）
+                    if (name.includes('购') || name.includes('沽') || name.includes('牛') || name.includes('熊')) return false;
+                    // 人民币柜台：腾讯控股-R / 小米集团-WR
+                    if (/-W?R\b/i.test(name)) return false;
+                    return true;
+                }
+                return false;
             })
             .slice(0, 15)
             .map(d => {
-                const code = d.Code;
-                const market = d.MktNum === '0' ? 'SZ' : 'SH';
-                const secid = `${d.MktNum === '0' ? '0' : '1'}.${code}`;
+                const mkt = String(d.MktNum || '');
+                const isHk = mkt === '116';
+                const code = isHk ? String(d.Code).padStart(5, '0') : d.Code;
+                const market = isHk ? 'HK' : (mkt === '0' ? 'SZ' : 'SH');
+                const secid = isHk ? `116.${code}` : `${mkt === '0' ? '0' : '1'}.${code}`;
                 const name = d.Name || '';
                 const iconInfo = generateStockIcon(name, code);
                 return {
@@ -766,13 +782,14 @@ async function searchStock(keyword) {
                     name,
                     market,
                     secid,
+                    marketLabel: isHk ? '港股' : 'A股',
                     sector: guessStockSector(name),
                     ...iconInfo,
                 };
             });
     } catch (err) {
         console.warn('[股票] 搜索失败:', err.message);
-        // 备用：用代码直接构造（如果输入是6位纯数字）
+        // 备用：用代码直接构造（A股 6 位 / 港股 5 位）
         if (/^\d{6}$/.test(kw)) {
             const market = /^[60]/.test(kw) ? 'SH' : 'SZ';
             const secid = `${market === 'SZ' ? '0' : '1'}.${kw}`;
@@ -781,6 +798,18 @@ async function searchStock(keyword) {
                 name: kw,
                 market,
                 secid,
+                marketLabel: 'A股',
+                sector: '',
+                ...generateStockIcon(kw, kw),
+            }];
+        }
+        if (/^\d{5}$/.test(kw)) {
+            return [{
+                code: kw,
+                name: kw,
+                market: 'HK',
+                secid: `116.${kw}`,
+                marketLabel: '港股',
                 sector: '',
                 ...generateStockIcon(kw, kw),
             }];

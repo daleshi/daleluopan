@@ -1,7 +1,9 @@
-# valuation-thermometer
+# valuation-thermometer Specification
 
-## ADDED Requirements
+## Purpose
+统一估值温度页：以有知有行温度计指数为主体展示估值与温度，定义表格列与默认排序、指数温度详情行内展开，以及两数据源缺失时的容错。
 
+## Requirements
 ### Requirement: 统一估值页以温度计指数为主体展示估值与温度
 系统 SHALL 提供统一的"估值温度"页面（`data-tab="valuation"`），替代原"每日估值"与"温度计"两个独立标签页。指数列表 SHALL 以有知有行温度计（`/api/indices` 响应的 `thermometer.allIndices`）中有温度的指数为准，没有温度的指数 SHALL NOT 展示；每日估值指标（来自 `/api/daily-eval`）按指数代码合并到对应行。
 

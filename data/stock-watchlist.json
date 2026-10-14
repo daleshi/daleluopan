@@ -49,6 +49,16 @@
       "iconBg": "linear-gradient(135deg, #90cdf4, #2b6cb0)",
       "iconColor": "#fff",
       "sector": ""
+    },
+    {
+      "name": "腾讯控股",
+      "code": "00700",
+      "market": "HK",
+      "secid": "116.00700",
+      "icon": "腾讯",
+      "iconBg": "linear-gradient(135deg, #90cdf4, #2b6cb0)",
+      "iconColor": "#fff",
+      "sector": ""
     }
   ]
 }

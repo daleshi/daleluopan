@@ -1,7 +1,9 @@
-# stock-overview
+# stock-overview Specification
+
+## Purpose
+严选股票卡片：透出真实的 52 周最高/最低价与价格水位字段 `pricePosition52w`，渲染 52 周水位条，并在移动端保持视觉一致。
 
 ## Requirements
-
 ### Requirement: 股票卡片透出真正的 52 周高低字段
 
 后端 `/api/stocks` 响应 SHALL 在每只股票对象上输出基于"约 252 个交易日（≈ 52 周）"的 `high52w` 与 `low52w` 字段，确保字段名与语义一致。
