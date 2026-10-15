@@ -1,20 +1,21 @@
 /**
  * 盘中行情采集循环（每类一个实例，互相独立）
  *
- *   正常：下次间隔 = random(5s, 10s)
- *   失败：10s → 20s → 40s → 80s → 120s（上限），成功后恢复随机区间
- *   连续 6 次数据未变：间隔逐次翻倍，上限 60s；数据变化即恢复
+ *   正常：下次间隔 = random(15s, 30s)（随机区间，避免固定节奏被数据源识别为爬虫）
+ *   失败：15s → 30s → 60s → 120s（上限），成功后恢复随机区间
+ *   连续 6 次数据未变：间隔逐次翻倍，上限 120s；数据变化即恢复
  *   不在采集时段：停止请求，睡到下一个开盘时间（最多睡 10 分钟后复查）
- *   从开盘进入收盘：额外补采一次（收盘后 90 秒），拿到收盘价
+ *   从开盘进入收盘：仅在收盘后补采一次（拿到确定的收盘价），之后直到次日开盘都不再发请求
  */
 const { isCollectWindow, nextCollectOpenAt } = require('../marketHours');
 
-const MIN_MS = 5000;
-const MAX_MS = 10000;
-const FAIL_BASE_MS = 10000;
+// 盘中间隔上限 30 秒：与前端 20～30s 随机轮询节奏对齐，同时把对数据源的请求量降到原来的 1/3 左右
+const MIN_MS = 15000;
+const MAX_MS = 30000;
+const FAIL_BASE_MS = 15000;
 const FAIL_MAX_MS = 120000;
 const UNCHANGED_THRESHOLD = 6;
-const UNCHANGED_MAX_MS = 60000;
+const UNCHANGED_MAX_MS = 120000;
 const MAX_SLEEP_MS = 10 * 60 * 1000;
 const POST_CLOSE_DELAY_MS = 90 * 1000;
 

@@ -329,6 +329,42 @@ async function selfHealWatchlistSecids(maxFixes = 5) {
     return changed.length;
 }
 
+/**
+ * 由「代码 + 市场」派生蛋卷估值代码（djCode）与中证官网代码（csCode）。
+ *
+ * 背景：用户在指数行情页新增一个候选池之外的指数时，旧逻辑把 djCode/csCode 置为 null，
+ * 导致该指数永远拿不到 PE/PB（前端显示 `-`）。实际上蛋卷估值接口用的是
+ * `市场前缀 + 指数代码` 的固定规则，与 services/db/repo.js 的 guessValuationSource 一致，
+ * 完全可以派生，无需在候选池里逐个硬编码。
+ *
+ *   SH 000993 → SH000993（全指信息，蛋卷有数据）
+ *   SZ 399006 → SZ399006（创业板指）
+ *   CSI H30269 → CSIH30269（红利低波）
+ *   HI HSTECH → HKHSTECH（恒生科技）
+ *   US SPX   → null（蛋卷不覆盖美股，走腾讯/新浪行情源）
+ *
+ * @param {string} code   指数代码
+ * @param {string} market 市场标识（SH / SZ / CSI / HI / HK / US）
+ * @returns {{djCode: string|null, csCode: string|null}}
+ */
+const DJ_CODE_PREFIX_BY_MARKET = { SH: 'SH', SZ: 'SZ', CSI: 'CSI', HI: 'HK', HK: 'HK' };
+const CS_CODE_MARKETS = new Set(['SH', 'SZ', 'CSI', 'HI', 'HK']);
+// ETF.run 指数页路径前缀（与候选池内已配置的 etfRunPath 保持一致）
+const ETF_RUN_PATH_PREFIX = { SH: '/index/SSE', SZ: '/index/SZSE', CSI: '/index/CSI' };
+
+function deriveIndexValuationCodes(code, market) {
+    const raw = String(code == null ? '' : code).trim();
+    if (!raw) return { djCode: null, csCode: null, etfRunPath: null };
+    const m = String(market == null ? '' : market).trim().toUpperCase();
+    const prefix = DJ_CODE_PREFIX_BY_MARKET[m] || null;
+    const runPrefix = ETF_RUN_PATH_PREFIX[m] || null;
+    return {
+        djCode: prefix ? `${prefix}${raw}` : null,
+        csCode: CS_CODE_MARKETS.has(m) ? raw : null,
+        etfRunPath: runPrefix ? `${runPrefix}/${raw}` : null,
+    };
+}
+
 function buildIndexConfig(selectedCodes) {
     const codes = Array.isArray(selectedCodes) && selectedCodes.length > 0
         ? selectedCodes
@@ -337,8 +373,8 @@ function buildIndexConfig(selectedCodes) {
     return codes.map(key => {
         const pooled = POOL_MAP[key];
         if (pooled) return pooled;
-        // 池外指数：从 watchlist 条目动态构造最小配置，纳入历史数据构建
-        // （无 djCode/csCode 映射，估值类字段自然为空，K线/52w/动量正常采集）
+        // 池外指数：从 watchlist 条目动态构造配置，纳入历史数据构建。
+        // djCode / csCode 按市场规则自动派生，让新增指数也能拿到估值（PE/PB）。
         if (!watchlistMap) {
             watchlistMap = {};
             try {
@@ -351,9 +387,10 @@ function buildIndexConfig(selectedCodes) {
         }
         const wl = watchlistMap[key];
         if (!wl || !wl.secid) return null;
+        const derived = deriveIndexValuationCodes(wl.code, wl.market);
         return {
             name: wl.name, code: wl.code, secid: wl.secid, market: wl.market,
-            djCode: null, csCode: null,
+            djCode: derived.djCode, csCode: derived.csCode, etfRunPath: derived.etfRunPath,
             icon: wl.icon, iconBg: wl.iconBg, iconColor: wl.iconColor,
             category: wl.category || 'custom', desc: wl.desc || '',
             dynamic: true,
@@ -933,40 +970,126 @@ async function fetchComparisonSources(coreConfigs, djEvaMap) {
 }
 
 // ============================================================
-// 2. 中证指数官网估值数据
-//    尝试从官网的数据页获取最新 PE/PB
+// 2. 中证指数官网（csindex.com.cn）
+//    可公开访问、无需鉴权，且被东财封 IP 时仍可用。
+//
+//    实测（2026-10）可用端点：
+//      * /csindex-home/perf/index-perf-oneday?indexCode=X  → 当日行情（current/changePct/openToday/closePre）
+//      * /csindex-home/perf/index-perf?indexCode=X&startDate=&endDate= → 日频历史（close/changePct/vol）
+//      * /csindex-home/perf/indexCsiDsPe?indexCode=X       → 仅 peg，无 PE/PB
+//    已失效（不要再用）：/csindex-home/fundamental/index-fundamental（404）
+//
+//    覆盖范围：中证系列（含 H30269 红利低波、931787 港股创新药等），
+//    不含深证/国证系列（399673 创业板50、980092 自由现金流）。
 // ============================================================
+
+/** 取北京时间（UTC+8）的 YYYY-MM-DD，用于与中证官网返回的 tradeDate 比较 */
+function shanghaiDateStr(now = new Date()) {
+    return new Date(now.getTime() + (now.getTimezoneOffset() + 480) * 60000).toISOString().slice(0, 10);
+}
+
+/**
+ * 中证指数官网估值：目前官网仅公开 peg（市盈增长比），不提供 PE/PB 字段。
+ * 保留该函数并在官网未来开放 PE/PB 时自动生效；当前直接返回 null，避免无意义的请求。
+ */
 async function fetchCSIndexValuation(csCode) {
-    // 中证指数官网的指数详情API
-    const urls = [
-        `https://www.csindex.com.cn/csindex-home/perf/index-perf?indexCode=${csCode}&startDate=&endDate=`,
-        `https://www.csindex.com.cn/csindex-home/fundamental/index-fundamental?indexCode=${csCode}`,
-    ];
-    for (const url of urls) {
-        try {
-            const res = await safeFetch(url, {
+    if (!csCode) return null;
+    try {
+        const res = await safeFetch(
+            `https://www.csindex.com.cn/csindex-home/perf/index-perf?indexCode=${encodeURIComponent(csCode)}&startDate=&endDate=`,
+            {
                 headers: {
                     ...HEADERS,
                     'Referer': 'https://www.csindex.com.cn/',
                     'Origin': 'https://www.csindex.com.cn',
                 },
-            }, 1);
-            const data = await res.json();
-            // 尝试解析不同格式的返回
-            if (data?.data) {
-                const d = Array.isArray(data.data) ? data.data[data.data.length - 1] : data.data;
-                const pe = d.pe || d.peTTM || d.pe_ttm || d.PE || null;
-                const pb = d.pb || d.pbMRQ || d.pb_mrq || d.PB || null;
-                if (pe && pe > 0) {
-                    console.log(`  [中证官网] ${csCode} PE=${pe}, PB=${pb}`);
-                    return { pe: parseFloat(pe), pb: pb ? parseFloat(pb) : null, source: 'csindex' };
-                }
-            }
-        } catch (e) {
-            // try next
+            }, 0);
+        const data = await res.json();
+        const d = Array.isArray(data?.data) ? data.data[data.data.length - 1] : data?.data;
+        if (!d) return null;
+        const pe = d.pe || d.peTTM || d.pe_ttm || d.PE || null;
+        const pb = d.pb || d.pbMRQ || d.pb_mrq || d.PB || null;
+        if (pe > 0 || pb > 0) {
+            console.log(`  [中证官网] ${csCode} PE=${pe}, PB=${pb}`);
+            return { pe: pe ? parseFloat(pe) : null, pb: pb ? parseFloat(pb) : null, source: 'csindex' };
         }
+    } catch (e) {
+        // 官网偶发抖动，静默降级
     }
     return null;
+}
+
+/**
+ * 中证指数官网当日行情（中证系列指数专用兜底源）
+ * @param {Array<object>} configs 需要补行情的指数配置（仅 market==='CSI' 且带 csCode 的会命中）
+ * @returns {Promise<object>} code → quote
+ */
+async function fetchCSIndexRealtimeQuotes(configs) {
+    const targets = (configs || []).filter(c => c && c.market === 'CSI' && c.csCode);
+    if (targets.length === 0) return {};
+
+    const CS_HEADERS = {
+        ...HEADERS,
+        'Referer': 'https://www.csindex.com.cn/',
+        'Origin': 'https://www.csindex.com.cn',
+    };
+    const quotes = {};
+    const nowIso = new Date().toISOString();
+
+    const results = await Promise.all(targets.map(async cfg => {
+        const url = `https://www.csindex.com.cn/csindex-home/perf/index-perf-oneday?indexCode=${encodeURIComponent(cfg.csCode)}`;
+        try {
+            const res = await safeFetch(url, { headers: CS_HEADERS }, 0);
+            const data = await res.json();
+            const head = data?.data?.intraDayHeader;
+            if (!head) return [cfg, null];
+            const price = parseFloat(head.current);
+            const prevClose = parseFloat(head.closePre);
+            if (!(price > 0)) return [cfg, null];
+
+            // 分时序列用于补出当日高低（intraDayHeader 不含 high/low）
+            const list = Array.isArray(data?.data?.intraDayPerfList) ? data.data.intraDayPerfList : [];
+            let high = 0, low = 0;
+            for (const p of list) {
+                const h = parseFloat(p.high), l = parseFloat(p.low);
+                if (h > 0 && (!high || h > high)) high = h;
+                if (l > 0 && (!low || l < low)) low = l;
+            }
+            const changeAmount = parseFloat(head.change);
+            const changePercent = parseFloat(head.changePct);
+            const quote = {
+                price,
+                prevClose: prevClose || 0,
+                open: parseFloat(head.openToday) || 0,
+                high: high || Math.max(price, parseFloat(head.openToday) || price),
+                low: low || Math.min(price, parseFloat(head.openToday) || price),
+                changeAmount: isNaN(changeAmount) ? (prevClose ? +(price - prevClose).toFixed(4) : 0) : changeAmount,
+                changePercent: isNaN(changePercent)
+                    ? (prevClose ? +((price - prevClose) / prevClose * 100).toFixed(2) : 0)
+                    : changePercent,
+                name: cfg.name,
+                _quoteSource: 'csindex',
+                _quoteFetchedAt: nowIso,
+                _quoteTradeTime: head.tradeDate && head.tradeTime ? `${head.tradeDate} ${head.tradeTime}` : null,
+            };
+            // 官网给出的是上一交易日数据时（常见于开盘前 / 非交易日），明确标注，避免用户误以为是实时价
+            if (head.tradeDate && head.tradeDate !== shanghaiDateStr()) {
+                quote._staleNote = `中证官网最新为 ${head.tradeDate} 数据`;
+            }
+            return [cfg, quote];
+        } catch (err) {
+            console.warn(`  [中证官网] ${cfg.csCode} 行情获取失败: ${err.message}`);
+            return [cfg, null];
+        }
+    }));
+
+    for (const [cfg, q] of results) {
+        if (q) quotes[cfg.code] = q;
+    }
+    if (Object.keys(quotes).length > 0) {
+        console.log(`  [中证官网] 行情兜底获取 ${Object.keys(quotes).length}/${targets.length} 条: ${Object.keys(quotes).join(',')}`);
+    }
+    return quotes;
 }
 
 // ============================================================
@@ -1458,6 +1581,22 @@ async function fetchRealtimeQuotes(allConfigs) {
         }
     }
 
+    // 中证指数官网兜底：
+    // 中证系列指数（H30269 红利低波、931787 港股创新药等）在东财 push2 不可达、
+    // 且腾讯/新浪行情库根本没有对应代码时会整条链路落空，前端显示"实时行情不可用"。
+    // 中证官网的 index-perf-oneday 覆盖全部中证系列，用它做最后一道补漏。
+    const csMissing = otherConfigs.filter(cfg => !quotes[cfg.code] && cfg.market === 'CSI' && cfg.csCode);
+    if (csMissing.length > 0) {
+        try {
+            const csQuotes = await fetchCSIndexRealtimeQuotes(csMissing);
+            for (const cfg of csMissing) {
+                if (csQuotes[cfg.code]) quotes[cfg.code] = csQuotes[cfg.code];
+            }
+        } catch (err) {
+            console.warn('  [行情] 中证官网兜底失败:', err.message);
+        }
+    }
+
     // 至此美股已在前段处理；若 otherConfigs 中有任意一条获取到数据，整体即视为"主链路 OK"
     if (otherEastmoneyHasResults || otherConfigs.every(cfg => quotes[cfg.code])) {
         return quotes;
@@ -1489,6 +1628,20 @@ async function fetchRealtimeQuotes(allConfigs) {
         console.warn('  [行情] 新浪备用源也失败:', err.message);
     }
 
+    // 整条东财/腾讯/新浪链路都拿不到数据时，再给中证系列指数一次中证官网机会
+    const csLastMissing = otherConfigs.filter(cfg => !quotes[cfg.code] && cfg.market === 'CSI' && cfg.csCode);
+    if (csLastMissing.length > 0) {
+        try {
+            const csQuotes = await fetchCSIndexRealtimeQuotes(csLastMissing);
+            for (const cfg of csLastMissing) {
+                if (csQuotes[cfg.code]) quotes[cfg.code] = csQuotes[cfg.code];
+            }
+        } catch (err) {
+            console.warn('  [行情] 中证官网兜底失败:', err.message);
+        }
+    }
+
+    if (Object.keys(quotes).length > 0 && _lastQuoteSource === 'none') _lastQuoteSource = 'csindex';
     if (Object.keys(quotes).length === 0) {
         _lastQuoteSource = 'none';
     }
@@ -1927,6 +2080,28 @@ async function fetchAllIndexData(selectedCodes, options = {}) {
             console.log(`  [${cfg.name}] 蛋卷基金: PE=${pe}, PE百分位=${pePercentile}%, 估值=${evaType}`);
         }
 
+        // 来源1.1: 蛋卷未收录该指数时（如创业板50 399673、有色金属 000819），
+        // 用已抓取的多源对照结果补位，优先级 天天基金 > ETF.run > 亿牛网。
+        // 注意：这些源口径与蛋卷(Wind)不完全一致（整体法 vs 中位数法），
+        // 因此仅在蛋卷确实无数据时启用，并通过 peSource 透出来源供前端标注。
+        if (pe == null && Array.isArray(comparisonSources)) {
+            for (const sid of ['tiantian', 'etfrun', 'eniu']) {
+                const src = comparisonSources.find(s => s.id === sid);
+                const hit = src && src.items[`${cfg.code}.${cfg.market}`];
+                if (hit && hit.pe > 0) {
+                    pe = hit.pe;
+                    pb = pb ?? hit.pb ?? null;
+                    pePercentile = pePercentile ?? hit.pePercentile ?? null;
+                    pbPercentile = pbPercentile ?? hit.pbPercentile ?? null;
+                    dividend = dividend ?? hit.dividend ?? null;
+                    roe = roe ?? hit.roe ?? null;
+                    peSource = sid === 'etfrun' ? 'etf.run' : sid;
+                    console.log(`  [${cfg.name}] ${src.name}补位: PE=${pe}, PB=${pb}`);
+                    break;
+                }
+            }
+        }
+
         // 美股指数估值参考占位（具体计算移到 const quote 定义之后，避免 TDZ 错误）
         let usValuationInfo = null;
 
@@ -2096,11 +2271,15 @@ async function fetchAllIndexData(selectedCodes, options = {}) {
             },
         };
 
-        // 美股专属时效性透出（A股/港股不输出，避免字段噪声）
+        // 时效性透出：美股始终透出；其余市场仅在数据源明确标注滞后说明时透出
+        // （如中证官网兜底给出的是上一交易日数据），避免正常情况下的字段噪声
         if (cfg.market === 'US') {
             if (quote._quoteSource) result.quoteSource = quote._quoteSource;
             if (quote._quoteFetchedAt) result.quoteFetchedAt = quote._quoteFetchedAt;
             if (quote._staleNote) result.staleNote = quote._staleNote;
+        } else if (quote._staleNote) {
+            result.quoteSource = quote._quoteSource || result.quoteSource;
+            result.staleNote = quote._staleNote;
         }
 
         console.log(`  [${cfg.name}] 完成: price=${result.price}, PE=${pe}, PE%=${pePercentile}%, temp=${yzyxTemp ? yzyxTemp.temperature + '°' : 'N/A'}, src=${peSource}`);
@@ -3208,11 +3387,14 @@ async function fetchIndexQuotesForWatchlist(forceRefresh = false) {
             usValuation: usValuationInfo,
         };
 
-        // 美股专属时效性透出（A股/港股不输出，避免字段噪声）
+        // 时效性透出：美股始终透出；其余市场仅在数据源明确标注滞后说明时透出
         if (idx.market === 'US') {
             if (q._quoteSource) result.quoteSource = q._quoteSource;
             if (q._quoteFetchedAt) result.quoteFetchedAt = q._quoteFetchedAt;
             if (q._staleNote) result.staleNote = q._staleNote;
+        } else if (q._staleNote) {
+            result.quoteSource = q._quoteSource || result.quoteSource;
+            result.staleNote = q._staleNote;
         }
 
         return result;
@@ -3232,6 +3414,8 @@ module.exports = {
     INDEX_ICON_PRESETS,
     buildIndexConfig,
     buildDashboardOnlyConfig,
+    deriveIndexValuationCodes,
+    fetchCSIndexRealtimeQuotes,
     fetchRealtimeQuotes,
     fetchHistoryKlines,
     fetchIndexHistory,

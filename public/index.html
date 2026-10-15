@@ -4304,6 +4304,19 @@
         };
     }
 
+    // 蛋卷(Wind)是主口径；其余来源的 PE 口径（整体法/中位数法）与它不完全一致，
+    // 因此在卡片与弹窗上显式标注来源，避免用户跨指数横向比较时误判。
+    const PE_SOURCE_LABELS = {
+        'etf.run': 'ETF.run',
+        'eniu': '亿牛网',
+        'tiantian': '天天基金',
+        'us-historical-median': '美股历史中位数',
+    };
+    function peSourceLabel(primary, fallback) {
+        const label = PE_SOURCE_LABELS[primary];
+        return label ? `PE（${label}口径）` : fallback;
+    }
+
     // 蛋卷基金的估值体系: low(<30% PE且<30% PB), mid, high(>70% PE 或 >30%PE且>30%PB)
     function valState(d) {
         // 优先使用蛋卷基金的 evaType
@@ -4472,14 +4485,18 @@
         return (hhmm >= 930 && hhmm <= 1130) || (hhmm >= 1300 && hhmm <= 1500);
     }
 
-    /** 返回 5000~8000ms 之间的随机刷新间隔（后台采集节奏为 5～10 秒，更频繁的轮询没有新数据） */
+    /**
+     * 返回 20000~30000ms 之间的随机刷新间隔。
+     * 后台采集节奏为 15～30 秒随机，前端轮询再快也不会有更新的数据，
+     * 因此统一压到 30 秒内随机，既保证盘中及时性，也显著降低对数据源的请求压力。
+     */
     function getRandomRefreshInterval() {
-        return 5000 + Math.floor(Math.random() * 3000);
+        return 20000 + Math.floor(Math.random() * 10000);
     }
 
     /**
      * 通用的交易时段随机刷新调度器
-     * 使用 setTimeout 链式调用实现随机间隔（3-5秒）
+     * 使用 setTimeout 链式调用实现随机间隔（20-30秒）；收盘后不再发起任何请求
      * @param {Function} refreshFn - 执行刷新的回调
      * @param {Function} guardFn - 守卫函数，返回 false 则跳过本次刷新（但仍继续调度）
      * @returns {{ start: Function, stop: Function, isRunning: Function }}
@@ -4522,7 +4539,8 @@
     // ================================================================
     /**
      * 统一数据刷新调度器
-     * 单一 setTimeout 链，5-8 秒随机间隔（与后台 5～10 秒采集节奏对齐），根据当前激活 Tab 串行刷新对应数据
+     * 单一 setTimeout 链，20-30 秒随机间隔（与后台 15～30 秒采集节奏对齐），
+     * 根据当前激活 Tab 串行刷新对应数据；收盘后自动停止，不再发起任何请求
      */
     function createDataRefreshScheduler() {
         let timer = null;
@@ -4699,7 +4717,7 @@
             </div>
             ${hasPE ? `<div class="pe-section">
                 <div class="pe-header">
-                    <span class="pe-label">PE-TTM 百分位</span>
+                    <span class="pe-label">${peSourceLabel(ds.primary, 'PE-TTM 百分位')}</span>
                     <span class="pe-value" style="color:${state.color}">${d.pe.toFixed(2)} · ${hasPct ? d.pePercentile.toFixed(2) + '%' : 'N/A'}</span>
                 </div>
                 ${hasPct ? `<div class="pe-bar-container">
@@ -4711,7 +4729,7 @@
                     <div class="pe-pointer" style="left:${Math.min(d.pePercentile, 100)}%"></div>
                 </div>
                 <div class="pe-range"><span>0%</span><span>近10年PE百分位</span><span>100%</span></div>` : ''}
-            </div>` : `<div class="pe-section"><div class="pe-label" style="text-align:center;padding:14px 0">${d.dashboardOnly ? '指数总览页仅补充展示实时行情与区间统计' : 'PE估值数据暂未获取到'}</div></div>`}
+            </div>` : `<div class="pe-section"><div class="pe-label" style="text-align:center;padding:14px 0">${d.dashboardOnly ? '指数总览页仅补充展示实时行情与区间统计' : '暂无公开估值数据源收录该指数'}</div></div>`}
             <div class="card-stats">
                 <div class="stat-item"><span class="stat-label">52周最高</span><span class="stat-value">${fmtNum(d.high52w)}</span></div>
                 <div class="stat-item"><span class="stat-label">52周最低</span><span class="stat-value">${fmtNum(d.low52w)}</span></div>
@@ -5897,7 +5915,7 @@
             peSectionHTML = `
             <div class="idx-modal-pe-section">
                 <div class="idx-modal-pe-header">
-                    <span class="idx-modal-pe-label">${isUSRef ? 'PE 估值参考（历史中位数）' : 'PE-TTM 百分位（近10年）'}</span>
+                    <span class="idx-modal-pe-label">${isUSRef ? 'PE 估值参考（历史中位数）' : peSourceLabel(d.dataSources && d.dataSources.primary, 'PE-TTM 百分位（近10年）')}</span>
                     <span class="idx-modal-pe-value" style="color:${state.color}">${d.pe.toFixed(2)}${hasPct ? ' · ' + d.pePercentile.toFixed(2) + '%' : ''}${isUSRef ? ' <span style="font-size:10px;color:var(--text-muted)">(参考值)</span>' : ''}</span>
                 </div>
                 ${hasPct ? `<div class="pe-bar-container">

@@ -246,8 +246,9 @@ if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 // 交易时段感知的缓存 TTL
 const CACHE_TTL_TRADING = 5 * 60 * 1000;   // 交易时段: 5分钟
 const CACHE_TTL_CLOSED  = 4 * 60 * 60 * 1000; // 休市时段: 4小时
-const CACHE_TTL_INDEX_QUOTES_TRADING = 30 * 1000; // 指数行情交易时段: 30秒
+const CACHE_TTL_INDEX_QUOTES_TRADING = 30 * 1000; // 指数行情交易时段: 30秒内（叠加随机抖动）
 const CACHE_TTL_INDEX_QUOTES_CLOSED  = 30 * 60 * 1000; // 指数行情休市: 30分钟
+const CACHE_TTL_QUOTES_TRADING = 30 * 1000;       // 股票/ETF 行情交易时段: 30秒内（叠加随机抖动）
 
 /**
  * 推断指数 watchlist 涉及的市场集合（用于 index-quotes TTL 动态判定）
@@ -286,20 +287,29 @@ function _detectStockWatchlistMarkets() {
     }
 }
 
+/**
+ * 给交易时段 TTL 叠加随机抖动（85%~100%）。
+ * 目的：避免多个缓存键在同一秒集中过期、形成整齐的请求尖峰，
+ * 让回源节奏更接近自然访问，降低被数据源判定为爬虫的概率。
+ */
+function jitterTtl(baseMs) {
+    return Math.round(baseMs * (0.85 + Math.random() * 0.15));
+}
+
 function getCacheTTL(key) {
     // index-quotes 单独按 watchlist 涉及的市场动态判定（任一市场开盘 → 短 TTL）
     if (key === 'index-quotes') {
         const trading = isTradingHours(_detectIndexWatchlistMarkets());
-        return trading ? CACHE_TTL_INDEX_QUOTES_TRADING : CACHE_TTL_INDEX_QUOTES_CLOSED;
+        return trading ? jitterTtl(CACHE_TTL_INDEX_QUOTES_TRADING) : CACHE_TTL_INDEX_QUOTES_CLOSED;
     }
     // stocks 同理：关注列表含港股时，港股时段内也按交易时段节奏刷新
     if (key === 'stocks') {
         const trading = isTradingHours(_detectStockWatchlistMarkets());
-        return trading ? 15 * 1000 : 30 * 60 * 1000;
+        return trading ? jitterTtl(CACHE_TTL_QUOTES_TRADING) : 30 * 60 * 1000;
     }
     // 其他 cache key 沿用 A 股交易时段（向后兼容）
     const trading = isTradingHours();
-    if (key === 'etfs') return trading ? 15 * 1000 : 30 * 60 * 1000;
+    if (key === 'etfs') return trading ? jitterTtl(CACHE_TTL_QUOTES_TRADING) : 30 * 60 * 1000;
     if (key === 'active-funds') return trading ? 10 * 60 * 1000 : 60 * 60 * 1000;
     if (key === 'daily-eval') return 30 * 60 * 1000; // 每日估值：30分钟
     if (key === 'etf-grid-recommendations') return trading ? 30 * 1000 : 30 * 60 * 1000; // ETF网格推荐：交易时段30秒/休市30分钟
